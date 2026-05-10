@@ -1,0 +1,66 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { hashPIN } from '@/lib/auth'
+
+interface Params {
+  params: Promise<{ id: string }>
+}
+
+export async function PATCH(req: NextRequest, { params }: Params) {
+  const { id } = await params
+  const body = await req.json()
+  const action: string = body.action ?? ''
+
+  const supabase = createClient()
+
+  // action: "toggle" — flip is_active
+  if (action === 'toggle') {
+    const { data: user } = await supabase
+      .from('users')
+      .select('is_active')
+      .eq('id', id)
+      .single() as { data: { is_active: boolean } | null; error: unknown }
+
+    if (!user) {
+      return NextResponse.json({ error: 'Staff member not found.' }, { status: 404 })
+    }
+
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: !user.is_active })
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to update status.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, is_active: !user.is_active })
+  }
+
+  // action: "reset-pin" — manager resets PIN without knowing current PIN
+  if (action === 'reset-pin') {
+    const newPIN: string = (body.newPIN ?? '').trim()
+
+    if (!/^\d{4}$/.test(newPIN)) {
+      return NextResponse.json(
+        { error: 'New PIN must be exactly 4 digits.' },
+        { status: 400 }
+      )
+    }
+
+    const newHash = await hashPIN(newPIN)
+
+    const { error } = await supabase
+      .from('users')
+      .update({ pin_hash: newHash, must_change_pin: true })
+      .eq('id', id)
+
+    if (error) {
+      return NextResponse.json({ error: 'Failed to reset PIN.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  }
+
+  return NextResponse.json({ error: 'Invalid action.' }, { status: 400 })
+}
