@@ -1,0 +1,218 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+
+interface StaffCommission {
+  staffId: string
+  staffName: string
+  servicesCount: number
+  totalValue: number
+  totalCommission: number
+}
+
+interface CommissionData {
+  breakdown: StaffCommission[]
+  totalRevenue: number
+  totalCommission: number
+  totalServices: number
+}
+
+function fmtNaira(n: number) {
+  return `₦${n.toLocaleString('en-NG')}`
+}
+
+function lagosToday() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+}
+
+function weekStart() {
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Africa/Lagos' }))
+  const day = now.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  now.setDate(now.getDate() + diff)
+  return now.toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+}
+
+function monthStart() {
+  return lagosToday().slice(0, 7) + '-01'
+}
+
+const PERIODS = [
+  { label: 'Today',      getRange: () => ({ from: lagosToday(),  to: lagosToday()  }) },
+  { label: 'This week',  getRange: () => ({ from: weekStart(),   to: lagosToday()  }) },
+  { label: 'This month', getRange: () => ({ from: monthStart(),  to: lagosToday()  }) },
+]
+
+export default function CommissionPage() {
+  const [period, setPeriod]   = useState(2) // default: this month
+  const [data, setData]       = useState<CommissionData | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async (idx: number) => {
+    setLoading(true)
+    const { from, to } = PERIODS[idx].getRange()
+    const res = await fetch(`/api/owner/commission?from=${from}&to=${to}`)
+    if (res.ok) setData(await res.json())
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load(period) }, [load, period])
+
+  const maxCommission = data?.breakdown[0]?.totalCommission ?? 1
+
+  return (
+    <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-white text-2xl font-bold tracking-tight">Commission</h1>
+          <p className="text-[#555] text-sm mt-0.5">30% of each service goes to the staff member who performed it</p>
+        </div>
+        {/* Period tabs */}
+        <div className="flex bg-[#141414] border border-[#1e1e1e] rounded-xl p-1 gap-1">
+          {PERIODS.map((p, i) => (
+            <button key={p.label} onClick={() => { setPeriod(i); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                period === i ? 'bg-white text-gray-950' : 'text-[#888] hover:text-white'
+              }`}>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Summary strip */}
+      {!loading && data && (
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Total Revenue</p>
+            <p className="text-white text-xl font-bold tabular-nums">{fmtNaira(data.totalRevenue)}</p>
+          </div>
+          <div className="bg-[#141414] border border-amber-500/20 rounded-xl p-4">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission Owed</p>
+            <p className="text-amber-400 text-xl font-bold tabular-nums">{fmtNaira(data.totalCommission)}</p>
+          </div>
+          <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-4">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Your Earnings</p>
+            <p className="text-emerald-400 text-xl font-bold tabular-nums">
+              {fmtNaira(data.totalRevenue - data.totalCommission)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Staff breakdown */}
+      {loading ? (
+        <div className="space-y-3">
+          {[0,1,2,3].map(i => (
+            <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-20 animate-pulse" />
+          ))}
+        </div>
+      ) : !data || data.breakdown.length === 0 ? (
+        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-16 text-center">
+          <p className="text-[#444] text-sm">No services recorded for this period.</p>
+        </div>
+      ) : (
+        <>
+          {/* Desktop table */}
+          <div className="hidden lg:block bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden mb-6">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#1e1e1e]">
+                  <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Staff Member</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Services</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Revenue Generated</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Commission (30%)</th>
+                  <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Share</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1e1e1e]">
+                {data.breakdown.map((s) => {
+                  const barPct = Math.round((s.totalCommission / maxCommission) * 100)
+                  return (
+                    <tr key={s.staffId} className="hover:bg-[#1a1a1a] transition-colors">
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xs font-semibold">{s.staffName.charAt(0).toUpperCase()}</span>
+                          </div>
+                          <span className="text-white font-medium">{s.staffName}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-right text-[#888]">{s.servicesCount}</td>
+                      <td className="px-5 py-4 text-right text-white font-medium tabular-nums">
+                        {fmtNaira(s.totalValue)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <span className="text-amber-400 font-semibold tabular-nums">{fmtNaira(s.totalCommission)}</span>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2 min-w-[100px]">
+                          <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
+                            <div className="bg-amber-400 h-1.5 rounded-full transition-all"
+                              style={{ width: `${barPct}%` }} />
+                          </div>
+                          <span className="text-[#555] text-xs w-8 text-right">{barPct}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot className="border-t border-[#2a2a2a]">
+                <tr className="bg-[#1a1a1a]">
+                  <td className="px-5 py-3 text-[#888] text-xs font-medium">Total</td>
+                  <td className="px-5 py-3 text-right text-[#888] text-xs">{data.totalServices}</td>
+                  <td className="px-5 py-3 text-right text-white text-xs font-semibold tabular-nums">
+                    {fmtNaira(data.totalRevenue)}
+                  </td>
+                  <td className="px-5 py-3 text-right text-amber-400 text-xs font-semibold tabular-nums">
+                    {fmtNaira(data.totalCommission)}
+                  </td>
+                  <td className="px-5 py-3" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="lg:hidden space-y-3">
+            {data.breakdown.map((s) => {
+              const barPct = Math.round((s.totalCommission / maxCommission) * 100)
+              return (
+                <div key={s.staffId} className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
+                        <span className="text-white text-xs font-semibold">{s.staffName.charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div>
+                        <p className="text-white text-sm font-medium">{s.staffName}</p>
+                        <p className="text-[#555] text-xs">{s.servicesCount} services</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-amber-400 text-sm font-bold tabular-nums">{fmtNaira(s.totalCommission)}</p>
+                      <p className="text-[#555] text-xs">commission</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
+                      <div className="bg-amber-400 h-1.5 rounded-full" style={{ width: `${barPct}%` }} />
+                    </div>
+                    <span className="text-[#555] text-xs">{fmtNaira(s.totalValue)} total</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="text-[#333] text-xs text-center mt-4">
+            Showing {data.breakdown.length} staff member{data.breakdown.length !== 1 ? 's' : ''} · {PERIODS[period].label.toLowerCase()}
+          </p>
+        </>
+      )}
+    </div>
+  )
+}
