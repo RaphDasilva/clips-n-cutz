@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+
+interface VSRow {
+  commission_ngn: number
+  price_ngn: number
+  created_at: string
+  services: { name: string } | null
+  visits: {
+    visit_date: string
+    clients: { name: string } | null
+  } | null
+}
+
+export async function GET(req: NextRequest) {
+  const params   = new URL(req.url).searchParams
+  const staffId  = params.get('staffId')
+  const from     = params.get('from')
+  const to       = params.get('to')
+
+  if (!staffId || !from || !to) {
+    return NextResponse.json({ error: 'staffId, from, and to are required.' }, { status: 400 })
+  }
+
+  const supabase = createClient()
+
+  const { data, error } = await supabase
+    .from('visit_services')
+    .select('commission_ngn, price_ngn, created_at, services(name), visits(visit_date, clients(name))')
+    .eq('staff_id', staffId)
+    .gte('created_at', `${from}T00:00:00`)
+    .lte('created_at', `${to}T23:59:59`)
+    .order('created_at', { ascending: false }) as unknown as { data: VSRow[] | null; error: unknown }
+
+  if (error || !data) {
+    return NextResponse.json({ error: 'Failed to load history.' }, { status: 500 })
+  }
+
+  const totalEarnings = data.reduce((s, r) => s + r.commission_ngn, 0)
+  const totalServices = data.length
+
+  // Group by visit date for a cleaner display
+  const byDate = new Map<string, {
+    date: string
+    entries: { serviceName: string; clientName: string; earnings: number; price: number }[]
+    dayEarnings: number
+  }>()
+
+  for (const row of data) {
+    const date   = row.visits?.visit_date ?? row.created_at.split('T')[0]
+    const client = row.visits?.clients?.name ?? 'Unknown'
+    const svc    = row.services?.name ?? 'Unknown service'
+
+    if (!byDate.has(date)) {
+      byDate.set(date, { date, entries: [], dayEarnings: 0 })
+    }
+    const group = byDate.get(date)!
+    group.entries.push({ serviceName: svc, clientName: client, earnings: row.commission_ngn, price: row.price_ngn })
+    group.dayEarnings += row.commission_ngn
+  }
+
+  const grouped = [...byDate.values()].sort((a, b) => b.date.localeCompare(a.date))
+
+  return NextResponse.json({ totalEarnings, totalServices, grouped })
+}
