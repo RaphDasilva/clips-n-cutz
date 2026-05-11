@@ -29,6 +29,7 @@ interface TodayData {
   appointments: Appointment[]
   todayPenalty: number
   todayAttStatus: string | null
+  checkinStatus: 'pending' | 'confirmed' | 'dismissed' | null
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -53,9 +54,11 @@ function greeting() {
 
 export default function StaffHome() {
   const router = useRouter()
-  const [user, setUser]   = useState<{ name: string; id: string } | null>(null)
-  const [data, setData]   = useState<TodayData | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser]         = useState<{ name: string; id: string } | null>(null)
+  const [data, setData]         = useState<TodayData | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [checkingIn, setCheckingIn] = useState(false)
+  const [checkinDone, setCheckinDone] = useState(false)
 
   const load = useCallback(async () => {
     const session = getSession()
@@ -68,6 +71,21 @@ export default function StaffHome() {
   }, [router])
 
   useEffect(() => { load() }, [load])
+
+  async function checkIn() {
+    if (!user) return
+    setCheckingIn(true)
+    await fetch('/api/staff/checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ staffId: user.id }),
+    })
+    setCheckingIn(false)
+    setCheckinDone(true)
+    // Refresh data to pick up the new checkinStatus
+    const res = await fetch(`/api/staff/today?staffId=${user.id}`)
+    if (res.ok) setData(await res.json())
+  }
 
   const today = new Date().toLocaleDateString('en-NG', {
     weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos',
@@ -105,6 +123,44 @@ export default function StaffHome() {
           <span className="text-red-400 font-bold text-sm tabular-nums flex-shrink-0">
             -{fmtNaira(data?.todayPenalty ?? 0)}
           </span>
+        </div>
+      )}
+
+      {/* Check-in card — shown only when no attendance record yet */}
+      {!loading && data?.todayAttStatus === null && (
+        <div className={`rounded-xl border px-4 py-4 mb-4 ${
+          data.checkinStatus === 'pending'
+            ? 'bg-amber-500/5 border-amber-500/20'
+            : 'bg-[#141414] border-[#1e1e1e]'
+        }`}>
+          {data.checkinStatus === 'pending' ? (
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                <div>
+                  <p className="text-amber-400 text-sm font-semibold">Waiting for confirmation…</p>
+                  <p className="text-[#666] text-xs mt-0.5">Cajetan will confirm when he sees you</p>
+                </div>
+              </div>
+              <button onClick={load} className="text-[#555] text-xs hover:text-white transition-colors">
+                Refresh
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-white text-sm font-semibold">Tap to check in</p>
+                <p className="text-[#555] text-xs mt-0.5">Let Cajetan know you have arrived</p>
+              </div>
+              <button
+                onClick={checkIn}
+                disabled={checkingIn || checkinDone}
+                className="bg-white text-gray-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                {checkingIn ? 'Sending…' : 'Check In'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 

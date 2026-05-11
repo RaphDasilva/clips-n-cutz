@@ -28,28 +28,56 @@ function calcStatus(checkedInAt: string | null, penalty: number): string {
   return penalty === 0 ? 'on_time' : 'late'
 }
 
+// Current time in Africa/Lagos as HH:MM:SS
+function lagosTimeNow(): string {
+  return new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Africa/Lagos',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  })
+}
+
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
     ?? new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
 
   const supabase = createClient()
 
-  const [staffRes, attRes] = await Promise.all([
+  const [staffRes, attRes, pendingRes] = await Promise.all([
     supabase
       .from('users')
       .select('id, name, sunday_grace, off_days')
       .eq('role', 'staff')
       .eq('is_active', true)
-      .order('name') as unknown as Promise<{ data: { id: string; name: string; sunday_grace: boolean; off_days: number[] }[] | null; error: unknown }>,
+      .order('name') as unknown as Promise<{
+        data: { id: string; name: string; sunday_grace: boolean; off_days: number[] }[] | null
+        error: unknown
+      }>,
 
     supabase
       .from('attendance')
       .select('staff_id, checked_in_at, status, penalty_ngn')
-      .eq('date', date) as unknown as Promise<{ data: { staff_id: string; checked_in_at: string | null; status: string; penalty_ngn: number }[] | null; error: unknown }>,
+      .eq('date', date) as unknown as Promise<{
+        data: { staff_id: string; checked_in_at: string | null; status: string; penalty_ngn: number }[] | null
+        error: unknown
+      }>,
+
+    supabase
+      .from('checkin_requests')
+      .select('staff_id, requested_at, users(name, sunday_grace, off_days)')
+      .eq('date', date)
+      .eq('status', 'pending') as unknown as Promise<{
+        data: {
+          staff_id: string
+          requested_at: string
+          users: { name: string; sunday_grace: boolean; off_days: number[] } | null
+        }[] | null
+        error: unknown
+      }>,
   ])
 
-  const staff      = staffRes.data ?? []
-  const attMap     = new Map((attRes.data ?? []).map(r => [r.staff_id, r]))
+  const staff   = staffRes.data   ?? []
+  const attMap  = new Map((attRes.data ?? []).map(r => [r.staff_id, r]))
 
   const result = staff.map(s => ({
     id:           s.id,
@@ -59,29 +87,78 @@ export async function GET(req: NextRequest) {
     record:       attMap.get(s.id) ?? null,
   }))
 
-  return NextResponse.json({ date, staff: result })
+  const pending = (pendingRes.data ?? []).map(r => ({
+    staff_id:     r.staff_id,
+    name:         r.users?.name ?? '',
+    sunday_grace: r.users?.sunday_grace ?? false,
+    off_days:     r.users?.off_days     ?? [],
+    requested_at: r.requested_at,
+  }))
+
+  return NextResponse.json({ date, staff: result, pending })
 }
 
 export async function POST(req: NextRequest) {
-  const body        = await req.json()
-  const staffId     = (body.staffId     ?? '').trim() as string
-  const date        = (body.date        ?? '').trim() as string
-  const checkedInAt = (body.checkedInAt ?? null)      as string | null
-  const sundayGrace = Boolean(body.sundayGrace)
+  const body    = await req.json()
+  const action  = (body.action ?? '') as string
+  const staffId = (body.staffId ?? '').trim() as string
+  const date    = (body.date    ?? '').trim() as string
 
   if (!staffId || !date) {
     return NextResponse.json({ error: 'staffId and date are required.' }, { status: 400 })
   }
 
-  const penalty = calcPenalty(checkedInAt, date, sundayGrace)
-  const status  = calcStatus(checkedInAt, penalty)
-
   const supabase = createClient()
+
+  // ── Confirm: record exact Lagos time when manager taps Confirm ──
+  if (action === 'confirm') {
+    const sundayGrace = Boolean(body.sundayGrace)
+    const checkedInAt = lagosTimeNow()
+    const penalty     = calcPenalty(checkedInAt, date, sundayGrace)
+    const status      = calcStatus(checkedInAt, penalty)
+
+    const { error: attError } = await supabase
+      .from('attendance')
+      .upsert(
+        { staff_id: staffId, date, checked_in_at: checkedInAt, status, penalty_ngn: penalty },
+        { onConflict: 'staff_id,date' }
+      )
+
+    if (attError) return NextResponse.json({ error: attError.message }, { status: 500 })
+
+    await supabase
+      .from('checkin_requests')
+      .update({ status: 'confirmed' })
+      .eq('staff_id', staffId)
+      .eq('date', date)
+
+    return NextResponse.json({ success: true, checked_in_at: checkedInAt, status, penalty_ngn: penalty })
+  }
+
+  // ── Dismiss: remove the pending request, no attendance record ──
+  if (action === 'dismiss') {
+    const { error } = await supabase
+      .from('checkin_requests')
+      .update({ status: 'dismissed' })
+      .eq('staff_id', staffId)
+      .eq('date', date)
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ success: true })
+  }
+
+  // ── Manual entry: manager types time directly ──
+  const checkedInAt = (body.checkedInAt ?? null) as string | null
+  const sundayGrace = Boolean(body.sundayGrace)
+  const penalty     = calcPenalty(checkedInAt, date, sundayGrace)
+  const status      = calcStatus(checkedInAt, penalty)
 
   const { error } = await supabase
     .from('attendance')
-    .upsert({ staff_id: staffId, date, checked_in_at: checkedInAt, status, penalty_ngn: penalty },
-             { onConflict: 'staff_id,date' })
+    .upsert(
+      { staff_id: staffId, date, checked_in_at: checkedInAt, status, penalty_ngn: penalty },
+      { onConflict: 'staff_id,date' }
+    )
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true, status, penalty_ngn: penalty })

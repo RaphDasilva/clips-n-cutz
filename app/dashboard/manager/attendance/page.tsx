@@ -14,6 +14,14 @@ interface StaffAttRow {
   } | null
 }
 
+interface PendingRequest {
+  staff_id: string
+  name: string
+  sunday_grace: boolean
+  off_days: number[]
+  requested_at: string
+}
+
 interface RowState {
   timeVal: string
   absent: boolean
@@ -38,6 +46,12 @@ function calcPenalty(checkedInAt: string | null, dateStr: string, sundayGrace: b
 
 function fmtNaira(n: number) { return `₦${n.toLocaleString('en-NG')}` }
 
+function fmt12h(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-NG', {
+    hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos',
+  })
+}
+
 function shiftDate(d: string, delta: number) {
   const dt = new Date(d + 'T12:00:00')
   dt.setDate(dt.getDate() + delta)
@@ -52,27 +66,31 @@ function fmtDate(d: string) {
 
 export default function AttendancePage() {
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
-  const [date, setDate] = useState(todayStr)
+  const [date, setDate]         = useState(todayStr)
   const [staffAtt, setStaffAtt] = useState<StaffAttRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [rows, setRows] = useState<Record<string, RowState>>({})
+  const [pending, setPending]   = useState<PendingRequest[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [rows, setRows]         = useState<Record<string, RowState>>({})
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [dismissing, setDismissing] = useState<string | null>(null)
 
   const loadData = useCallback(async (d: string) => {
     setLoading(true)
-    const res = await fetch(`/api/manager/attendance?date=${d}`)
+    const res  = await fetch(`/api/manager/attendance?date=${d}`)
     const data = await res.json()
     const list: StaffAttRow[] = data.staff ?? []
     setStaffAtt(list)
+    setPending(data.pending ?? [])
 
     const initial: Record<string, RowState> = {}
     for (const s of list) {
       const rec = s.record
       initial[s.id] = {
         timeVal: rec?.checked_in_at ? rec.checked_in_at.slice(0, 5) : '',
-        absent: rec?.status === 'absent',
-        saving: false,
-        saved: !!rec,
-        error: '',
+        absent:  rec?.status === 'absent',
+        saving:  false,
+        saved:   !!rec,
+        error:   '',
       }
     }
     setRows(initial)
@@ -83,6 +101,44 @@ export default function AttendancePage() {
 
   function setRow(id: string, patch: Partial<RowState>) {
     setRows(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }))
+  }
+
+  async function confirm(req: PendingRequest) {
+    setConfirming(req.staff_id)
+    const res = await fetch('/api/manager/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action:       'confirm',
+        staffId:      req.staff_id,
+        date,
+        sundayGrace:  req.sunday_grace,
+      }),
+    })
+    const data = await res.json()
+    if (res.ok) {
+      setPending(p => p.filter(x => x.staff_id !== req.staff_id))
+      // Update the staff row to show the confirmed time
+      setRow(req.staff_id, {
+        timeVal: (data.checked_in_at as string).slice(0, 5),
+        absent:  false,
+        saved:   true,
+        saving:  false,
+        error:   '',
+      })
+    }
+    setConfirming(null)
+  }
+
+  async function dismiss(req: PendingRequest) {
+    setDismissing(req.staff_id)
+    const res = await fetch('/api/manager/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'dismiss', staffId: req.staff_id, date }),
+    })
+    if (res.ok) setPending(p => p.filter(x => x.staff_id !== req.staff_id))
+    setDismissing(null)
   }
 
   async function save(s: StaffAttRow) {
@@ -103,10 +159,9 @@ export default function AttendancePage() {
     }
   }
 
-  const dayOfWeek = new Date(date + 'T12:00:00').getDay()
-  const isSunday  = dayOfWeek === 0
-  const isToday   = date === todayStr
-
+  const dayOfWeek    = new Date(date + 'T12:00:00').getDay()
+  const isSunday     = dayOfWeek === 0
+  const isToday      = date === todayStr
   const workingStaff = staffAtt.filter(s => !s.off_days.includes(dayOfWeek))
 
   const totalPenalty = Object.entries(rows).reduce((sum, [id, r]) => {
@@ -144,7 +199,7 @@ export default function AttendancePage() {
             {isToday && <span className="text-[#C49A3C] text-xs font-medium">Today</span>}
             {isSunday && (
               <span className="text-[#6366f1] text-xs font-medium">
-                {isToday ? '·' : ''} Sunday — opens 12pm
+                {isToday && '· '}Sunday — opens 12pm
               </span>
             )}
           </div>
@@ -156,6 +211,52 @@ export default function AttendancePage() {
           </svg>
         </button>
       </div>
+
+      {/* ── Pending check-in requests (today only) ── */}
+      {isToday && !loading && pending.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <p className="text-amber-400 text-xs font-semibold uppercase tracking-wider">
+              Waiting for confirmation — {pending.length}
+            </p>
+          </div>
+          <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl overflow-hidden divide-y divide-amber-500/10">
+            {pending.map(req => (
+              <div key={req.staff_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
+                    <span className="text-amber-400 text-xs font-semibold">{req.name.charAt(0)}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-white text-sm font-medium">{req.name}</p>
+                    <p className="text-[#666] text-xs">Tapped at {fmt12h(req.requested_at)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => dismiss(req)}
+                    disabled={dismissing === req.staff_id || confirming === req.staff_id}
+                    className="text-[#666] hover:text-red-400 text-xs border border-[#2a2a2a] hover:border-red-500/30 rounded-lg px-3 py-1.5 transition-all disabled:opacity-40"
+                  >
+                    {dismissing === req.staff_id ? 'Dismissing…' : 'Dismiss'}
+                  </button>
+                  <button
+                    onClick={() => confirm(req)}
+                    disabled={confirming === req.staff_id || dismissing === req.staff_id}
+                    className="bg-white text-gray-950 font-semibold text-xs px-4 py-1.5 rounded-lg hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    {confirming === req.staff_id ? 'Confirming…' : 'Confirm'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[#444] text-xs mt-2 px-1">
+            The time recorded will be when you tap Confirm — not when they tapped.
+          </p>
+        </div>
+      )}
 
       {/* Summary strip */}
       {!loading && savedCount > 0 && (
@@ -203,12 +304,12 @@ export default function AttendancePage() {
       ) : (
         <div className="space-y-2">
           {staffAtt.map(s => {
-            const r = rows[s.id]
+            const r          = rows[s.id]
             if (!r) return null
-            const isOffDay   = s.off_days.includes(dayOfWeek)
+            const isOffDay    = s.off_days.includes(dayOfWeek)
             const checkedInAt = r.absent ? null : (r.timeVal || null)
-            const penalty = calcPenalty(checkedInAt, date, s.sunday_grace)
-            const canSave = r.absent || r.timeVal.length > 0
+            const penalty     = calcPenalty(checkedInAt, date, s.sunday_grace)
+            const canSave     = r.absent || r.timeVal.length > 0
 
             if (isOffDay) {
               return (
@@ -231,8 +332,6 @@ export default function AttendancePage() {
             return (
               <div key={s.id} className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 lg:px-5 py-4">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-
-                  {/* Name */}
                   <div className="flex items-center gap-3 lg:w-40 flex-shrink-0">
                     <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-xs font-semibold">{s.name.charAt(0)}</span>
@@ -247,9 +346,7 @@ export default function AttendancePage() {
                     </div>
                   </div>
 
-                  {/* Controls */}
                   <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {/* Absent toggle */}
                     <button
                       onClick={() => setRow(s.id, { absent: !r.absent, timeVal: '', saved: false })}
                       className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${
@@ -261,7 +358,6 @@ export default function AttendancePage() {
                       Absent
                     </button>
 
-                    {/* Time input */}
                     {!r.absent && (
                       <input
                         type="time"
@@ -271,7 +367,6 @@ export default function AttendancePage() {
                       />
                     )}
 
-                    {/* Penalty preview */}
                     <div className="flex-1 text-right min-w-0">
                       {canSave ? (
                         <span className={`text-sm font-semibold tabular-nums ${
@@ -284,7 +379,6 @@ export default function AttendancePage() {
                       )}
                     </div>
 
-                    {/* Save */}
                     <button
                       onClick={() => save(s)}
                       disabled={r.saving || !canSave}
@@ -297,7 +391,6 @@ export default function AttendancePage() {
 
                 {r.error && <p className="text-red-400 text-xs mt-2 pl-11">{r.error}</p>}
 
-                {/* Saved confirmation strip */}
                 {r.saved && canSave && (
                   <div className="mt-2 pl-11 flex items-center gap-2">
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
