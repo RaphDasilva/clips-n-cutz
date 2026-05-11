@@ -14,11 +14,14 @@ interface HistoryEntry {
 interface DayGroup {
   date: string
   entries: HistoryEntry[]
+  tip: number
   dayEarnings: number
 }
 
 interface HistoryData {
   totalEarnings: number
+  totalCommission: number
+  totalTips: number
   totalServices: number
   grouped: DayGroup[]
 }
@@ -111,7 +114,12 @@ export default function StaffHistory() {
             <p className="text-[#C49A3C] text-3xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.totalEarnings ?? 0)}
             </p>
-            <p className="text-[#555] text-xs mt-1.5">{PERIODS[period].label.toLowerCase()}</p>
+            {(data?.totalTips ?? 0) > 0 && (
+              <p className="text-[#C49A3C]/70 text-xs mt-1">
+                incl. {fmtNaira(data!.totalTips)} tips
+              </p>
+            )}
+            <p className="text-[#555] text-xs mt-1">{PERIODS[period].label.toLowerCase()}</p>
           </div>
           <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
             <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Services Done</p>
@@ -146,9 +154,16 @@ export default function StaffHistory() {
                 <span className="text-[#666] text-xs font-semibold uppercase tracking-wider">
                   {fmtDate(day.date)}
                 </span>
-                <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
-                  {fmtNaira(day.dayEarnings)}
-                </span>
+                <div className="flex items-center gap-2">
+                  {(day.tip ?? 0) > 0 && (
+                    <span className="text-[#C49A3C]/70 text-xs tabular-nums">
+                      +{fmtNaira(day.tip)} tip
+                    </span>
+                  )}
+                  <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
+                    {fmtNaira(day.dayEarnings)}
+                  </span>
+                </div>
               </div>
 
               {/* Service rows */}

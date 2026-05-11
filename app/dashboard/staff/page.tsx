@@ -22,6 +22,8 @@ interface Appointment {
 
 interface TodayData {
   todayEarnings: number
+  todayCommission: number
+  todayTips: number
   todayServices: number
   services: ServiceEntry[]
   appointments: Appointment[]
@@ -96,9 +98,16 @@ export default function StaffHome() {
             <p className="text-white text-4xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.todayEarnings ?? 0)}
             </p>
-            <p className="text-[#555] text-sm mt-2">
-              {data?.todayServices ?? 0} service{(data?.todayServices ?? 0) !== 1 ? 's' : ''} completed
-            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <p className="text-[#555] text-sm">
+                {data?.todayServices ?? 0} service{(data?.todayServices ?? 0) !== 1 ? 's' : ''}
+              </p>
+              {(data?.todayTips ?? 0) > 0 && (
+                <span className="text-[#C49A3C] text-xs font-medium px-2 py-0.5 rounded-full bg-[#C49A3C]/10 border border-[#C49A3C]/20">
+                  +{fmtNaira(data!.todayTips)} tips
+                </span>
+              )}
+            </div>
           </>
         )}
       </div>

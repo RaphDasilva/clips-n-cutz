@@ -24,7 +24,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 // Called when the client arrives — assigns a staff member and creates the visit record
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const { staffId } = await req.json()
+  const body    = await req.json()
+  const staffId = body.staffId as string
+  const tipNgn  = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
 
   if (!staffId) return NextResponse.json({ error: 'Please select a staff member.' }, { status: 400 })
 
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Create the visit record
   const { data: visit, error: visitErr } = await supabase
     .from('visits')
-    .insert({ client_id: appt.client_id, staff_id: staffId, appointment_id: id, visit_date: visitDate, total_ngn: totalNgn })
+    .insert({ client_id: appt.client_id, staff_id: staffId, appointment_id: id, visit_date: visitDate, total_ngn: totalNgn, tip_ngn: tipNgn })
     .select()
     .single() as { data: { id: string } | null; error: unknown }
 

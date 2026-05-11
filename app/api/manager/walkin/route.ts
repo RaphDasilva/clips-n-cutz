@@ -8,6 +8,7 @@ export async function POST(req: NextRequest) {
   const clientPhone: string = (body.clientPhone ?? '').trim()
   const staffId: string     = (body.staffId     ?? '').trim()
   const serviceIds: string[] = body.serviceIds ?? []
+  const tipNgn: number      = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
 
   if (!clientName || !clientPhone || !staffId || serviceIds.length === 0) {
     return NextResponse.json(
@@ -61,8 +62,9 @@ export async function POST(req: NextRequest) {
     .insert({
       client_id: client.id,
       staff_id: staffId,
-      visit_date: new Date().toISOString().split('T')[0],
+      visit_date: new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }),
       total_ngn: totalNgn,
+      tip_ngn: tipNgn,
     })
     .select()
     .single() as { data: Visit | null; error: { message: string } | null }

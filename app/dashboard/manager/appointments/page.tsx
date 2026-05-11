@@ -89,6 +89,7 @@ export default function AppointmentsPage() {
   // Check-in modal
   const [checkInAppt, setCheckInAppt]       = useState<ApptRow | null>(null)
   const [checkInStaffId, setCheckInStaffId] = useState('')
+  const [checkInTip, setCheckInTip]         = useState('')
   const [checkInLoading, setCheckInLoading] = useState(false)
   const [checkInError, setCheckInError]     = useState('')
   const [checkInSuccess, setCheckInSuccess] = useState(false)
@@ -139,14 +140,14 @@ export default function AppointmentsPage() {
       const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: checkInStaffId }),
+        body: JSON.stringify({ staffId: checkInStaffId, tipNgn: checkInTip }),
       })
       const data = await res.json()
       if (!res.ok) { setCheckInError(data.error ?? 'Failed to check in.'); return }
       setCheckInSuccess(true)
       // Mark as completed in list
       setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
-      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId('') }, 1500)
+      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInTip('') }, 1500)
     } catch {
       setCheckInError('Connection error. Try again.')
     } finally {
@@ -362,6 +363,23 @@ export default function AppointmentsPage() {
                         <span className="text-sm font-medium">{s.name}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Optional tip */}
+                <div>
+                  <label className="block text-[#888] text-xs font-medium mb-1.5">
+                    Tip <span className="text-[#555] font-normal">(optional)</span>
+                  </label>
+                  <div className="relative max-w-[160px]">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#555] text-sm font-medium">₦</span>
+                    <input
+                      type="text" inputMode="numeric"
+                      value={checkInTip}
+                      onChange={e => setCheckInTip(e.target.value.replace(/\D/g, ''))}
+                      placeholder="0"
+                      className="input pl-8"
+                    />
                   </div>
                 </div>
 

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
 interface VSRow {
+  visit_id: string
   commission_ngn: number
   price_ngn: number
   created_at: string
   services: { name: string } | null
   visits: {
     visit_date: string
+    tip_ngn: number
     clients: { name: string } | null
   } | null
 }
@@ -29,7 +31,7 @@ export async function GET(req: NextRequest) {
   const [servicesRes, apptsRes] = await Promise.all([
     supabase
       .from('visit_services')
-      .select('commission_ngn, price_ngn, created_at, services(name), visits(visit_date, clients(name))')
+      .select('visit_id, commission_ngn, price_ngn, created_at, services(name), visits(visit_date, tip_ngn, clients(name))')
       .eq('staff_id', staffId)
       .gte('created_at', `${today}T00:00:00`)
       .lte('created_at', `${today}T23:59:59`)
@@ -47,11 +49,21 @@ export async function GET(req: NextRequest) {
   const services     = servicesRes.data ?? []
   const appointments = apptsRes.data    ?? []
 
-  const todayEarnings  = services.reduce((s, r) => s + r.commission_ngn, 0)
-  const todayServices  = services.length
+  const todayCommission = services.reduce((s, r) => s + r.commission_ngn, 0)
+  const todayServices   = services.length
+
+  // Sum tips once per unique visit (a visit with 2 services would have 2 rows)
+  const seenVisits = new Set<string>()
+  const todayTips  = services.reduce((sum, r) => {
+    if (!r.visit_id || seenVisits.has(r.visit_id)) return sum
+    seenVisits.add(r.visit_id)
+    return sum + (r.visits?.tip_ngn ?? 0)
+  }, 0)
 
   return NextResponse.json({
-    todayEarnings,
+    todayEarnings: todayCommission + todayTips,
+    todayCommission,
+    todayTips,
     todayServices,
     services,
     appointments,

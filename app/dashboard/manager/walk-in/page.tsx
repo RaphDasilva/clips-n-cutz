@@ -21,11 +21,12 @@ export default function WalkInPage() {
   const [clientPhone, setClientPhone] = useState('')
   const [staffId, setStaffId]         = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [tipNgn, setTipNgn]           = useState('')
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]           = useState('')
   const [success, setSuccess]       = useState<{
-    clientName: string; totalNgn: number; serviceCount: number
+    clientName: string; totalNgn: number; serviceCount: number; tipNgn: number
   } | null>(null)
 
   useEffect(() => {
@@ -79,11 +80,11 @@ export default function WalkInPage() {
       const res = await fetch('/api/manager/walkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientName, clientPhone, staffId, serviceIds: selectedIds }),
+        body: JSON.stringify({ clientName, clientPhone, staffId, serviceIds: selectedIds, tipNgn }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return }
-      setSuccess({ clientName: data.clientName, totalNgn: data.totalNgn, serviceCount: data.serviceCount })
+      setSuccess({ clientName: data.clientName, totalNgn: data.totalNgn, serviceCount: data.serviceCount, tipNgn: parseInt(tipNgn || '0', 10) })
     } catch {
       setError('Connection error. Try again.')
     } finally {
@@ -93,7 +94,7 @@ export default function WalkInPage() {
 
   function reset() {
     setClientName(''); setClientPhone(''); setStaffId('')
-    setSelectedIds([]); setSuccess(null); setError('')
+    setSelectedIds([]); setTipNgn(''); setSuccess(null); setError('')
   }
 
   /* ── Success screen ─────────────────────────────────────── */
@@ -111,6 +112,9 @@ export default function WalkInPage() {
             {success.clientName} &middot; {success.serviceCount} service{success.serviceCount !== 1 ? 's' : ''}
           </p>
           <p className="text-white text-3xl font-bold tracking-tight mt-4">{fmtNaira(success.totalNgn)}</p>
+          {success.tipNgn > 0 && (
+            <p className="text-[#C49A3C] text-sm font-medium mt-1">+{fmtNaira(success.tipNgn)} tip recorded</p>
+          )}
           <p className="text-[#555] text-xs mt-2">Follow-up scheduled in 7 days</p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8">
             <button onClick={reset}
@@ -269,8 +273,24 @@ export default function WalkInPage() {
             </div>
           </div>
 
+          {/* Optional tip */}
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
+            <h3 className="text-white text-sm font-semibold mb-1">Tip <span className="text-[#555] font-normal">(optional)</span></h3>
+            <p className="text-[#555] text-xs mb-4">Enter the amount the client is tipping the staff member.</p>
+            <div className="relative max-w-[200px]">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#555] text-sm font-medium">₦</span>
+              <input
+                type="text" inputMode="numeric"
+                value={tipNgn}
+                onChange={e => setTipNgn(e.target.value.replace(/\D/g, ''))}
+                placeholder="0"
+                className="input pl-8"
+              />
+            </div>
+          </div>
+
           {error && (
-            <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3 mb-4">
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
