@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { Service } from '@/types/database'
 
 const VALID_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show']
 
@@ -21,18 +22,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ success: true })
 }
 
-// Called when the client arrives — assigns a staff member and creates the visit record
+// Called when the client arrives — assigns staff and creates the visit record
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const body    = await req.json()
-  const staffId = body.staffId as string
-  const tipNgn  = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
+  const body       = await req.json()
+  const staffId    = body.staffId    as string
+  const serviceIds = body.serviceIds as string[] | undefined
+  const tipNgn     = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
 
   if (!staffId) return NextResponse.json({ error: 'Please select a staff member.' }, { status: 400 })
+  if (serviceIds !== undefined && serviceIds.length === 0) {
+    return NextResponse.json({ error: 'Please select at least one service.' }, { status: 400 })
+  }
 
   const supabase = createClient()
 
-  // Fetch appointment with client and booked services
+  // Fetch appointment for client_id and status check
   const { data: appt, error: apptErr } = await supabase
     .from('appointments')
     .select('id, client_id, status, appointment_services(service_id, services(id, name, price_ngn))')
@@ -50,13 +55,26 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (apptErr || !appt) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   if (appt.status === 'completed') return NextResponse.json({ error: 'This appointment has already been checked in.' }, { status: 400 })
 
-  const services = appt.appointment_services.map(s => s.services).filter(Boolean) as { id: string; name: string; price_ngn: number }[]
-  if (services.length === 0) return NextResponse.json({ error: 'No services found on this appointment.' }, { status: 400 })
+  let services: { id: string; name: string; price_ngn: number }[]
+
+  if (serviceIds && serviceIds.length > 0) {
+    // Manager confirmed (possibly edited) services at check-in
+    const { data, error } = await supabase
+      .from('services')
+      .select('id, name, price_ngn')
+      .in('id', serviceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
+    if (error || !data?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
+    services = data
+  } else {
+    // Fall back to what was originally booked
+    services = appt.appointment_services.map(s => s.services).filter(Boolean) as { id: string; name: string; price_ngn: number }[]
+  }
+
+  if (services.length === 0) return NextResponse.json({ error: 'No services selected.' }, { status: 400 })
 
   const totalNgn  = services.reduce((sum, s) => sum + s.price_ngn, 0)
   const visitDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
 
-  // Create the visit record
   const { data: visit, error: visitErr } = await supabase
     .from('visits')
     .insert({ client_id: appt.client_id, staff_id: staffId, appointment_id: id, visit_date: visitDate, total_ngn: totalNgn, tip_ngn: tipNgn })
@@ -65,7 +83,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (visitErr || !visit) return NextResponse.json({ error: 'Failed to create visit record.' }, { status: 500 })
 
-  // Create one visit_service row per service with 30% commission
   const { error: vsErr } = await supabase.from('visit_services').insert(
     services.map(s => ({
       visit_id:       visit.id,
@@ -77,13 +94,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   )
   if (vsErr) return NextResponse.json({ error: 'Failed to save services.' }, { status: 500 })
 
-  // Mark appointment completed and record which staff handled it
   await supabase
     .from('appointments')
     .update({ status: 'completed', staff_id: staffId, updated_at: new Date().toISOString() })
     .eq('id', id)
 
-  // Schedule 7-day follow-up
   const followUp = new Date()
   followUp.setDate(followUp.getDate() + 7)
   await supabase.from('follow_ups').insert({ client_id: appt.client_id, visit_id: visit.id, scheduled_for: followUp.toISOString() })

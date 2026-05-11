@@ -87,12 +87,13 @@ export default function AppointmentsPage() {
   const [newError, setNewError]     = useState('')
 
   // Check-in modal
-  const [checkInAppt, setCheckInAppt]       = useState<ApptRow | null>(null)
-  const [checkInStaffId, setCheckInStaffId] = useState('')
-  const [checkInTip, setCheckInTip]         = useState('')
-  const [checkInLoading, setCheckInLoading] = useState(false)
-  const [checkInError, setCheckInError]     = useState('')
-  const [checkInSuccess, setCheckInSuccess] = useState(false)
+  const [checkInAppt, setCheckInAppt]         = useState<ApptRow | null>(null)
+  const [checkInStaffId, setCheckInStaffId]   = useState('')
+  const [checkInServiceIds, setCheckInServiceIds] = useState<string[]>([])
+  const [checkInTip, setCheckInTip]           = useState('')
+  const [checkInLoading, setCheckInLoading]   = useState(false)
+  const [checkInError, setCheckInError]       = useState('')
+  const [checkInSuccess, setCheckInSuccess]   = useState(false)
 
   useEffect(() => {
     const s = getSession()
@@ -140,14 +141,14 @@ export default function AppointmentsPage() {
       const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: checkInStaffId, tipNgn: checkInTip }),
+        body: JSON.stringify({ staffId: checkInStaffId, serviceIds: checkInServiceIds, tipNgn: checkInTip }),
       })
       const data = await res.json()
       if (!res.ok) { setCheckInError(data.error ?? 'Failed to check in.'); return }
       setCheckInSuccess(true)
       // Mark as completed in list
       setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
-      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInTip('') }, 1500)
+      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInServiceIds([]); setCheckInTip('') }, 1500)
     } catch {
       setCheckInError('Connection error. Try again.')
     } finally {
@@ -286,7 +287,14 @@ export default function AppointmentsPage() {
                 {/* Check In button — rightmost */}
                 {canCheckIn && (
                   <button
-                    onClick={() => { setCheckInAppt(a); setCheckInStaffId(''); setCheckInError(''); setCheckInSuccess(false) }}
+                    onClick={() => {
+                        setCheckInAppt(a)
+                        setCheckInStaffId('')
+                        setCheckInServiceIds(a.appointment_services.map(s => s.service_id))
+                        setCheckInTip('')
+                        setCheckInError('')
+                        setCheckInSuccess(false)
+                      }}
                     className="flex-shrink-0 flex items-center gap-1.5 bg-white text-gray-950 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 active:scale-[0.98] transition-all">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -332,15 +340,37 @@ export default function AppointmentsPage() {
               </div>
             ) : (
               <form onSubmit={submitCheckIn} className="px-6 py-5 space-y-4">
-                {/* Services summary */}
-                <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3">
-                  <p className="text-[#666] text-xs font-medium mb-1">Services booked</p>
-                  <p className="text-white text-sm">
-                    {checkInAppt.appointment_services.map(s => s.services?.name).filter(Boolean).join(', ') || '—'}
-                  </p>
-                  <p className="text-[#C49A3C] text-sm font-semibold mt-0.5">
-                    {fmtNaira(checkInAppt.appointment_services.reduce((sum, s) => sum + (s.services?.price_ngn ?? 0), 0))}
-                  </p>
+                {/* Editable services */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-[#888] text-xs font-medium">Services</label>
+                    {checkInServiceIds.length > 0 && (
+                      <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
+                        {fmtNaira(services.filter(s => checkInServiceIds.includes(s.id)).reduce((sum, s) => sum + s.price_ngn, 0))}
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {services.map(s => {
+                      const selected = checkInServiceIds.includes(s.id)
+                      return (
+                        <button type="button" key={s.id}
+                          onClick={() => setCheckInServiceIds(prev =>
+                            prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                          )}
+                          className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                            selected
+                              ? 'bg-white border-white text-gray-950'
+                              : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
+                          }`}>
+                          <p className="font-medium leading-tight text-xs">{s.name}</p>
+                          <p className={`text-xs mt-0.5 ${selected ? 'text-gray-600' : 'text-[#555]'}`}>
+                            ₦{s.price_ngn.toLocaleString()}
+                          </p>
+                        </button>
+                      )
+                    })}
+                  </div>
                 </div>
 
                 {/* Staff selection */}
@@ -389,7 +419,7 @@ export default function AppointmentsPage() {
                   </div>
                 )}
 
-                <button type="submit" disabled={checkInLoading || !checkInStaffId}
+                <button type="submit" disabled={checkInLoading || !checkInStaffId || checkInServiceIds.length === 0}
                   className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
                   {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
                 </button>
