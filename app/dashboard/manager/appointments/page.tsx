@@ -20,6 +20,7 @@ interface ApptRow {
 }
 
 interface ServiceOption { id: string; name: string; price_ngn: number }
+interface StaffOption   { id: string; name: string }
 
 type FilterTab = 'today' | 'upcoming' | 'all'
 
@@ -52,6 +53,8 @@ const TIME_SLOTS = [
   { label: '6:00 PM',  value: '18:00' },
 ]
 
+function fmtNaira(n: number) { return `₦${n.toLocaleString('en-NG')}` }
+
 function fmtDateTime(iso: string) {
   const d = new Date(iso)
   return {
@@ -67,10 +70,12 @@ export default function AppointmentsPage() {
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState<FilterTab>('today')
   const [services, setServices] = useState<ServiceOption[]>([])
+  const [staff, setStaff]       = useState<StaffOption[]>([])
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [statusMenu, setStatusMenu] = useState<string | null>(null)
 
+  // New appointment modal
   const [showNew, setShowNew]       = useState(false)
   const [clientName, setClientName] = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -81,18 +86,26 @@ export default function AppointmentsPage() {
   const [newLoading, setNewLoading] = useState(false)
   const [newError, setNewError]     = useState('')
 
-  // Auth check
+  // Check-in modal
+  const [checkInAppt, setCheckInAppt]       = useState<ApptRow | null>(null)
+  const [checkInStaffId, setCheckInStaffId] = useState('')
+  const [checkInLoading, setCheckInLoading] = useState(false)
+  const [checkInError, setCheckInError]     = useState('')
+  const [checkInSuccess, setCheckInSuccess] = useState(false)
+
   useEffect(() => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setReady(true)
-    fetch('/api/manager/services')
-      .then(r => r.ok ? r.json() : { services: [] })
-      .then(d => setServices(d.services ?? []))
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/manager/services').then(r => r.ok ? r.json() : { services: [] }),
+      fetch('/api/manager/staff').then(r => r.ok ? r.json() : { staff: [] }),
+    ]).then(([sData, stData]) => {
+      setServices(sData.services ?? [])
+      setStaff((stData.staff ?? []).filter((m: StaffOption & { is_active: boolean }) => m.is_active))
+    }).catch(() => {})
   }, [router])
 
-  // Load appointments when filter changes
   useEffect(() => {
     if (!ready) return
     setLoading(true)
@@ -117,6 +130,30 @@ export default function AppointmentsPage() {
     }
   }
 
+  async function submitCheckIn(e: React.FormEvent) {
+    e.preventDefault()
+    setCheckInError('')
+    if (!checkInStaffId) { setCheckInError('Please select a staff member.'); return }
+    setCheckInLoading(true)
+    try {
+      const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: checkInStaffId }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setCheckInError(data.error ?? 'Failed to check in.'); return }
+      setCheckInSuccess(true)
+      // Mark as completed in list
+      setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
+      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId('') }, 1500)
+    } catch {
+      setCheckInError('Connection error. Try again.')
+    } finally {
+      setCheckInLoading(false)
+    }
+  }
+
   async function submitNew(e: React.FormEvent) {
     e.preventDefault()
     setNewError('')
@@ -133,7 +170,6 @@ export default function AppointmentsPage() {
       })
       const data = await res.json()
       if (!res.ok) { setNewError(data.error ?? 'Failed to create appointment.'); return }
-      // Reset form and reload
       setShowNew(false)
       setClientName(''); setClientPhone(''); setApptDate(''); setTimeValue(''); setTimeLabel(''); setSelectedSvcs([])
       setLoading(true)
@@ -209,6 +245,7 @@ export default function AppointmentsPage() {
           {appts.map(a => {
             const { date, time } = fmtDateTime(a.scheduled_at)
             const svcNames = a.appointment_services.map(s => s.services?.name ?? '').filter(Boolean).join(', ') || '—'
+            const canCheckIn = a.status === 'pending' || a.status === 'confirmed'
             return (
               <div key={a.id} className="px-4 py-4 flex items-start justify-between gap-4">
                 <div className="min-w-0 flex-1">
@@ -221,28 +258,40 @@ export default function AppointmentsPage() {
                     {date} · {time}{a.users?.name ? ` · ${a.users.name}` : ''}
                   </p>
                 </div>
-                <div className="relative flex-shrink-0">
-                  <button
-                    onClick={() => setStatusMenu(prev => prev === a.id ? null : a.id)}
-                    disabled={updatingId === a.id}
-                    className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize transition-all ${
-                      STATUS_STYLES[a.status] ?? STATUS_STYLES.pending
-                    } ${updatingId === a.id ? 'opacity-50' : 'cursor-pointer hover:opacity-80'}`}
-                  >
-                    {a.status.replace('_', ' ')} <span className="opacity-60">▾</span>
-                  </button>
-                  {statusMenu === a.id && (
-                    <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-10 min-w-[140px] shadow-xl">
-                      {STATUS_OPTIONS.map(opt => (
-                        <button key={opt.value} onClick={() => updateStatus(a.id, opt.value)}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[#222] ${
-                            a.status === opt.value ? 'text-white font-semibold' : 'text-[#888]'
-                          }`}>
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
+                <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                  {canCheckIn && (
+                    <button
+                      onClick={() => { setCheckInAppt(a); setCheckInStaffId(''); setCheckInError(''); setCheckInSuccess(false) }}
+                      className="flex items-center gap-1.5 bg-white text-gray-950 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 active:scale-[0.98] transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                      </svg>
+                      Check In
+                    </button>
                   )}
+                  <div className="relative">
+                    <button
+                      onClick={() => setStatusMenu(prev => prev === a.id ? null : a.id)}
+                      disabled={updatingId === a.id}
+                      className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize transition-all ${
+                        STATUS_STYLES[a.status] ?? STATUS_STYLES.pending
+                      } ${updatingId === a.id ? 'opacity-50' : 'cursor-pointer hover:opacity-80'}`}
+                    >
+                      {a.status.replace('_', ' ')} <span className="opacity-60">▾</span>
+                    </button>
+                    {statusMenu === a.id && (
+                      <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-10 min-w-[140px] shadow-xl">
+                        {STATUS_OPTIONS.map(opt => (
+                          <button key={opt.value} onClick={() => updateStatus(a.id, opt.value)}
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[#222] ${
+                              a.status === opt.value ? 'text-white font-semibold' : 'text-[#888]'
+                            }`}>
+                            {opt.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )
@@ -251,6 +300,86 @@ export default function AppointmentsPage() {
       )}
 
       {statusMenu && <div className="fixed inset-0 z-0" onClick={() => setStatusMenu(null)} />}
+
+      {/* Check-in Modal */}
+      {checkInAppt && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
+          onClick={() => { if (!checkInLoading) setCheckInAppt(null) }}>
+          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-md"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#1e1e1e]">
+              <div>
+                <h2 className="text-white font-semibold">Client Arrived</h2>
+                <p className="text-[#555] text-xs mt-0.5">{checkInAppt.clients?.name} — assign a staff member</p>
+              </div>
+              <button onClick={() => setCheckInAppt(null)} className="text-[#555] hover:text-white transition-colors">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {checkInSuccess ? (
+              <div className="px-6 py-8 text-center">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                </div>
+                <p className="text-emerald-400 font-semibold">Checked in successfully.</p>
+                <p className="text-[#555] text-xs mt-1">Visit recorded and commission tracked.</p>
+              </div>
+            ) : (
+              <form onSubmit={submitCheckIn} className="px-6 py-5 space-y-4">
+                {/* Services summary */}
+                <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <p className="text-[#666] text-xs font-medium mb-1">Services booked</p>
+                  <p className="text-white text-sm">
+                    {checkInAppt.appointment_services.map(s => s.services?.name).filter(Boolean).join(', ') || '—'}
+                  </p>
+                  <p className="text-[#C49A3C] text-sm font-semibold mt-0.5">
+                    {fmtNaira(checkInAppt.appointment_services.reduce((sum, s) => sum + (s.services?.price_ngn ?? 0), 0))}
+                  </p>
+                </div>
+
+                {/* Staff selection */}
+                <div>
+                  <label className="block text-[#888] text-xs font-medium mb-2">Who is serving this client?</label>
+                  <div className="space-y-2">
+                    {staff.map(s => (
+                      <button key={s.id} type="button"
+                        onClick={() => setCheckInStaffId(s.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                          checkInStaffId === s.id
+                            ? 'bg-white border-white text-gray-950'
+                            : 'bg-[#141414] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                        }`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                          checkInStaffId === s.id ? 'bg-gray-200 text-gray-950' : 'bg-[#2a2a2a] text-white'
+                        }`}>
+                          {s.name.charAt(0).toUpperCase()}
+                        </div>
+                        <span className="text-sm font-medium">{s.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {checkInError && (
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
+                    <p className="text-red-400 text-sm">{checkInError}</p>
+                  </div>
+                )}
+
+                <button type="submit" disabled={checkInLoading || !checkInStaffId}
+                  className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
+                  {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* New Appointment Modal */}
       {showNew && (
