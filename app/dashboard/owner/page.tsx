@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
-interface PeriodStats { revenue: number; visits: number }
+interface PaymentBreakdown { cash: number; transfer: number; pos: number }
+interface PeriodStats { revenue: number; visits: number; byPayment: PaymentBreakdown }
 interface Summary {
   today: PeriodStats
   yesterday: PeriodStats
@@ -116,6 +117,18 @@ export default function OwnerHome() {
         )}
       </section>
 
+      {/* Payment method breakdown — today */}
+      <section className="mb-8">
+        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Today — Payment Methods</h2>
+        {loading ? <SkeletonGrid n={3} /> : (
+          <div className="grid grid-cols-3 gap-4">
+            <PaymentCard label="Cash"     amount={data!.today.byPayment.cash}     />
+            <PaymentCard label="Transfer" amount={data!.today.byPayment.transfer} />
+            <PaymentCard label="POS"      amount={data!.today.byPayment.pos}      />
+          </div>
+        )}
+      </section>
+
       {/* This week / This month */}
       <section className="mb-8">
         <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Periods</h2>
@@ -192,6 +205,17 @@ function SkeletonGrid({ n }: { n: number }) {
       {Array.from({ length: n }).map((_, i) => (
         <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-24 animate-pulse" />
       ))}
+    </div>
+  )
+}
+
+function PaymentCard({ label, amount }: { label: string; amount: number }) {
+  return (
+    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
+      <p className="text-[#555] text-xs font-medium mb-2">{label}</p>
+      <p className={`text-base font-bold tabular-nums ${amount > 0 ? 'text-white' : 'text-[#333]'}`}>
+        {amount > 0 ? fmtNairaFull(amount) : '—'}
+      </p>
     </div>
   )
 }

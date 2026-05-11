@@ -5,6 +5,7 @@ interface VisitRow {
   id: string
   total_ngn: number
   visit_date: string
+  payment_method: string
   clients: { name: string; phone: string } | null
   users: { name: string } | null
 }
@@ -18,8 +19,9 @@ interface ServiceRow {
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from')
-  const to   = searchParams.get('to')
+  const from    = searchParams.get('from')
+  const to      = searchParams.get('to')
+  const payment = searchParams.get('payment') // 'cash' | 'transfer' | 'pos' | null (all)
 
   if (!from || !to) {
     return NextResponse.json({ error: 'from and to dates are required.' }, { status: 400 })
@@ -27,13 +29,19 @@ export async function GET(req: NextRequest) {
 
   const supabase = createClient()
 
+  let visitsQuery = supabase
+    .from('visits')
+    .select('id, total_ngn, visit_date, payment_method, clients(name, phone), users!staff_id(name)')
+    .gte('visit_date', from)
+    .lte('visit_date', to)
+    .order('visit_date', { ascending: false })
+
+  if (payment && ['cash', 'transfer', 'pos'].includes(payment)) {
+    visitsQuery = visitsQuery.eq('payment_method', payment)
+  }
+
   const [visitsRes, servicesRes] = await Promise.all([
-    supabase
-      .from('visits')
-      .select('id, total_ngn, visit_date, clients(name, phone), users!staff_id(name)')
-      .gte('visit_date', from)
-      .lte('visit_date', to)
-      .order('visit_date', { ascending: false }) as unknown as Promise<{ data: VisitRow[] | null; error: unknown }>,
+    visitsQuery as unknown as Promise<{ data: VisitRow[] | null; error: unknown }>,
 
     supabase
       .from('visit_services')
@@ -48,6 +56,14 @@ export async function GET(req: NextRequest) {
   // Totals
   const totalRevenue    = visits.reduce((s, v) => s + v.total_ngn, 0)
   const totalCommission = vsRows.reduce((s, r) => s + r.commission_ngn, 0)
+
+  // Payment method breakdown
+  const byPayment = { cash: 0, transfer: 0, pos: 0 }
+  for (const v of visits) {
+    if (v.payment_method === 'cash')     byPayment.cash     += v.total_ngn
+    else if (v.payment_method === 'transfer') byPayment.transfer += v.total_ngn
+    else if (v.payment_method === 'pos') byPayment.pos      += v.total_ngn
+  }
 
   // Revenue by service name
   const serviceMap = new Map<string, { count: number; revenue: number }>()
@@ -83,6 +99,7 @@ export async function GET(req: NextRequest) {
       totalServices: vsRows.length,
       ownerProfit:   totalRevenue - totalCommission,
     },
+    byPayment,
     byService,
     byStaff,
     visits: visits.slice(0, 50), // last 50 visits in range

@@ -13,13 +13,16 @@ interface Summary {
 interface ServiceBreakdown { name: string; count: number; revenue: number }
 interface StaffBreakdown   { name: string; services: number; revenue: number; commission: number }
 interface VisitRow {
-  id: string; visit_date: string; total_ngn: number
+  id: string; visit_date: string; total_ngn: number; payment_method: string
   clients: { name: string; phone: string } | null
   users:   { name: string } | null
 }
 
+interface PaymentBreakdown { cash: number; transfer: number; pos: number }
+
 interface ReportData {
   summary: Summary
+  byPayment: PaymentBreakdown
   byService: ServiceBreakdown[]
   byStaff: StaffBreakdown[]
   visits: VisitRow[]
@@ -43,6 +46,7 @@ function monthStart() {
 export default function ReportsPage() {
   const [from, setFrom] = useState(monthStart())
   const [to, setTo]     = useState(lagosToday())
+  const [payment, setPayment] = useState<'all' | 'cash' | 'transfer' | 'pos'>('all')
   const [data, setData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(false)
   const [ran, setRan]   = useState(false)
@@ -51,7 +55,9 @@ export default function ReportsPage() {
   async function run() {
     if (!from || !to) return
     setLoading(true); setError(''); setRan(true)
-    const res = await fetch(`/api/owner/reports?from=${from}&to=${to}`)
+    const params = new URLSearchParams({ from, to })
+    if (payment !== 'all') params.set('payment', payment)
+    const res = await fetch(`/api/owner/reports?${params}`)
     if (res.ok) setData(await res.json())
     else setError('Failed to generate report. Try again.')
     setLoading(false)
@@ -69,8 +75,9 @@ export default function ReportsPage() {
         <p className="text-[#555] text-sm mt-0.5">Choose a date range to generate a full financial report</p>
       </div>
 
-      {/* Date range picker */}
-      <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 mb-8">
+      {/* Filters */}
+      <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 mb-8 space-y-4">
+        {/* Date range */}
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1">
             <label className="block text-[#888] text-xs font-medium mb-1.5">From</label>
@@ -86,6 +93,24 @@ export default function ReportsPage() {
             className="sm:w-auto w-full bg-white text-gray-950 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-gray-100 disabled:opacity-40 active:scale-[0.98] transition-all whitespace-nowrap">
             {loading ? 'Generating…' : 'Run Report'}
           </button>
+        </div>
+
+        {/* Payment method filter */}
+        <div>
+          <p className="text-[#888] text-xs font-medium mb-2">Payment Method</p>
+          <div className="flex gap-2 flex-wrap">
+            {(['all', 'cash', 'transfer', 'pos'] as const).map(opt => (
+              <button key={opt} type="button"
+                onClick={() => setPayment(opt)}
+                className={`px-4 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                  payment === opt
+                    ? 'bg-white border-white text-gray-950'
+                    : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#3a3a3a]'
+                }`}>
+                {opt === 'all' ? 'All Methods' : opt === 'pos' ? 'POS' : opt.charAt(0).toUpperCase() + opt.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -122,6 +147,36 @@ export default function ReportsPage() {
               <SummaryCard label="Services Done"    value={String(data.summary.totalServices)}     />
             </div>
           </section>
+
+          {/* Payment method breakdown */}
+          {payment === 'all' && (
+            <section className="mb-8">
+              <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">By Payment Method</h2>
+              <div className="grid grid-cols-3 gap-4">
+                {([
+                  { key: 'cash',     label: 'Cash' },
+                  { key: 'transfer', label: 'Transfer' },
+                  { key: 'pos',      label: 'POS' },
+                ] as const).map(({ key, label }) => {
+                  const amount = data!.byPayment[key]
+                  const pct = data!.summary.totalRevenue > 0
+                    ? Math.round((amount / data!.summary.totalRevenue) * 100)
+                    : 0
+                  return (
+                    <div key={key} className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
+                      <p className="text-[#555] text-xs font-medium mb-2">{label}</p>
+                      <p className={`text-lg font-bold tabular-nums ${amount > 0 ? 'text-white' : 'text-[#333]'}`}>
+                        {amount > 0 ? fmtNaira(amount) : '—'}
+                      </p>
+                      {amount > 0 && (
+                        <p className="text-[#444] text-xs mt-1">{pct}% of total</p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Two columns: by service + by staff */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -198,6 +253,7 @@ export default function ReportsPage() {
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Date</th>
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Client</th>
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Staff</th>
+                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Payment</th>
                       <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Amount</th>
                     </tr>
                   </thead>
@@ -210,6 +266,11 @@ export default function ReportsPage() {
                           <p className="text-[#555] text-xs">{v.clients?.phone}</p>
                         </td>
                         <td className="px-5 py-3 text-[#888]">{v.users?.name ?? '—'}</td>
+                        <td className="px-5 py-3">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[#2a2a2a] text-[#888]">
+                            {v.payment_method === 'pos' ? 'POS' : v.payment_method.charAt(0).toUpperCase() + v.payment_method.slice(1)}
+                          </span>
+                        </td>
                         <td className="px-5 py-3 text-right text-white font-semibold tabular-nums">
                           {fmtNaira(v.total_ngn)}
                         </td>

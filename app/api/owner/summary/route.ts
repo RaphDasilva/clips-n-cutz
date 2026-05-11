@@ -19,12 +19,19 @@ function lagosMonthStart(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }).slice(0, 7) + '-01'
 }
 
-interface VisitRow { total_ngn: number }
+interface VisitRow { total_ngn: number; payment_method: string }
 
 function totals(rows: VisitRow[]) {
+  const byPayment = { cash: 0, transfer: 0, pos: 0 }
+  for (const r of rows) {
+    if (r.payment_method === 'cash')     byPayment.cash     += r.total_ngn
+    else if (r.payment_method === 'transfer') byPayment.transfer += r.total_ngn
+    else if (r.payment_method === 'pos') byPayment.pos      += r.total_ngn
+  }
   return {
     revenue: rows.reduce((s, r) => s + r.total_ngn, 0),
     visits: rows.length,
+    byPayment,
   }
 }
 
@@ -37,10 +44,10 @@ export async function GET() {
   const monthStart = lagosMonthStart()
 
   const [todayRes, yesterdayRes, weekRes, monthRes] = await Promise.all([
-    supabase.from('visits').select('total_ngn').eq('visit_date', today),
-    supabase.from('visits').select('total_ngn').eq('visit_date', yesterday),
-    supabase.from('visits').select('total_ngn').gte('visit_date', weekStart).lte('visit_date', today),
-    supabase.from('visits').select('total_ngn').gte('visit_date', monthStart).lte('visit_date', today),
+    supabase.from('visits').select('total_ngn, payment_method').eq('visit_date', today),
+    supabase.from('visits').select('total_ngn, payment_method').eq('visit_date', yesterday),
+    supabase.from('visits').select('total_ngn, payment_method').gte('visit_date', weekStart).lte('visit_date', today),
+    supabase.from('visits').select('total_ngn, payment_method').gte('visit_date', monthStart).lte('visit_date', today),
   ])
 
   const todayData     = (todayRes.data     ?? []) as VisitRow[]
