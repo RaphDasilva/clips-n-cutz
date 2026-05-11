@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   let query = supabase
     .from('appointments')
-    .select('id, scheduled_at, status, source, notes, clients(id, name, phone), appointment_services(service_id, services(name, price_ngn))')
+    .select('id, scheduled_at, status, source, notes, clients(id, name, phone), appointment_services(service_id, services(name, price_ngn)), users(name)')
     .order('scheduled_at', { ascending: true })
 
   if (filter === 'today') {

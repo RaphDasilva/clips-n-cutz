@@ -16,6 +16,7 @@ interface ApptRow {
   source: string
   clients: { id: string; name: string; phone: string } | null
   appointment_services: ApptService[]
+  users: { name: string } | null
 }
 
 interface ServiceOption { id: string; name: string; price_ngn: number }
@@ -216,7 +217,9 @@ export default function AppointmentsPage() {
                     {a.clients?.phone && <><span className="text-[#444] text-xs">·</span><p className="text-[#555] text-xs">{a.clients.phone}</p></>}
                   </div>
                   <p className="text-[#888] text-xs mt-1">{svcNames}</p>
-                  <p className="text-[#555] text-xs mt-0.5">{date} · {time}</p>
+                  <p className="text-[#555] text-xs mt-0.5">
+                    {date} · {time}{a.users?.name ? ` · ${a.users.name}` : ''}
+                  </p>
                 </div>
                 <div className="relative flex-shrink-0">
                   <button

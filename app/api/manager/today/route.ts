@@ -8,7 +8,7 @@ export async function GET() {
   const [visitsResult, appointmentsResult] = await Promise.all([
     supabase
       .from('visits')
-      .select('id, total_ngn, created_at, clients(name)')
+      .select('id, total_ngn, created_at, clients(name), users(name)')
       .eq('visit_date', todayStr)
       .order('created_at', { ascending: false }),
 

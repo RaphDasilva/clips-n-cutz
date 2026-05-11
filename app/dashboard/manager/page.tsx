@@ -10,6 +10,7 @@ interface TodayVisit {
   total_ngn: number
   created_at: string
   clients: { name: string } | null
+  users: { name: string } | null
 }
 
 interface TodayAppointment {
@@ -168,7 +169,9 @@ export default function ManagerHome() {
                 <div key={v.id} className="flex items-center justify-between px-4 py-3.5">
                   <div>
                     <p className="text-white text-sm font-medium">{v.clients?.name ?? '—'}</p>
-                    <p className="text-[#555] text-xs mt-0.5">{fmt12h(v.created_at)}</p>
+                    <p className="text-[#555] text-xs mt-0.5">
+                      {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
+                    </p>
                   </div>
                   <p className="text-white text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
                 </div>
