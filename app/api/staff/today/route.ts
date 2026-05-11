@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
   const supabase = createClient()
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
 
-  const [servicesRes, apptsRes] = await Promise.all([
+  const [servicesRes, apptsRes, attRes] = await Promise.all([
     supabase
       .from('visit_services')
       .select('visit_id, commission_ngn, price_ngn, created_at, services(name), visits(visit_date, tip_ngn, clients(name))')
@@ -44,10 +44,18 @@ export async function GET(req: NextRequest) {
       .gte('scheduled_at', `${today}T00:00:00`)
       .lte('scheduled_at', `${today}T23:59:59`)
       .order('scheduled_at', { ascending: true }) as unknown as Promise<{ data: ApptRow[] | null; error: unknown }>,
+
+    supabase
+      .from('attendance')
+      .select('status, penalty_ngn, checked_in_at')
+      .eq('staff_id', staffId)
+      .eq('date', today)
+      .maybeSingle() as unknown as Promise<{ data: { status: string; penalty_ngn: number; checked_in_at: string | null } | null; error: unknown }>,
   ])
 
   const services     = servicesRes.data ?? []
   const appointments = apptsRes.data    ?? []
+  const attendance   = attRes.data      ?? null
 
   const todayCommission = services.reduce((s, r) => s + r.commission_ngn, 0)
   const todayServices   = services.length
@@ -67,5 +75,7 @@ export async function GET(req: NextRequest) {
     todayServices,
     services,
     appointments,
+    todayPenalty: attendance?.penalty_ngn ?? 0,
+    todayAttStatus: attendance?.status ?? null,
   })
 }

@@ -39,6 +39,7 @@ export interface User {
   role: UserRole
   is_active: boolean
   must_change_pin: boolean
+  sunday_grace: boolean
   created_at: string
 }
 

@@ -12,7 +12,8 @@ export default function TeamPage() {
   const [showAdd, setShowAdd]         = useState(false)
   const [resetTarget, setResetTarget] = useState<StaffMember | null>(null)
   const [servicesTarget, setServicesTarget] = useState<StaffMember | null>(null)
-  const [toggling, setToggling]       = useState<string | null>(null)
+  const [toggling, setToggling]             = useState<string | null>(null)
+  const [togglingSunday, setTogglingSunday] = useState<string | null>(null)
 
   // Add form
   const [newName, setNewName]         = useState('')
@@ -43,6 +44,19 @@ export default function TeamPage() {
   }, [])
 
   useEffect(() => { loadStaff() }, [loadStaff])
+
+  async function toggleSundayGrace(m: StaffMember) {
+    setTogglingSunday(m.id)
+    const res = await fetch(`/api/manager/staff/${m.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle-sunday-grace' }),
+    })
+    if (res.ok) {
+      const { sunday_grace } = await res.json()
+      setStaff(p => p.map(s => s.id === m.id ? { ...s, sunday_grace } : s))
+    }
+    setTogglingSunday(null)
+  }
 
   async function toggle(m: StaffMember) {
     setToggling(m.id)
@@ -149,7 +163,8 @@ export default function TeamPage() {
                     {active.map(m => (
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
-                        onEditServices={openEditServices} toggling={toggling === m.id} />
+                        onEditServices={openEditServices} toggling={toggling === m.id}
+                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
                     ))}
                   </tbody>
                 </table>
@@ -159,7 +174,8 @@ export default function TeamPage() {
                 {active.map(m => (
                   <StaffCard key={m.id} member={m} services={services}
                     onToggle={toggle} onReset={setResetTarget}
-                    onEditServices={openEditServices} toggling={toggling === m.id} />
+                    onEditServices={openEditServices} toggling={toggling === m.id}
+                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
                 ))}
               </div>
             </section>
@@ -176,7 +192,8 @@ export default function TeamPage() {
                     {inactive.map(m => (
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
-                        onEditServices={openEditServices} toggling={toggling === m.id} />
+                        onEditServices={openEditServices} toggling={toggling === m.id}
+                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
                     ))}
                   </tbody>
                 </table>
@@ -185,7 +202,8 @@ export default function TeamPage() {
                 {inactive.map(m => (
                   <StaffCard key={m.id} member={m} services={services}
                     onToggle={toggle} onReset={setResetTarget}
-                    onEditServices={openEditServices} toggling={toggling === m.id} />
+                    onEditServices={openEditServices} toggling={toggling === m.id}
+                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
                 ))}
               </div>
             </section>
@@ -316,13 +334,15 @@ function ServiceTags({ serviceIds, services }: { serviceIds: string[]; services:
 }
 
 /* ── Desktop table row ──────────────────────────────────────── */
-function StaffRow({ member, services, onToggle, onReset, onEditServices, toggling }: {
+function StaffRow({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday }: {
   member: StaffMember
   services: Service[]
   onToggle: (m: StaffMember) => void
   onReset: (m: StaffMember) => void
   onEditServices: (m: StaffMember) => void
   toggling: boolean
+  onToggleSunday: (m: StaffMember) => void
+  togglingSunday: boolean
 }) {
   return (
     <tr>
@@ -331,7 +351,14 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
           <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
           </div>
-          <span className="text-white font-medium">{member.name}</span>
+          <div>
+            <span className="text-white font-medium">{member.name}</span>
+            {member.sunday_grace && (
+              <span className="ml-2 text-[10px] font-medium text-[#6366f1] bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full px-1.5 py-0.5">
+                Sun. Grace
+              </span>
+            )}
+          </div>
         </div>
       </td>
       <td className="px-5 py-4">
@@ -348,6 +375,14 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
             className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
             Reset PIN
           </button>
+          <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
+            className={`text-xs transition-colors border rounded-lg px-3 py-1.5 disabled:opacity-50 ${
+              member.sunday_grace
+                ? 'text-[#6366f1] border-[#6366f1]/30 hover:border-[#6366f1]/60'
+                : 'text-[#666] border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a]'
+            }`}>
+            Sun. Grace
+          </button>
           <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
         </div>
       </td>
@@ -356,13 +391,15 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
 }
 
 /* ── Mobile card ────────────────────────────────────────────── */
-function StaffCard({ member, services, onToggle, onReset, onEditServices, toggling }: {
+function StaffCard({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday }: {
   member: StaffMember
   services: Service[]
   onToggle: (m: StaffMember) => void
   onReset: (m: StaffMember) => void
   onEditServices: (m: StaffMember) => void
   toggling: boolean
+  onToggleSunday: (m: StaffMember) => void
+  togglingSunday: boolean
 }) {
   return (
     <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3.5">
@@ -381,7 +418,7 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
       <div className="mb-3 pl-11">
         <ServiceTags serviceIds={member.serviceIds} services={services} />
       </div>
-      <div className="flex items-center gap-2 pl-11">
+      <div className="flex items-center gap-2 pl-11 flex-wrap">
         <button onClick={() => onEditServices(member)}
           className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
           Edit Services
@@ -389,6 +426,14 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
         <button onClick={() => onReset(member)}
           className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
           Reset PIN
+        </button>
+        <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
+          className={`text-xs border rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50 ${
+            member.sunday_grace
+              ? 'text-[#6366f1] border-[#6366f1]/30'
+              : 'text-[#555] border-[#2a2a2a] hover:text-white'
+          }`}>
+          {member.sunday_grace ? 'Sun. Grace ✓' : 'Sun. Grace'}
         </button>
       </div>
     </div>

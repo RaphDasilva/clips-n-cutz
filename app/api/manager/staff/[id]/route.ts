@@ -86,5 +86,24 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true, serviceIds })
   }
 
+  // action: "toggle-sunday-grace" — flip the Sunday 1pm grace for a staff member
+  if (action === 'toggle-sunday-grace') {
+    const { data: user } = await supabase
+      .from('users')
+      .select('sunday_grace')
+      .eq('id', id)
+      .single() as { data: { sunday_grace: boolean } | null; error: unknown }
+
+    if (!user) return NextResponse.json({ error: 'Staff member not found.' }, { status: 404 })
+
+    const { error } = await supabase
+      .from('users')
+      .update({ sunday_grace: !user.sunday_grace })
+      .eq('id', id)
+
+    if (error) return NextResponse.json({ error: 'Failed to update.' }, { status: 500 })
+    return NextResponse.json({ success: true, sunday_grace: !user.sunday_grace })
+  }
+
   return NextResponse.json({ error: 'Invalid action.' }, { status: 400 })
 }

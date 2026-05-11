@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, phone, role, is_active, must_change_pin, created_at, staff_services(service_id)')
+    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, created_at, staff_services(service_id)')
     .eq('role', 'staff')
     .order('name') as {
       data: (Omit<User, 'pin_hash'> & { staff_services: { service_id: string }[] })[] | null
