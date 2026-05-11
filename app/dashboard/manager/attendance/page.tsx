@@ -6,6 +6,7 @@ interface StaffAttRow {
   id: string
   name: string
   sunday_grace: boolean
+  off_days: number[]
   record: {
     checked_in_at: string | null
     status: string
@@ -102,17 +103,23 @@ export default function AttendancePage() {
     }
   }
 
-  const isSunday = new Date(date + 'T12:00:00').getDay() === 0
-  const isToday = date === todayStr
+  const dayOfWeek = new Date(date + 'T12:00:00').getDay()
+  const isSunday  = dayOfWeek === 0
+  const isToday   = date === todayStr
+
+  const workingStaff = staffAtt.filter(s => !s.off_days.includes(dayOfWeek))
 
   const totalPenalty = Object.entries(rows).reduce((sum, [id, r]) => {
     const s = staffAtt.find(x => x.id === id)
-    if (!r.saved || !s) return sum
+    if (!r.saved || !s || s.off_days.includes(dayOfWeek)) return sum
     const checkedInAt = r.absent ? null : (r.timeVal || null)
     return sum + calcPenalty(checkedInAt, date, s.sunday_grace)
   }, 0)
 
-  const savedCount = Object.values(rows).filter(r => r.saved).length
+  const savedCount = Object.entries(rows).filter(([id, r]) => {
+    const s = staffAtt.find(x => x.id === id)
+    return r.saved && s && !s.off_days.includes(dayOfWeek)
+  }).length
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-4xl mx-auto">
@@ -155,7 +162,7 @@ export default function AttendancePage() {
         <div className="grid grid-cols-2 gap-3 mb-6">
           <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3">
             <p className="text-[#555] text-xs mb-1">Recorded</p>
-            <p className="text-white text-lg font-bold">{savedCount} / {staffAtt.length}</p>
+            <p className="text-white text-lg font-bold">{savedCount} / {workingStaff.length}</p>
           </div>
           <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3">
             <p className="text-[#555] text-xs mb-1">Total Penalties</p>
@@ -198,9 +205,28 @@ export default function AttendancePage() {
           {staffAtt.map(s => {
             const r = rows[s.id]
             if (!r) return null
+            const isOffDay   = s.off_days.includes(dayOfWeek)
             const checkedInAt = r.absent ? null : (r.timeVal || null)
             const penalty = calcPenalty(checkedInAt, date, s.sunday_grace)
             const canSave = r.absent || r.timeVal.length > 0
+
+            if (isOffDay) {
+              return (
+                <div key={s.id} className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 lg:px-5 py-4 opacity-40">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+                        <span className="text-white text-xs font-semibold">{s.name.charAt(0)}</span>
+                      </div>
+                      <p className="text-white text-sm font-medium">{s.name}</p>
+                    </div>
+                    <span className="text-[#555] text-xs font-medium border border-[#2a2a2a] rounded-full px-3 py-1">
+                      Day off
+                    </span>
+                  </div>
+                </div>
+              )
+            }
 
             return (
               <div key={s.id} className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 lg:px-5 py-4">

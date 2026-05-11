@@ -40,6 +40,7 @@ export interface User {
   is_active: boolean
   must_change_pin: boolean
   sunday_grace: boolean
+  off_days: number[]
   created_at: string
 }
 

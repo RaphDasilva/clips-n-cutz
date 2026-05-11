@@ -105,5 +105,20 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true, sunday_grace: !user.sunday_grace })
   }
 
+  // action: "set-off-days" — update which days of the week this staff member is off
+  if (action === 'set-off-days') {
+    const offDays: number[] = Array.isArray(body.offDays)
+      ? (body.offDays as unknown[]).filter((d): d is number => typeof d === 'number' && d >= 0 && d <= 6)
+      : []
+
+    const { error } = await supabase
+      .from('users')
+      .update({ off_days: offDays })
+      .eq('id', id)
+
+    if (error) return NextResponse.json({ error: 'Failed to update off days.' }, { status: 500 })
+    return NextResponse.json({ success: true, off_days: offDays })
+  }
+
   return NextResponse.json({ error: 'Invalid action.' }, { status: 400 })
 }

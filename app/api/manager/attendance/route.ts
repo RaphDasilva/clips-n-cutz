@@ -37,10 +37,10 @@ export async function GET(req: NextRequest) {
   const [staffRes, attRes] = await Promise.all([
     supabase
       .from('users')
-      .select('id, name, sunday_grace')
+      .select('id, name, sunday_grace, off_days')
       .eq('role', 'staff')
       .eq('is_active', true)
-      .order('name') as unknown as Promise<{ data: { id: string; name: string; sunday_grace: boolean }[] | null; error: unknown }>,
+      .order('name') as unknown as Promise<{ data: { id: string; name: string; sunday_grace: boolean; off_days: number[] }[] | null; error: unknown }>,
 
     supabase
       .from('attendance')
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
     id:           s.id,
     name:         s.name,
     sunday_grace: s.sunday_grace,
+    off_days:     s.off_days,
     record:       attMap.get(s.id) ?? null,
   }))
 

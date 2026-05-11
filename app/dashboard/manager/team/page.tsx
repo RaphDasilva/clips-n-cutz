@@ -32,6 +32,15 @@ export default function TeamPage() {
   const [editLoading, setEditLoading] = useState(false)
   const [editError, setEditError]     = useState('')
 
+  // Edit off-days
+  const [daysTarget, setDaysTarget]   = useState<StaffMember | null>(null)
+  const [daysOff, setDaysOff]         = useState<number[]>([])
+  const [daysLoading, setDaysLoading] = useState(false)
+  const [daysError, setDaysError]     = useState('')
+
+  // New staff off-days picker
+  const [newOffDays, setNewOffDays]   = useState<number[]>([])
+
   const loadStaff = useCallback(async () => {
     const [sRes, svRes] = await Promise.all([
       fetch('/api/manager/staff'),
@@ -75,12 +84,12 @@ export default function TeamPage() {
     e.preventDefault(); setAddError(''); setAddLoading(true)
     const res = await fetch('/api/manager/staff', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName, phone: newPhone, pin: newPIN }),
+      body: JSON.stringify({ name: newName, phone: newPhone, pin: newPIN, offDays: newOffDays }),
     })
     const data = await res.json()
     if (!res.ok) { setAddError(data.error ?? 'Failed.'); setAddLoading(false); return }
-    setStaff(p => [...p, { ...data.staff, serviceIds: [] }])
-    setNewName(''); setNewPhone(''); setNewPIN(''); setShowAdd(false); setAddLoading(false)
+    setStaff(p => [...p, { ...data.staff, serviceIds: [], off_days: data.staff.off_days ?? [] }])
+    setNewName(''); setNewPhone(''); setNewPIN(''); setNewOffDays([]); setShowAdd(false); setAddLoading(false)
   }
 
   async function handleResetPIN(e: React.FormEvent) {
@@ -92,6 +101,24 @@ export default function TeamPage() {
     const data = await res.json()
     if (!res.ok) { setResetError(data.error ?? 'Failed.'); setResetLoading(false); return }
     setResetPIN(''); setResetTarget(null); setResetLoading(false)
+  }
+
+  function openEditDays(m: StaffMember) {
+    setDaysTarget(m)
+    setDaysOff([...(m.off_days ?? [])])
+    setDaysError('')
+  }
+
+  async function handleSaveOffDays(e: React.FormEvent) {
+    e.preventDefault(); if (!daysTarget) return; setDaysError(''); setDaysLoading(true)
+    const res = await fetch(`/api/manager/staff/${daysTarget.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set-off-days', offDays: daysOff }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setDaysError(data.error ?? 'Failed.'); setDaysLoading(false); return }
+    setStaff(p => p.map(s => s.id === daysTarget.id ? { ...s, off_days: data.off_days } : s))
+    setDaysTarget(null); setDaysLoading(false)
   }
 
   function openEditServices(m: StaffMember) {
@@ -155,6 +182,7 @@ export default function TeamPage() {
                     <tr className="border-b border-[#1e1e1e]">
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Name</th>
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Services</th>
+                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Days Off</th>
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Phone</th>
                       <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Actions</th>
                     </tr>
@@ -164,7 +192,8 @@ export default function TeamPage() {
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
                         onEditServices={openEditServices} toggling={toggling === m.id}
-                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
+                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id}
+                        onEditDays={openEditDays} />
                     ))}
                   </tbody>
                 </table>
@@ -175,7 +204,8 @@ export default function TeamPage() {
                   <StaffCard key={m.id} member={m} services={services}
                     onToggle={toggle} onReset={setResetTarget}
                     onEditServices={openEditServices} toggling={toggling === m.id}
-                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
+                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id}
+                    onEditDays={openEditDays} />
                 ))}
               </div>
             </section>
@@ -193,7 +223,8 @@ export default function TeamPage() {
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
                         onEditServices={openEditServices} toggling={toggling === m.id}
-                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
+                        onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id}
+                        onEditDays={openEditDays} />
                     ))}
                   </tbody>
                 </table>
@@ -203,7 +234,8 @@ export default function TeamPage() {
                   <StaffCard key={m.id} member={m} services={services}
                     onToggle={toggle} onReset={setResetTarget}
                     onEditServices={openEditServices} toggling={toggling === m.id}
-                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id} />
+                    onToggleSunday={toggleSundayGrace} togglingSunday={togglingSunday === m.id}
+                    onEditDays={openEditDays} />
                 ))}
               </div>
             </section>
@@ -238,6 +270,11 @@ export default function TeamPage() {
                 placeholder="••••" inputMode="numeric" maxLength={4} required
                 className="input text-center tracking-[0.5em]" />
               <p className="text-[#444] text-xs mt-1.5">Staff will change this on first login.</p>
+            </div>
+            <div>
+              <label className="block text-[#888] text-xs font-medium mb-2">Days Off (optional)</label>
+              <DayPicker selected={newOffDays} onChange={setNewOffDays} />
+              <p className="text-[#444] text-xs mt-1.5">Select which days this staff member doesn&apos;t work.</p>
             </div>
             {addError && <p className="text-red-400 text-sm">{addError}</p>}
             <button type="submit" disabled={addLoading || newPIN.length !== 4}
@@ -312,6 +349,23 @@ export default function TeamPage() {
           </form>
         </Modal>
       )}
+      {/* Edit Off Days Modal */}
+      {daysTarget && (
+        <Modal title={`Days Off — ${daysTarget.name}`}
+          onClose={() => setDaysTarget(null)}>
+          <p className="text-[#888] text-sm mb-4">
+            Select which days {daysTarget.name.split(' ')[0]} doesn&apos;t work. They won&apos;t appear in attendance on these days.
+          </p>
+          <form onSubmit={handleSaveOffDays} className="space-y-4">
+            <DayPicker selected={daysOff} onChange={setDaysOff} />
+            {daysError && <p className="text-red-400 text-sm">{daysError}</p>}
+            <button type="submit" disabled={daysLoading}
+              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              {daysLoading ? 'Saving…' : `Save Days Off${daysOff.length > 0 ? ` (${daysOff.length} day${daysOff.length > 1 ? 's' : ''})` : ''}`}
+            </button>
+          </form>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -334,7 +388,7 @@ function ServiceTags({ serviceIds, services }: { serviceIds: string[]; services:
 }
 
 /* ── Desktop table row ──────────────────────────────────────── */
-function StaffRow({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday }: {
+function StaffRow({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday, onEditDays }: {
   member: StaffMember
   services: Service[]
   onToggle: (m: StaffMember) => void
@@ -343,6 +397,7 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
   toggling: boolean
   onToggleSunday: (m: StaffMember) => void
   togglingSunday: boolean
+  onEditDays: (m: StaffMember) => void
 }) {
   return (
     <tr>
@@ -364,12 +419,19 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
       <td className="px-5 py-4">
         <ServiceTags serviceIds={member.serviceIds} services={services} />
       </td>
+      <td className="px-5 py-4">
+        <OffDayTags offDays={member.off_days ?? []} />
+      </td>
       <td className="px-5 py-4 text-[#888]">{member.phone}</td>
       <td className="px-5 py-4">
         <div className="flex items-center justify-end gap-2">
           <button onClick={() => onEditServices(member)}
             className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
             Services
+          </button>
+          <button onClick={() => onEditDays(member)}
+            className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            Days Off
           </button>
           <button onClick={() => onReset(member)}
             className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
@@ -391,7 +453,7 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
 }
 
 /* ── Mobile card ────────────────────────────────────────────── */
-function StaffCard({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday }: {
+function StaffCard({ member, services, onToggle, onReset, onEditServices, toggling, onToggleSunday, togglingSunday, onEditDays }: {
   member: StaffMember
   services: Service[]
   onToggle: (m: StaffMember) => void
@@ -400,6 +462,7 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
   toggling: boolean
   onToggleSunday: (m: StaffMember) => void
   togglingSunday: boolean
+  onEditDays: (m: StaffMember) => void
 }) {
   return (
     <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3.5">
@@ -415,13 +478,20 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
         </div>
         <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
       </div>
-      <div className="mb-3 pl-11">
+      <div className="mb-2 pl-11">
         <ServiceTags serviceIds={member.serviceIds} services={services} />
+      </div>
+      <div className="mb-3 pl-11">
+        <OffDayTags offDays={member.off_days ?? []} />
       </div>
       <div className="flex items-center gap-2 pl-11 flex-wrap">
         <button onClick={() => onEditServices(member)}
           className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
-          Edit Services
+          Services
+        </button>
+        <button onClick={() => onEditDays(member)}
+          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
+          Days Off
         </button>
         <button onClick={() => onReset(member)}
           className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
@@ -436,6 +506,46 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
           {member.sunday_grace ? 'Sun. Grace ✓' : 'Sun. Grace'}
         </button>
       </div>
+    </div>
+  )
+}
+
+/* ── Day picker ─────────────────────────────────────────────── */
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+
+function DayPicker({ selected, onChange }: { selected: number[]; onChange: (days: number[]) => void }) {
+  function toggle(d: number) {
+    onChange(selected.includes(d) ? selected.filter(x => x !== d) : [...selected, d])
+  }
+  return (
+    <div className="flex gap-1.5 flex-wrap">
+      {DAY_LABELS.map((label, i) => {
+        const on = selected.includes(i)
+        return (
+          <button key={i} type="button" onClick={() => toggle(i)}
+            className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              on
+                ? 'bg-white border-white text-gray-950'
+                : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#3a3a3a]'
+            }`}>
+            {label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* ── Days-off tag strip ─────────────────────────────────────── */
+function OffDayTags({ offDays }: { offDays: number[] }) {
+  if (offDays.length === 0) return <span className="text-[#444] text-xs italic">No days off set</span>
+  return (
+    <div className="flex flex-wrap gap-1">
+      {offDays.sort((a, b) => a - b).map(d => (
+        <span key={d} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
+          {DAY_LABELS[d]}
+        </span>
+      ))}
     </div>
   )
 }

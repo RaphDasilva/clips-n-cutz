@@ -8,7 +8,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, created_at, staff_services(service_id)')
+    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at, staff_services(service_id)')
     .eq('role', 'staff')
     .order('name') as {
       data: (Omit<User, 'pin_hash'> & { staff_services: { service_id: string }[] })[] | null
@@ -29,9 +29,12 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const name: string  = (body.name  ?? '').trim()
-  const phone: string = (body.phone ?? '').trim()
-  const pin: string   = (body.pin   ?? '').trim()
+  const name: string    = (body.name  ?? '').trim()
+  const phone: string   = (body.phone ?? '').trim()
+  const pin: string     = (body.pin   ?? '').trim()
+  const offDays: number[] = Array.isArray(body.offDays)
+    ? (body.offDays as unknown[]).filter((d): d is number => typeof d === 'number' && d >= 0 && d <= 6)
+    : []
 
   if (!name || !phone || !pin) {
     return NextResponse.json(
@@ -73,9 +76,10 @@ export async function POST(req: NextRequest) {
       pin_hash: pinHash,
       role: 'staff',
       is_active: true,
-      must_change_pin: true, // force PIN change on first login
+      must_change_pin: true,
+      off_days: offDays,
     })
-    .select('id, name, phone, role, is_active, must_change_pin, created_at')
+    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at')
     .single() as { data: Omit<User, 'pin_hash'> | null; error: { message: string } | null }
 
   if (insertError || !newStaff) {
