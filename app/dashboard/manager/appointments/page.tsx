@@ -90,10 +90,11 @@ export default function AppointmentsPage() {
   const [checkInAppt, setCheckInAppt]         = useState<ApptRow | null>(null)
   const [checkInStaffId, setCheckInStaffId]   = useState('')
   const [checkInServiceIds, setCheckInServiceIds] = useState<string[]>([])
-  const [checkInTip, setCheckInTip]           = useState('')
-  const [checkInLoading, setCheckInLoading]   = useState(false)
-  const [checkInError, setCheckInError]       = useState('')
-  const [checkInSuccess, setCheckInSuccess]   = useState(false)
+  const [checkInTip, setCheckInTip]                 = useState('')
+  const [checkInPayment, setCheckInPayment]         = useState<'cash' | 'transfer' | 'pos'>('cash')
+  const [checkInLoading, setCheckInLoading]         = useState(false)
+  const [checkInError, setCheckInError]             = useState('')
+  const [checkInSuccess, setCheckInSuccess]         = useState(false)
 
   useEffect(() => {
     const s = getSession()
@@ -141,14 +142,14 @@ export default function AppointmentsPage() {
       const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: checkInStaffId, serviceIds: checkInServiceIds, tipNgn: checkInTip }),
+        body: JSON.stringify({ staffId: checkInStaffId, serviceIds: checkInServiceIds, tipNgn: checkInTip, paymentMethod: checkInPayment }),
       })
       const data = await res.json()
       if (!res.ok) { setCheckInError(data.error ?? 'Failed to check in.'); return }
       setCheckInSuccess(true)
       // Mark as completed in list
       setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
-      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInServiceIds([]); setCheckInTip('') }, 1500)
+      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInServiceIds([]); setCheckInTip(''); setCheckInPayment('cash') }, 1500)
     } catch {
       setCheckInError('Connection error. Try again.')
     } finally {
@@ -292,6 +293,7 @@ export default function AppointmentsPage() {
                         setCheckInStaffId('')
                         setCheckInServiceIds(a.appointment_services.map(s => s.service_id))
                         setCheckInTip('')
+                        setCheckInPayment('cash')
                         setCheckInError('')
                         setCheckInSuccess(false)
                       }}
@@ -391,6 +393,28 @@ export default function AppointmentsPage() {
                           {s.name.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-sm font-medium">{s.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Payment method */}
+                <div>
+                  <label className="block text-[#888] text-xs font-medium mb-2">Payment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { value: 'cash',     label: 'Cash' },
+                      { value: 'transfer', label: 'Transfer' },
+                      { value: 'pos',      label: 'POS' },
+                    ] as const).map(opt => (
+                      <button key={opt.value} type="button"
+                        onClick={() => setCheckInPayment(opt.value)}
+                        className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                          checkInPayment === opt.value
+                            ? 'bg-white border-white text-gray-950'
+                            : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a] hover:text-white'
+                        }`}>
+                        {opt.label}
                       </button>
                     ))}
                   </div>

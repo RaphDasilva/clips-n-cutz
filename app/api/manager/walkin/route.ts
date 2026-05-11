@@ -4,11 +4,14 @@ import type { Service, Client, Visit } from '@/types/database'
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const clientName: string  = (body.clientName  ?? '').trim()
-  const clientPhone: string = (body.clientPhone ?? '').trim()
-  const staffId: string     = (body.staffId     ?? '').trim()
-  const serviceIds: string[] = body.serviceIds ?? []
-  const tipNgn: number      = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
+  const clientName: string   = (body.clientName     ?? '').trim()
+  const clientPhone: string  = (body.clientPhone    ?? '').trim()
+  const staffId: string      = (body.staffId        ?? '').trim()
+  const serviceIds: string[] = body.serviceIds      ?? []
+  const tipNgn: number       = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
+  const paymentMethod: string = ['cash', 'transfer', 'pos'].includes(body.paymentMethod)
+    ? body.paymentMethod
+    : 'cash'
 
   if (!clientName || !clientPhone || !staffId || serviceIds.length === 0) {
     return NextResponse.json(
@@ -65,6 +68,7 @@ export async function POST(req: NextRequest) {
       visit_date: new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }),
       total_ngn: totalNgn,
       tip_ngn: tipNgn,
+      payment_method: paymentMethod,
     })
     .select()
     .single() as { data: Visit | null; error: { message: string } | null }

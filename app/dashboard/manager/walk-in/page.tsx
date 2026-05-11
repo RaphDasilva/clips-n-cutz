@@ -21,7 +21,8 @@ export default function WalkInPage() {
   const [clientPhone, setClientPhone] = useState('')
   const [staffId, setStaffId]         = useState('')
   const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [tipNgn, setTipNgn]           = useState('')
+  const [tipNgn, setTipNgn]             = useState('')
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'pos'>('cash')
 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError]           = useState('')
@@ -80,7 +81,7 @@ export default function WalkInPage() {
       const res = await fetch('/api/manager/walkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientName, clientPhone, staffId, serviceIds: selectedIds, tipNgn }),
+        body: JSON.stringify({ clientName, clientPhone, staffId, serviceIds: selectedIds, tipNgn, paymentMethod }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return }
@@ -94,7 +95,7 @@ export default function WalkInPage() {
 
   function reset() {
     setClientName(''); setClientPhone(''); setStaffId('')
-    setSelectedIds([]); setTipNgn(''); setSuccess(null); setError('')
+    setSelectedIds([]); setTipNgn(''); setPaymentMethod('cash'); setSuccess(null); setError('')
   }
 
   /* ── Success screen ─────────────────────────────────────── */
@@ -270,6 +271,29 @@ export default function WalkInPage() {
                   )
                 })}
               </div>
+            </div>
+          </div>
+
+          {/* Payment method */}
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
+            <h3 className="text-white text-sm font-semibold mb-1">Payment Method</h3>
+            <p className="text-[#555] text-xs mb-4">How is the client paying?</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: 'cash',     label: 'Cash' },
+                { value: 'transfer', label: 'Transfer' },
+                { value: 'pos',      label: 'POS' },
+              ] as const).map(opt => (
+                <button key={opt.value} type="button"
+                  onClick={() => setPaymentMethod(opt.value)}
+                  className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                    paymentMethod === opt.value
+                      ? 'bg-white border-white text-gray-950'
+                      : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a] hover:text-white'
+                  }`}>
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 

@@ -21,6 +21,8 @@ export type BookingSource = 'online' | 'walkin' | 'phone'
 
 export type FollowupStatus = 'pending' | 'sent' | 'failed' | 'cancelled'
 
+export type PaymentMethod = 'cash' | 'transfer' | 'pos'
+
 export type MessageType =
   | 'booking_confirmation'
   | 'reminder_24h'
@@ -87,6 +89,7 @@ export interface Visit {
   visit_date: string
   notes: string | null
   total_ngn: number
+  payment_method: PaymentMethod
   created_at: string
 }
 
