@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 
 const VALID_STATUSES = ['pending', 'confirmed', 'completed', 'cancelled', 'no_show']
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const { id } = params
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
   const { status } = await req.json()
 
   if (!VALID_STATUSES.includes(status)) {
