@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
+import RevenueChart from '@/components/RevenueChart'
 
 interface PaymentBreakdown { cash: number; transfer: number; pos: number }
 interface PeriodStats { revenue: number; visits: number; byPayment: PaymentBreakdown }
@@ -116,6 +117,9 @@ export default function OwnerHome() {
           </div>
         )}
       </section>
+
+      {/* Revenue chart */}
+      <RevenueChart />
 
       {/* Payment method breakdown — today */}
       <section className="mb-8">
