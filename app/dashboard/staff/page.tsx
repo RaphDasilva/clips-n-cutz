@@ -50,7 +50,7 @@ function getCheckinWindow(): { open: boolean; reason: string } {
     return { open: true, reason: '' }
   }
   if (mins < 6 * 60 + 30) return { open: false, reason: 'Check-in opens at 6:30am' }
-  if (mins > 13 * 60)     return { open: false, reason: 'Check-in closed for today' }
+  if (mins > 15 * 60)     return { open: false, reason: 'Check-in closed for today' }
   return { open: true, reason: '' }
 }
 
@@ -230,7 +230,7 @@ export default function StaffHome() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-[#555] text-sm font-medium">{window_.reason}</p>
-                    <p className="text-[#333] text-xs mt-0.5">Mon–Sat: 6:30am – 1:00pm · Sunday: 10:00am – 2:00pm</p>
+                    <p className="text-[#333] text-xs mt-0.5">Mon–Sat: 6:30am – 3:00pm · Sunday: 10:00am – 2:00pm</p>
                   </div>
                   <button disabled
                     className="bg-[#1a1a1a] text-[#444] font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed border border-[#2a2a2a]">
