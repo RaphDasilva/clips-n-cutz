@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import type { Service } from '@/types/database'
 
 const TIME_SLOTS = [
@@ -127,8 +128,8 @@ export default function BookPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
-          <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] text-[#C49A3C] font-semibold tracking-wide">CNC</span>
+          <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <Image src="/logo.jpg" alt="Clips N'Cutz" width={48} height={48} className="object-cover" />
           </div>
           <div>
             <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>

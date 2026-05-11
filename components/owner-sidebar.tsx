@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { clearSession } from '@/lib/auth'
 import type { SessionUser } from '@/types/database'
@@ -47,8 +48,8 @@ export function OwnerSidebar({ user }: { user: SessionUser }) {
       {/* Brand */}
       <div className="px-5 py-6 border-b border-[#1e1e1e]">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] text-[#C49A3C] font-semibold tracking-wide">CNC</span>
+          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
+            <Image src="/logo.jpg" alt="Clips N'Cutz" width={32} height={32} className="object-cover" />
           </div>
           <div className="min-w-0">
             <p className="text-white text-sm font-semibold leading-tight truncate">Clips N&apos;Cutz</p>
