@@ -1,40 +1,44 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import type { User } from '@/types/database'
+import type { User, Service } from '@/types/database'
 
-type StaffMember = Omit<User, 'pin_hash'>
-
-function Avatar({ name, size = 8 }: { name: string; size?: number }) {
-  return (
-    <div className={`w-${size} h-${size} rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0`}>
-      <span className="text-white text-xs font-semibold">{name.charAt(0).toUpperCase()}</span>
-    </div>
-  )
-}
+type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
 export default function TeamPage() {
-  const [staff, setStaff]               = useState<StaffMember[]>([])
-  const [loading, setLoading]           = useState(true)
-  const [showAdd, setShowAdd]           = useState(false)
-  const [resetTarget, setResetTarget]   = useState<StaffMember | null>(null)
-  const [toggling, setToggling]         = useState<string | null>(null)
+  const [staff, setStaff]             = useState<StaffMember[]>([])
+  const [services, setServices]       = useState<Service[]>([])
+  const [loading, setLoading]         = useState(true)
+  const [showAdd, setShowAdd]         = useState(false)
+  const [resetTarget, setResetTarget] = useState<StaffMember | null>(null)
+  const [servicesTarget, setServicesTarget] = useState<StaffMember | null>(null)
+  const [toggling, setToggling]       = useState<string | null>(null)
 
-  // Add form state
-  const [newName, setNewName]   = useState('')
-  const [newPhone, setNewPhone] = useState('')
-  const [newPIN, setNewPIN]     = useState('')
-  const [addError, setAddError] = useState('')
-  const [addLoading, setAddLoading] = useState(false)
+  // Add form
+  const [newName, setNewName]         = useState('')
+  const [newPhone, setNewPhone]       = useState('')
+  const [newPIN, setNewPIN]           = useState('')
+  const [addError, setAddError]       = useState('')
+  const [addLoading, setAddLoading]   = useState(false)
 
-  // Reset PIN state
-  const [resetPIN, setResetPIN]     = useState('')
-  const [resetError, setResetError] = useState('')
+  // Reset PIN
+  const [resetPIN, setResetPIN]       = useState('')
+  const [resetError, setResetError]   = useState('')
   const [resetLoading, setResetLoading] = useState(false)
 
+  // Edit services
+  const [editIds, setEditIds]         = useState<string[]>([])
+  const [editLoading, setEditLoading] = useState(false)
+  const [editError, setEditError]     = useState('')
+
   const loadStaff = useCallback(async () => {
-    const res = await fetch('/api/manager/staff')
-    if (res.ok) setStaff((await res.json()).staff ?? [])
+    const [sRes, svRes] = await Promise.all([
+      fetch('/api/manager/staff'),
+      fetch('/api/manager/services'),
+    ])
+    const [sData, svData] = await Promise.all([sRes.json(), svRes.json()])
+    setStaff(sData.staff ?? [])
+    setServices(svData.services ?? [])
     setLoading(false)
   }, [])
 
@@ -61,7 +65,7 @@ export default function TeamPage() {
     })
     const data = await res.json()
     if (!res.ok) { setAddError(data.error ?? 'Failed.'); setAddLoading(false); return }
-    setStaff(p => [...p, data.staff])
+    setStaff(p => [...p, { ...data.staff, serviceIds: [] }])
     setNewName(''); setNewPhone(''); setNewPIN(''); setShowAdd(false); setAddLoading(false)
   }
 
@@ -74,6 +78,28 @@ export default function TeamPage() {
     const data = await res.json()
     if (!res.ok) { setResetError(data.error ?? 'Failed.'); setResetLoading(false); return }
     setResetPIN(''); setResetTarget(null); setResetLoading(false)
+  }
+
+  function openEditServices(m: StaffMember) {
+    setServicesTarget(m)
+    setEditIds([...m.serviceIds])
+    setEditError('')
+  }
+
+  function toggleService(sid: string) {
+    setEditIds(p => p.includes(sid) ? p.filter(x => x !== sid) : [...p, sid])
+  }
+
+  async function handleSaveServices(e: React.FormEvent) {
+    e.preventDefault(); if (!servicesTarget) return; setEditError(''); setEditLoading(true)
+    const res = await fetch(`/api/manager/staff/${servicesTarget.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set-services', serviceIds: editIds }),
+    })
+    const data = await res.json()
+    if (!res.ok) { setEditError(data.error ?? 'Failed.'); setEditLoading(false); return }
+    setStaff(p => p.map(s => s.id === servicesTarget.id ? { ...s, serviceIds: editIds } : s))
+    setServicesTarget(null); setEditLoading(false)
   }
 
   const active   = staff.filter(s => s.is_active)
@@ -103,7 +129,6 @@ export default function TeamPage() {
         </div>
       ) : (
         <>
-          {/* Active */}
           {active.length > 0 && (
             <section className="mb-8">
               <p className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-3">
@@ -115,26 +140,31 @@ export default function TeamPage() {
                   <thead>
                     <tr className="border-b border-[#1e1e1e]">
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Name</th>
+                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Services</th>
                       <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Phone</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Status</th>
                       <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#1e1e1e]">
                     {active.map(m => (
-                      <StaffRow key={m.id} member={m} onToggle={toggle} onReset={setResetTarget} toggling={toggling === m.id} />
+                      <StaffRow key={m.id} member={m} services={services}
+                        onToggle={toggle} onReset={setResetTarget}
+                        onEditServices={openEditServices} toggling={toggling === m.id} />
                     ))}
                   </tbody>
                 </table>
               </div>
               {/* Mobile cards */}
               <div className="lg:hidden space-y-2">
-                {active.map(m => <StaffCard key={m.id} member={m} onToggle={toggle} onReset={setResetTarget} toggling={toggling === m.id} />)}
+                {active.map(m => (
+                  <StaffCard key={m.id} member={m} services={services}
+                    onToggle={toggle} onReset={setResetTarget}
+                    onEditServices={openEditServices} toggling={toggling === m.id} />
+                ))}
               </div>
             </section>
           )}
 
-          {/* Inactive */}
           {inactive.length > 0 && (
             <section>
               <p className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-3">
@@ -144,13 +174,19 @@ export default function TeamPage() {
                 <table className="w-full text-sm">
                   <tbody className="divide-y divide-[#1e1e1e]">
                     {inactive.map(m => (
-                      <StaffRow key={m.id} member={m} onToggle={toggle} onReset={setResetTarget} toggling={toggling === m.id} />
+                      <StaffRow key={m.id} member={m} services={services}
+                        onToggle={toggle} onReset={setResetTarget}
+                        onEditServices={openEditServices} toggling={toggling === m.id} />
                     ))}
                   </tbody>
                 </table>
               </div>
               <div className="lg:hidden space-y-2 opacity-60">
-                {inactive.map(m => <StaffCard key={m.id} member={m} onToggle={toggle} onReset={setResetTarget} toggling={toggling === m.id} />)}
+                {inactive.map(m => (
+                  <StaffCard key={m.id} member={m} services={services}
+                    onToggle={toggle} onReset={setResetTarget}
+                    onEditServices={openEditServices} toggling={toggling === m.id} />
+                ))}
               </div>
             </section>
           )}
@@ -217,15 +253,75 @@ export default function TeamPage() {
           </form>
         </Modal>
       )}
+
+      {/* Edit Services Modal */}
+      {servicesTarget && (
+        <Modal title={`Services — ${servicesTarget.name}`}
+          onClose={() => setServicesTarget(null)}>
+          <p className="text-[#888] text-sm mb-4">
+            Select all services {servicesTarget.name.split(' ')[0]} can perform.
+          </p>
+          <form onSubmit={handleSaveServices}>
+            <div className="space-y-2 mb-5">
+              {services.map(sv => {
+                const on = editIds.includes(sv.id)
+                return (
+                  <button key={sv.id} type="button" onClick={() => toggleService(sv.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                      on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                        on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                      }`}>
+                        {on && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium">{sv.name}</span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+            {editError && <p className="text-red-400 text-sm mb-3">{editError}</p>}
+            <button type="submit" disabled={editLoading}
+              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              {editLoading ? 'Saving…' : `Save Services (${editIds.length} selected)`}
+            </button>
+          </form>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+/* ── Service tags strip ─────────────────────────────────────── */
+function ServiceTags({ serviceIds, services }: { serviceIds: string[]; services: Service[] }) {
+  const names = services.filter(s => serviceIds.includes(s.id)).map(s => s.name)
+  if (names.length === 0) {
+    return <span className="text-[#444] text-xs italic">No services set</span>
+  }
+  return (
+    <div className="flex flex-wrap gap-1">
+      {names.map(n => (
+        <span key={n} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
+          {n}
+        </span>
+      ))}
     </div>
   )
 }
 
 /* ── Desktop table row ──────────────────────────────────────── */
-function StaffRow({ member, onToggle, onReset, toggling }: {
+function StaffRow({ member, services, onToggle, onReset, onEditServices, toggling }: {
   member: StaffMember
+  services: Service[]
   onToggle: (m: StaffMember) => void
   onReset: (m: StaffMember) => void
+  onEditServices: (m: StaffMember) => void
   toggling: boolean
 }) {
   return (
@@ -238,18 +334,16 @@ function StaffRow({ member, onToggle, onReset, toggling }: {
           <span className="text-white font-medium">{member.name}</span>
         </div>
       </td>
+      <td className="px-5 py-4">
+        <ServiceTags serviceIds={member.serviceIds} services={services} />
+      </td>
       <td className="px-5 py-4 text-[#888]">{member.phone}</td>
       <td className="px-5 py-4">
-        <span className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
-          member.is_active
-            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-            : 'bg-[#1e1e1e] text-[#555] border-[#2a2a2a]'
-        }`}>
-          {member.is_active ? 'Active' : 'Inactive'}
-        </span>
-      </td>
-      <td className="px-5 py-4">
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={() => onEditServices(member)}
+            className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            Services
+          </button>
           <button onClick={() => onReset(member)}
             className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
             Reset PIN
@@ -262,29 +356,40 @@ function StaffRow({ member, onToggle, onReset, toggling }: {
 }
 
 /* ── Mobile card ────────────────────────────────────────────── */
-function StaffCard({ member, onToggle, onReset, toggling }: {
+function StaffCard({ member, services, onToggle, onReset, onEditServices, toggling }: {
   member: StaffMember
+  services: Service[]
   onToggle: (m: StaffMember) => void
   onReset: (m: StaffMember) => void
+  onEditServices: (m: StaffMember) => void
   toggling: boolean
 }) {
   return (
-    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3.5 flex items-center justify-between">
-      <div className="flex items-center gap-3 min-w-0 mr-3">
-        <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-          <span className="text-white text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
+    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-white text-sm font-medium truncate">{member.name}</p>
+            <p className="text-[#555] text-xs">{member.phone}</p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <p className="text-white text-sm font-medium truncate">{member.name}</p>
-          <p className="text-[#555] text-xs">{member.phone}</p>
-        </div>
+        <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
       </div>
-      <div className="flex items-center gap-2 flex-shrink-0">
+      <div className="mb-3 pl-11">
+        <ServiceTags serviceIds={member.serviceIds} services={services} />
+      </div>
+      <div className="flex items-center gap-2 pl-11">
+        <button onClick={() => onEditServices(member)}
+          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
+          Edit Services
+        </button>
         <button onClick={() => onReset(member)}
-          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5">
+          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
           Reset PIN
         </button>
-        <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
       </div>
     </div>
   )
@@ -304,7 +409,7 @@ function Toggle({ active, loading, onChange }: { active: boolean; loading: boole
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-white font-semibold">{title}</h2>
           <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">

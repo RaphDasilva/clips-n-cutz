@@ -8,15 +8,23 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('users')
-    .select('id, name, phone, role, is_active, must_change_pin, created_at')
+    .select('id, name, phone, role, is_active, must_change_pin, created_at, staff_services(service_id)')
     .eq('role', 'staff')
-    .order('name') as { data: Omit<User, 'pin_hash'>[] | null; error: { message: string } | null }
+    .order('name') as {
+      data: (Omit<User, 'pin_hash'> & { staff_services: { service_id: string }[] })[] | null
+      error: { message: string } | null
+    }
 
   if (error) {
     return NextResponse.json({ error: 'Failed to load staff.' }, { status: 500 })
   }
 
-  return NextResponse.json({ staff: data ?? [] })
+  const staff = (data ?? []).map(({ staff_services, ...rest }) => ({
+    ...rest,
+    serviceIds: staff_services.map(r => r.service_id),
+  }))
+
+  return NextResponse.json({ staff })
 }
 
 export async function POST(req: NextRequest) {

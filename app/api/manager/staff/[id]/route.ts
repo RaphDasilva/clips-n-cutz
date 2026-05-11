@@ -62,5 +62,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true })
   }
 
+  // action: "set-services" — replace staff member's service list
+  if (action === 'set-services') {
+    const serviceIds: string[] = Array.isArray(body.serviceIds) ? body.serviceIds : []
+
+    const { error: delError } = await supabase
+      .from('staff_services')
+      .delete()
+      .eq('staff_id', id)
+
+    if (delError) {
+      return NextResponse.json({ error: 'Failed to update services.' }, { status: 500 })
+    }
+
+    if (serviceIds.length > 0) {
+      const rows = serviceIds.map(service_id => ({ staff_id: id, service_id }))
+      const { error: insError } = await supabase.from('staff_services').insert(rows)
+      if (insError) {
+        return NextResponse.json({ error: 'Failed to save services.' }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json({ success: true, serviceIds })
+  }
+
   return NextResponse.json({ error: 'Invalid action.' }, { status: 400 })
 }

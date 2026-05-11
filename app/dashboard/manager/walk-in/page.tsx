@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Service, User } from '@/types/database'
 
-type StaffMember = Omit<User, 'pin_hash'>
+type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
 function fmtNaira(n: number) {
   return `₦${n.toLocaleString('en-NG')}`
@@ -14,8 +14,8 @@ export default function WalkInPage() {
   const router = useRouter()
 
   const [services, setServices] = useState<Service[]>([])
-  const [staff, setStaff] = useState<StaffMember[]>([])
-  const [loading, setLoading] = useState(true)
+  const [staff, setStaff]       = useState<StaffMember[]>([])
+  const [loading, setLoading]   = useState(true)
 
   const [clientName, setClientName]   = useState('')
   const [clientPhone, setClientPhone] = useState('')
@@ -42,8 +42,29 @@ export default function WalkInPage() {
     load()
   }, [])
 
+  const selectedStaff = staff.find(s => s.id === staffId) ?? null
+
+  // Services the selected staff member can perform (empty set = staff has no services configured = show all)
+  const staffServiceIds = selectedStaff?.serviceIds ?? []
+  const staffHasServices = staffServiceIds.length > 0
+
+  function canDo(serviceId: string): boolean {
+    if (!staffId || !staffHasServices) return true
+    return staffServiceIds.includes(serviceId)
+  }
+
   function toggle(id: string) {
+    if (!canDo(id)) return
     setSelectedIds(p => p.includes(id) ? p.filter(s => s !== id) : [...p, id])
+  }
+
+  function selectStaff(id: string) {
+    setStaffId(id)
+    // Drop any selected services the new staff can't do
+    const member = staff.find(s => s.id === id)
+    if (member && member.serviceIds.length > 0) {
+      setSelectedIds(p => p.filter(sid => member.serviceIds.includes(sid)))
+    }
   }
 
   const selectedTotal = services
@@ -133,7 +154,6 @@ export default function WalkInPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          {/* Two-column on desktop */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
             {/* Left — client + staff */}
@@ -161,47 +181,75 @@ export default function WalkInPage() {
               <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
                 <h3 className="text-white text-sm font-semibold mb-4">Staff Member</h3>
                 <div className="grid grid-cols-1 gap-2">
-                  {staff.map(s => (
-                    <button key={s.id} type="button"
-                      onClick={() => setStaffId(s.id)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
-                        staffId === s.id
-                          ? 'bg-white border-white text-gray-950'
-                          : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                      }`}>
-                      <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
-                        staffId === s.id ? 'bg-gray-200 text-gray-950' : 'bg-[#2a2a2a] text-white'
-                      }`}>
-                        {s.name.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-sm font-medium">{s.name}</span>
-                    </button>
-                  ))}
+                  {staff.map(s => {
+                    const active = staffId === s.id
+                    return (
+                      <button key={s.id} type="button"
+                        onClick={() => selectStaff(s.id)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
+                          active
+                            ? 'bg-white border-white text-gray-950'
+                            : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                        }`}>
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
+                          active ? 'bg-gray-200 text-gray-950' : 'bg-[#2a2a2a] text-white'
+                        }`}>
+                          {s.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium">{s.name}</p>
+                          {s.serviceIds.length > 0 && (
+                            <p className={`text-xs mt-0.5 truncate ${active ? 'text-gray-600' : 'text-[#555]'}`}>
+                              {s.serviceIds.length} service{s.serviceIds.length !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             </div>
 
             {/* Right — services */}
             <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-1">
                 <h3 className="text-white text-sm font-semibold">Services</h3>
                 {selectedIds.length > 0 && (
                   <span className="text-white text-sm font-bold">{fmtNaira(selectedTotal)}</span>
                 )}
               </div>
+
+              {/* Hint when a staff member is selected and has services configured */}
+              {staffId && staffHasServices && (
+                <p className="text-[#555] text-xs mb-4">
+                  Showing services {selectedStaff!.name.split(' ')[0]} offers — others are unavailable
+                </p>
+              )}
+              {!staffId && (
+                <p className="text-[#555] text-xs mb-4">Select a staff member first to see their services</p>
+              )}
+              {staffId && !staffHasServices && (
+                <p className="text-[#555] text-xs mb-4">All services shown — no services configured for this staff</p>
+              )}
+
               <div className="space-y-2">
                 {services.map(s => {
-                  const on = selectedIds.includes(s.id)
+                  const on        = selectedIds.includes(s.id)
+                  const available = canDo(s.id)
                   return (
                     <button key={s.id} type="button" onClick={() => toggle(s.id)}
+                      disabled={!available}
                       className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all text-left ${
                         on
                           ? 'bg-white border-white text-gray-950'
-                          : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                          : available
+                            ? 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                            : 'bg-[#111] border-[#1a1a1a] text-[#333] cursor-not-allowed'
                       }`}>
                       <div className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                          on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                          on ? 'bg-gray-950 border-gray-950' : available ? 'border-[#444]' : 'border-[#222]'
                         }`}>
                           {on && (
                             <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -211,7 +259,7 @@ export default function WalkInPage() {
                         </div>
                         <span className="text-sm font-medium">{s.name}</span>
                       </div>
-                      <span className={`text-sm font-semibold tabular-nums ${on ? 'text-gray-950' : 'text-[#888]'}`}>
+                      <span className={`text-sm font-semibold tabular-nums ${on ? 'text-gray-950' : available ? 'text-[#888]' : 'text-[#333]'}`}>
                         {fmtNaira(s.price_ngn)}
                       </span>
                     </button>
