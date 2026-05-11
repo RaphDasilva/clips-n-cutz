@@ -7,10 +7,6 @@
     {
       "path": "/api/cron/mark-absent",
       "schedule": "0 14 * * *"
-    },
-    {
-      "path": "/api/cron/reminders",
-      "schedule": "0 * * * *"
     }
   ]
 }
