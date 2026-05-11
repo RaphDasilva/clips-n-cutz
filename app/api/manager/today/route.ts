@@ -3,20 +3,20 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   const supabase = createClient()
-  const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }) // YYYY-MM-DD in Lagos time
 
   const [visitsResult, appointmentsResult] = await Promise.all([
     supabase
       .from('visits')
       .select('id, total_ngn, created_at, clients(name)')
-      .eq('visit_date', today)
+      .eq('visit_date', todayStr)
       .order('created_at', { ascending: false }),
 
     supabase
       .from('appointments')
       .select('id, scheduled_at, status, clients(name)')
-      .gte('scheduled_at', `${today}T00:00:00`)
-      .lte('scheduled_at', `${today}T23:59:59`)
+      .gte('scheduled_at', `${todayStr}T00:00:00+01:00`)
+      .lte('scheduled_at', `${todayStr}T23:59:59+01:00`)
       .order('scheduled_at', { ascending: true }),
   ])
 
