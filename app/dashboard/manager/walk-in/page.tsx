@@ -184,35 +184,22 @@ export default function WalkInPage() {
               </div>
 
               <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-                <h3 className="text-white text-sm font-semibold mb-4">Staff Member</h3>
-                <div className="grid grid-cols-1 gap-2">
-                  {staff.map(s => {
-                    const active = staffId === s.id
-                    return (
-                      <button key={s.id} type="button"
-                        onClick={() => selectStaff(s.id)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition-all ${
-                          active
-                            ? 'bg-white border-white text-gray-950'
-                            : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                        }`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold flex-shrink-0 ${
-                          active ? 'bg-gray-200 text-gray-950' : 'bg-[#2a2a2a] text-white'
-                        }`}>
-                          {s.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium">{s.name}</p>
-                          {s.serviceIds.length > 0 && (
-                            <p className={`text-xs mt-0.5 truncate ${active ? 'text-gray-600' : 'text-[#555]'}`}>
-                              {s.serviceIds.length} service{s.serviceIds.length !== 1 ? 's' : ''}
-                            </p>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
+                <h3 className="text-white text-sm font-semibold mb-3">Staff Member</h3>
+                <select
+                  value={staffId}
+                  onChange={e => selectStaff(e.target.value)}
+                  className="input"
+                  required>
+                  <option value="">Select staff member…</option>
+                  {staff.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+                {staffId && staffHasServices && (
+                  <p className="text-[#555] text-xs mt-2">
+                    Showing services {selectedStaff!.name.split(' ')[0]} can do — others are greyed out
+                  </p>
+                )}
               </div>
             </div>
 
@@ -225,17 +212,15 @@ export default function WalkInPage() {
                 )}
               </div>
 
-              {/* Hint when a staff member is selected and has services configured */}
-              {staffId && staffHasServices && (
-                <p className="text-[#555] text-xs mb-4">
-                  Showing services {selectedStaff!.name.split(' ')[0]} offers — others are unavailable
-                </p>
-              )}
+              {/* Hint */}
               {!staffId && (
                 <p className="text-[#555] text-xs mb-4">Select a staff member first to see their services</p>
               )}
               {staffId && !staffHasServices && (
-                <p className="text-[#555] text-xs mb-4">All services shown — no services configured for this staff</p>
+                <p className="text-[#555] text-xs mb-4">All services available</p>
+              )}
+              {staffId && staffHasServices && (
+                <p className="text-[#555] text-xs mb-4">Greyed out services are not offered by this staff member</p>
               )}
 
               <div className="space-y-2">

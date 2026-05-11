@@ -316,22 +316,24 @@ export default function AppointmentsPage() {
       {checkInAppt && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
           onClick={() => { if (!checkInLoading) setCheckInAppt(null) }}>
-          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-md"
+          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#1e1e1e]">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#1e1e1e] flex-shrink-0">
               <div>
-                <h2 className="text-white font-semibold">Client Arrived</h2>
-                <p className="text-[#555] text-xs mt-0.5">{checkInAppt.clients?.name} — assign a staff member</p>
+                <h2 className="text-white font-semibold text-sm">Client Arrived</h2>
+                <p className="text-[#555] text-xs mt-0.5">{checkInAppt.clients?.name}</p>
               </div>
-              <button onClick={() => setCheckInAppt(null)} className="text-[#555] hover:text-white transition-colors">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <button onClick={() => setCheckInAppt(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1e1e1e] transition-all">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {checkInSuccess ? (
-              <div className="px-6 py-8 text-center">
+              <div className="px-5 py-10 text-center">
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-4">
                   <svg className="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -341,8 +343,9 @@ export default function AppointmentsPage() {
                 <p className="text-[#555] text-xs mt-1">Visit recorded and commission tracked.</p>
               </div>
             ) : (
-              <form onSubmit={submitCheckIn} className="px-6 py-5 space-y-4">
-                {/* Editable services */}
+              <form onSubmit={submitCheckIn} className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+                {/* Services */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-[#888] text-xs font-medium">Services</label>
@@ -352,7 +355,7 @@ export default function AppointmentsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-1.5">
                     {services.map(s => {
                       const selected = checkInServiceIds.includes(s.id)
                       return (
@@ -360,13 +363,13 @@ export default function AppointmentsPage() {
                           onClick={() => setCheckInServiceIds(prev =>
                             prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
                           )}
-                          className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                          className={`text-left px-3 py-2 rounded-lg border transition-all ${
                             selected
                               ? 'bg-white border-white text-gray-950'
                               : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
                           }`}>
-                          <p className="font-medium leading-tight text-xs">{s.name}</p>
-                          <p className={`text-xs mt-0.5 ${selected ? 'text-gray-600' : 'text-[#555]'}`}>
+                          <p className="text-xs font-medium leading-tight">{s.name}</p>
+                          <p className={`text-[11px] mt-0.5 tabular-nums ${selected ? 'text-gray-600' : 'text-[#555]'}`}>
                             ₦{s.price_ngn.toLocaleString()}
                           </p>
                         </button>
@@ -375,32 +378,24 @@ export default function AppointmentsPage() {
                   </div>
                 </div>
 
-                {/* Staff selection */}
+                {/* Staff — dropdown */}
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-2">Who is serving this client?</label>
-                  <div className="space-y-2">
+                  <label className="block text-[#888] text-xs font-medium mb-1.5">Staff Member</label>
+                  <select
+                    value={checkInStaffId}
+                    onChange={e => setCheckInStaffId(e.target.value)}
+                    className="input"
+                    required>
+                    <option value="">Select staff member…</option>
                     {staff.map(s => (
-                      <button key={s.id} type="button"
-                        onClick={() => setCheckInStaffId(s.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
-                          checkInStaffId === s.id
-                            ? 'bg-white border-white text-gray-950'
-                            : 'bg-[#141414] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                        }`}>
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                          checkInStaffId === s.id ? 'bg-gray-200 text-gray-950' : 'bg-[#2a2a2a] text-white'
-                        }`}>
-                          {s.name.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-sm font-medium">{s.name}</span>
-                      </button>
+                      <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
-                  </div>
+                  </select>
                 </div>
 
                 {/* Payment method */}
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-2">Payment Method</label>
+                  <label className="block text-[#888] text-xs font-medium mb-1.5">Payment Method</label>
                   <div className="grid grid-cols-3 gap-2">
                     {([
                       { value: 'cash',     label: 'Cash' },
@@ -409,7 +404,7 @@ export default function AppointmentsPage() {
                     ] as const).map(opt => (
                       <button key={opt.value} type="button"
                         onClick={() => setCheckInPayment(opt.value)}
-                        className={`py-2.5 rounded-xl border text-sm font-semibold transition-all ${
+                        className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
                           checkInPayment === opt.value
                             ? 'bg-white border-white text-gray-950'
                             : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a] hover:text-white'
@@ -420,31 +415,31 @@ export default function AppointmentsPage() {
                   </div>
                 </div>
 
-                {/* Optional tip */}
+                {/* Tip */}
                 <div>
                   <label className="block text-[#888] text-xs font-medium mb-1.5">
                     Tip <span className="text-[#555] font-normal">(optional)</span>
                   </label>
                   <div className="relative max-w-[160px]">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#555] text-sm font-medium">₦</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">₦</span>
                     <input
                       type="text" inputMode="numeric"
                       value={checkInTip}
                       onChange={e => setCheckInTip(e.target.value.replace(/\D/g, ''))}
                       placeholder="0"
-                      className="input pl-8"
+                      className="input pl-7"
                     />
                   </div>
                 </div>
 
                 {checkInError && (
-                  <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
-                    <p className="text-red-400 text-sm">{checkInError}</p>
+                  <div className="bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2.5">
+                    <p className="text-red-400 text-xs">{checkInError}</p>
                   </div>
                 )}
 
                 <button type="submit" disabled={checkInLoading || !checkInStaffId || checkInServiceIds.length === 0}
-                  className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
+                  className="w-full bg-white text-gray-950 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
                   {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
                 </button>
               </form>
