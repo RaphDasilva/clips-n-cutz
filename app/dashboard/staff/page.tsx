@@ -29,7 +29,37 @@ interface TodayData {
   appointments: Appointment[]
   todayPenalty: number
   todayAttStatus: string | null
+  todayCheckedInAt: string | null
   checkinStatus: 'pending' | 'confirmed' | 'dismissed' | null
+}
+
+// Mon-Sat: 6:30am – 1:00pm  |  Sunday: 10:00am – 2:00pm
+function getCheckinWindow(): { open: boolean; reason: string } {
+  const lagosStr  = new Date().toLocaleTimeString('en-GB', {
+    timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  const [h, m] = lagosStr.split(':').map(Number)
+  const mins   = h * 60 + m
+
+  const lagosDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+  const isSunday  = new Date(lagosDate + 'T12:00:00').getDay() === 0
+
+  if (isSunday) {
+    if (mins < 10 * 60)  return { open: false, reason: 'Check-in opens at 10:00am' }
+    if (mins > 14 * 60)  return { open: false, reason: 'Check-in closed for today' }
+    return { open: true, reason: '' }
+  }
+  if (mins < 6 * 60 + 30) return { open: false, reason: 'Check-in opens at 6:30am' }
+  if (mins > 13 * 60)     return { open: false, reason: 'Check-in closed for today' }
+  return { open: true, reason: '' }
+}
+
+function fmtTime(t: string) {
+  // t is HH:MM or HH:MM:SS
+  const [h, m] = t.split(':').map(Number)
+  const suffix = h >= 12 ? 'pm' : 'am'
+  const h12    = h % 12 || 12
+  return `${h12}:${String(m).padStart(2, '0')}${suffix}`
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -54,23 +84,38 @@ function greeting() {
 
 export default function StaffHome() {
   const router = useRouter()
-  const [user, setUser]         = useState<{ name: string; id: string } | null>(null)
-  const [data, setData]         = useState<TodayData | null>(null)
-  const [loading, setLoading]   = useState(true)
+  const [user, setUser]             = useState<{ name: string; id: string } | null>(null)
+  const [data, setData]             = useState<TodayData | null>(null)
+  const [loading, setLoading]       = useState(true)
   const [checkingIn, setCheckingIn] = useState(false)
-  const [checkinDone, setCheckinDone] = useState(false)
+  const [window_, setWindow_]       = useState(getCheckinWindow)
 
   const load = useCallback(async () => {
     const session = getSession()
     if (!session) { router.replace('/login'); return }
     setUser({ name: session.name, id: session.id })
-
     const res = await fetch(`/api/staff/today?staffId=${session.id}`)
     if (res.ok) setData(await res.json())
     setLoading(false)
   }, [router])
 
   useEffect(() => { load() }, [load])
+
+  // Refresh window state every minute (in case the window opens/closes while page is open)
+  useEffect(() => {
+    const id = setInterval(() => setWindow_(getCheckinWindow()), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  // Auto-poll every 12 seconds while waiting for manager confirmation
+  useEffect(() => {
+    if (data?.checkinStatus !== 'pending' || !user) return
+    const id = setInterval(async () => {
+      const res = await fetch(`/api/staff/today?staffId=${user.id}`)
+      if (res.ok) setData(await res.json())
+    }, 12_000)
+    return () => clearInterval(id)
+  }, [data?.checkinStatus, user])
 
   async function checkIn() {
     if (!user) return
@@ -81,8 +126,6 @@ export default function StaffHome() {
       body: JSON.stringify({ staffId: user.id }),
     })
     setCheckingIn(false)
-    setCheckinDone(true)
-    // Refresh data to pick up the new checkinStatus
     const res = await fetch(`/api/staff/today?staffId=${user.id}`)
     if (res.ok) setData(await res.json())
   }
@@ -126,42 +169,78 @@ export default function StaffHome() {
         </div>
       )}
 
-      {/* Check-in card — shown only when no attendance record yet */}
-      {!loading && data?.todayAttStatus === null && (
-        <div className={`rounded-xl border px-4 py-4 mb-4 ${
-          data.checkinStatus === 'pending'
-            ? 'bg-amber-500/5 border-amber-500/20'
-            : 'bg-[#141414] border-[#1e1e1e]'
-        }`}>
-          {data.checkinStatus === 'pending' ? (
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
-                <div>
-                  <p className="text-amber-400 text-sm font-semibold">Waiting for confirmation…</p>
-                  <p className="text-[#666] text-xs mt-0.5">Cajetan will confirm when he sees you</p>
-                </div>
-              </div>
-              <button onClick={load} className="text-[#555] text-xs hover:text-white transition-colors">
-                Refresh
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-between gap-3">
+      {/* Check-in card */}
+      {!loading && (
+        <>
+          {/* Already confirmed — green badge */}
+          {data?.todayAttStatus && data.todayAttStatus !== 'absent' && (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-4 py-3.5 mb-4 flex items-center gap-3">
+              <svg className="w-4 h-4 text-emerald-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <div>
-                <p className="text-white text-sm font-semibold">Tap to check in</p>
-                <p className="text-[#555] text-xs mt-0.5">Let Cajetan know you have arrived</p>
+                <p className="text-emerald-400 text-sm font-semibold">
+                  Checked in {data.todayCheckedInAt ? `at ${fmtTime(data.todayCheckedInAt)}` : ''}
+                </p>
+                <p className="text-[#555] text-xs mt-0.5">
+                  {data.todayAttStatus === 'on_time' ? 'On time — no penalty' : `Late — ₦${data.todayPenalty.toLocaleString('en-NG')} deducted`}
+                </p>
               </div>
-              <button
-                onClick={checkIn}
-                disabled={checkingIn || checkinDone}
-                className="bg-white text-gray-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40"
-              >
-                {checkingIn ? 'Sending…' : 'Check In'}
-              </button>
             </div>
           )}
-        </div>
+
+          {/* No record yet — show check-in button or pending state */}
+          {data?.todayAttStatus === null && (
+            <div className={`rounded-xl border px-4 py-4 mb-4 ${
+              data.checkinStatus === 'pending'
+                ? 'bg-amber-500/5 border-amber-500/20'
+                : 'bg-[#141414] border-[#1e1e1e]'
+            }`}>
+              {data.checkinStatus === 'pending' ? (
+                /* State 3: waiting — auto-polls every 12s */
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
+                    <div>
+                      <p className="text-amber-400 text-sm font-semibold">Waiting for confirmation…</p>
+                      <p className="text-[#555] text-xs mt-0.5">Cajetan will confirm when he sees you</p>
+                    </div>
+                  </div>
+                  <button onClick={load} className="text-[#444] text-xs hover:text-white transition-colors">
+                    Refresh
+                  </button>
+                </div>
+              ) : window_.open ? (
+                /* State 2: window open — show button */
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-white text-sm font-semibold">Ready to check in?</p>
+                    <p className="text-[#555] text-xs mt-0.5">Tap when you arrive at the salon</p>
+                  </div>
+                  <button
+                    onClick={checkIn}
+                    disabled={checkingIn}
+                    className="bg-white text-gray-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40"
+                  >
+                    {checkingIn ? 'Sending…' : 'Check In'}
+                  </button>
+                </div>
+              ) : (
+                /* State 1: outside window — disabled */
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[#555] text-sm font-medium">{window_.reason}</p>
+                    <p className="text-[#333] text-xs mt-0.5">Mon–Sat: 6:30am – 1:00pm · Sunday: 10:00am – 2:00pm</p>
+                  </div>
+                  <button disabled
+                    className="bg-[#1a1a1a] text-[#444] font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed border border-[#2a2a2a]">
+                    Check In
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {/* Today's earnings hero */}

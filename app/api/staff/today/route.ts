@@ -83,8 +83,9 @@ export async function GET(req: NextRequest) {
     todayServices,
     services,
     appointments,
-    todayPenalty:    attendance?.penalty_ngn ?? 0,
-    todayAttStatus:  attendance?.status      ?? null,
-    checkinStatus:   checkin?.status         ?? null,
+    todayPenalty:     attendance?.penalty_ngn    ?? 0,
+    todayAttStatus:   attendance?.status         ?? null,
+    todayCheckedInAt: attendance?.checked_in_at  ?? null,
+    checkinStatus:    checkin?.status            ?? null,
   })
 }

@@ -99,6 +99,19 @@ export default function AttendancePage() {
 
   useEffect(() => { loadData(date) }, [date, loadData])
 
+  // Auto-poll pending requests every 10 seconds when viewing today
+  useEffect(() => {
+    if (date !== todayStr) return
+    const id = setInterval(async () => {
+      const res = await fetch(`/api/manager/attendance?date=${date}`)
+      if (res.ok) {
+        const d = await res.json()
+        setPending(d.pending ?? [])
+      }
+    }, 10_000)
+    return () => clearInterval(id)
+  }, [date, todayStr])
+
   function setRow(id: string, patch: Partial<RowState>) {
     setRows(prev => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   }
