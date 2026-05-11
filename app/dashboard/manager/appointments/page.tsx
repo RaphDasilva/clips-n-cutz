@@ -247,7 +247,7 @@ export default function AppointmentsPage() {
             const svcNames = a.appointment_services.map(s => s.services?.name ?? '').filter(Boolean).join(', ') || '—'
             const canCheckIn = a.status === 'pending' || a.status === 'confirmed'
             return (
-              <div key={a.id} className="px-4 py-4 flex items-start justify-between gap-4">
+              <div key={a.id} className="px-4 py-4 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white text-sm font-semibold">{a.clients?.name ?? '—'}</p>
@@ -258,18 +258,8 @@ export default function AppointmentsPage() {
                     {date} · {time}{a.users?.name ? ` · ${a.users.name}` : ''}
                   </p>
                 </div>
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  {canCheckIn && (
-                    <button
-                      onClick={() => { setCheckInAppt(a); setCheckInStaffId(''); setCheckInError(''); setCheckInSuccess(false) }}
-                      className="flex items-center gap-1.5 bg-white text-gray-950 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 active:scale-[0.98] transition-all">
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
-                      </svg>
-                      Check In
-                    </button>
-                  )}
-                  <div className="relative">
+                {/* Status badge — always in the middle */}
+                <div className="relative flex-shrink-0">
                     <button
                       onClick={() => setStatusMenu(prev => prev === a.id ? null : a.id)}
                       disabled={updatingId === a.id}
@@ -292,7 +282,17 @@ export default function AppointmentsPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                {/* Check In button — rightmost */}
+                {canCheckIn && (
+                  <button
+                    onClick={() => { setCheckInAppt(a); setCheckInStaffId(''); setCheckInError(''); setCheckInSuccess(false) }}
+                    className="flex-shrink-0 flex items-center gap-1.5 bg-white text-gray-950 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 active:scale-[0.98] transition-all">
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
+                    </svg>
+                    Check In
+                  </button>
+                )}
               </div>
             )
           })}
