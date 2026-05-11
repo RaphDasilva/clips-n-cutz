@@ -129,7 +129,7 @@ export default function BookPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <Image src="/logo.jpg" alt="Clips N'Cutz" width={48} height={48} className="object-cover" />
+            <Image src="/logo.jpg" alt="Clips N'Cutz" width={48} height={48} className="object-contain" />
           </div>
           <div>
             <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>

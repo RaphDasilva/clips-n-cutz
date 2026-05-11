@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { createSession, getSession, getDashboardPath } from '@/lib/auth'
 import type { SessionUser } from '@/types/database'
@@ -55,25 +56,21 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-[#090909] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
 
-        {/* Logo / branding — replace with actual logo when available */}
+        {/* Logo */}
         <div className="text-center mb-10">
-          <div className="w-20 h-20 rounded-2xl bg-gray-800 border border-gray-700 mx-auto mb-5 flex items-center justify-center">
-            <span className="text-gray-400 text-xs font-medium tracking-wide">LOGO</span>
+          <div className="w-24 h-24 rounded-2xl bg-white mx-auto mb-5 flex items-center justify-center overflow-hidden">
+            <Image src="/logo.jpg" alt="Clips N'Cutz" width={96} height={96} className="object-contain" />
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">
-            Clips N&apos;Cutz
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">Staff Portal</p>
+          <h1 className="text-white text-2xl font-bold tracking-tight">Clips N&apos;Cutz</h1>
+          <p className="text-[#555] text-sm mt-1">Unisex Salon</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-gray-400 text-sm mb-2">
-              Phone Number
-            </label>
+            <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
             <input
               type="tel"
               value={phone}
@@ -81,31 +78,27 @@ export default function LoginPage() {
               placeholder="08012345678"
               autoComplete="tel"
               required
-              className="w-full bg-gray-900 text-white border border-gray-800 rounded-xl px-4 py-3.5 text-base placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
+              className="input"
             />
           </div>
 
           <div>
-            <label className="block text-gray-400 text-sm mb-2">
-              4-Digit PIN
-            </label>
+            <label className="block text-[#888] text-xs font-medium mb-1.5">4-Digit PIN</label>
             <input
               type="password"
               value={pin}
-              onChange={(e) =>
-                setPin(e.target.value.replace(/\D/g, '').slice(0, 4))
-              }
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
               placeholder="••••"
               inputMode="numeric"
               autoComplete="current-password"
               maxLength={4}
               required
-              className="w-full bg-gray-900 text-white border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
+              className="input text-center tracking-[0.5em]"
             />
           </div>
 
           {error && (
-            <div className="bg-red-950/50 border border-red-800/60 rounded-xl px-4 py-3">
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
               <p className="text-red-400 text-sm">{error}</p>
             </div>
           )}
@@ -113,13 +106,13 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || phone.length < 7 || pin.length !== 4}
-            className="w-full bg-white text-gray-950 font-semibold py-3.5 rounded-xl text-base mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+            className="w-full bg-white text-gray-950 font-semibold py-3.5 rounded-xl text-sm mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600 text-xs mt-8">
+        <p className="text-center text-[#444] text-xs mt-8">
           Forgot your PIN? Ask the manager to reset it.
         </p>
       </div>
