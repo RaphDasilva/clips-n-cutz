@@ -64,7 +64,7 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
       <div className="px-5 py-6 border-b border-[#1e1e1e]">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] text-gray-500 font-semibold tracking-wide">CNC</span>
+            <span className="text-[9px] text-[#C49A3C] font-semibold tracking-wide">CNC</span>
           </div>
           <div className="min-w-0">
             <p className="text-white text-sm font-semibold leading-tight truncate">Clips N&apos;Cutz</p>

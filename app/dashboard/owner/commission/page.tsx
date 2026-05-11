@@ -93,9 +93,9 @@ export default function CommissionPage() {
             <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission Owed</p>
             <p className="text-amber-400 text-xl font-bold tabular-nums">{fmtNaira(data.totalCommission)}</p>
           </div>
-          <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-4">
+          <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-4">
             <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Your Earnings</p>
-            <p className="text-emerald-400 text-xl font-bold tabular-nums">
+            <p className="text-[#C49A3C] text-xl font-bold tabular-nums">
               {fmtNaira(data.totalRevenue - data.totalCommission)}
             </p>
           </div>

@@ -128,7 +128,7 @@ export default function BookPage() {
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-9 h-9 rounded-lg bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-[9px] text-gray-500 font-semibold tracking-wide">CNC</span>
+            <span className="text-[9px] text-[#C49A3C] font-semibold tracking-wide">CNC</span>
           </div>
           <div>
             <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
@@ -168,7 +168,7 @@ export default function BookPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white text-sm font-semibold">Select Service</h2>
             {selectedTotal > 0 && (
-              <span className="text-white text-sm font-bold">{fmtNaira(selectedTotal)}</span>
+              <span className="text-[#C49A3C] text-sm font-bold">{fmtNaira(selectedTotal)}</span>
             )}
           </div>
           {loadingServices ? (
@@ -185,22 +185,22 @@ export default function BookPage() {
                   <button key={s.id} type="button" onClick={() => toggleService(s.id)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all text-left ${
                       on
-                        ? 'bg-white border-white text-gray-950'
+                        ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-white'
                         : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
                     }`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                        on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                        on ? 'bg-[#C49A3C] border-[#C49A3C]' : 'border-[#444]'
                       }`}>
                         {on && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <svg className="w-2.5 h-2.5 text-[#090909]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
                         )}
                       </div>
                       <span className="text-sm font-medium">{s.name}</span>
                     </div>
-                    <span className={`text-sm font-semibold tabular-nums ${on ? 'text-gray-950' : 'text-[#888]'}`}>
+                    <span className={`text-sm font-semibold tabular-nums ${on ? 'text-[#C49A3C]' : 'text-[#888]'}`}>
                       {fmtNaira(s.price_ngn)}
                     </span>
                   </button>
@@ -235,7 +235,7 @@ export default function BookPage() {
                   onClick={() => setTimeSlot(slot)}
                   className={`py-2.5 rounded-lg border text-sm font-medium transition-all ${
                     active
-                      ? 'bg-white border-white text-gray-950'
+                      ? 'bg-[#C49A3C] border-[#C49A3C] text-[#090909]'
                       : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
                   }`}>
                   {slot.label}
@@ -253,7 +253,7 @@ export default function BookPage() {
 
         <button type="submit"
           disabled={submitting || !clientName || !clientPhone || !selectedIds.length || !date || !timeSlot}
-          className="w-full bg-white text-gray-950 font-bold py-4 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 active:scale-[0.98] transition-all">
+          className="w-full bg-[#C49A3C] text-[#090909] font-bold py-4 rounded-xl text-sm disabled:opacity-40 hover:bg-[#B8912A] active:scale-[0.98] transition-all">
           {submitting ? 'Booking…' : selectedTotal > 0 ? `Book Appointment · ${fmtNaira(selectedTotal)}` : 'Book Appointment'}
         </button>
 

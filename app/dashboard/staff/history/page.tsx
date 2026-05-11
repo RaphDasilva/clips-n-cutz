@@ -106,9 +106,9 @@ export default function StaffHistory() {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-5">
+          <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-5">
             <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Total Earnings</p>
-            <p className="text-emerald-400 text-3xl font-bold tracking-tight tabular-nums">
+            <p className="text-[#C49A3C] text-3xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.totalEarnings ?? 0)}
             </p>
             <p className="text-[#555] text-xs mt-1.5">{PERIODS[period].label.toLowerCase()}</p>
@@ -146,7 +146,7 @@ export default function StaffHistory() {
                 <span className="text-[#666] text-xs font-semibold uppercase tracking-wider">
                   {fmtDate(day.date)}
                 </span>
-                <span className="text-emerald-400 text-xs font-semibold tabular-nums">
+                <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
                   {fmtNaira(day.dayEarnings)}
                 </span>
               </div>
@@ -160,7 +160,7 @@ export default function StaffHistory() {
                       <p className="text-[#555] text-xs mt-0.5">{e.clientName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-emerald-400 text-sm font-semibold tabular-nums">
+                      <p className="text-[#C49A3C] text-sm font-semibold tabular-nums">
                         {fmtNaira(e.earnings)}
                       </p>
                       <p className="text-[#444] text-xs tabular-nums">

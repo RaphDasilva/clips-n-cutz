@@ -152,7 +152,7 @@ export default function StaffHome() {
                     {s.visits?.clients?.name ?? 'Unknown client'} · {fmt12h(s.created_at)}
                   </p>
                 </div>
-                <p className="text-emerald-400 text-sm font-semibold tabular-nums">
+                <p className="text-[#C49A3C] text-sm font-semibold tabular-nums">
                   {fmtNaira(s.commission_ngn)}
                 </p>
               </div>

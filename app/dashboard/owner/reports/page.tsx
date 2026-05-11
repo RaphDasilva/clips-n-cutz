@@ -116,7 +116,7 @@ export default function ReportsPage() {
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
               <SummaryCard label="Total Revenue"    value={fmtNaira(data.summary.totalRevenue)}    />
-              <SummaryCard label="Your Earnings"    value={fmtNaira(data.summary.ownerProfit)}     accent="emerald" />
+              <SummaryCard label="Your Earnings"    value={fmtNaira(data.summary.ownerProfit)}     accent="gold" />
               <SummaryCard label="Commission Owed"  value={fmtNaira(data.summary.totalCommission)} accent="amber" />
               <SummaryCard label="Visits"           value={String(data.summary.totalVisits)}       />
               <SummaryCard label="Services Done"    value={String(data.summary.totalServices)}     />
@@ -249,17 +249,17 @@ export default function ReportsPage() {
   )
 }
 
-function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: 'emerald' | 'amber' }) {
+function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: 'gold' | 'amber' }) {
   return (
     <div className={`bg-[#141414] rounded-xl p-4 border ${
-      accent === 'emerald' ? 'border-emerald-500/20' :
-      accent === 'amber'   ? 'border-amber-500/20'   :
+      accent === 'gold'  ? 'border-[#C49A3C]/30' :
+      accent === 'amber' ? 'border-amber-500/20'  :
       'border-[#1e1e1e]'
     }`}>
       <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">{label}</p>
       <p className={`text-lg font-bold tabular-nums ${
-        accent === 'emerald' ? 'text-emerald-400' :
-        accent === 'amber'   ? 'text-amber-400'   :
+        accent === 'gold'  ? 'text-[#C49A3C]' :
+        accent === 'amber' ? 'text-amber-400'  :
         'text-white'
       }`}>{value}</p>
     </div>

@@ -1,7 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \" | root: %{http_code}\" http://localhost:3000)",
+      "Bash(curl -s -o /dev/null -w \"login: %{http_code}\" http://localhost:3000/login)",
+      "Bash(curl -s -o /dev/null -w \"root: %{http_code} | login: \" http://localhost:3001)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/login)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz remote -v)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz status)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz remote add origin https://github.com/RaphDasilva/clips-n-cutz.git)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz add CLAUDE.md app/ components/ lib/ supabase/ types/ package.json package-lock.json .env.example .gitignore)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz commit -m ' *)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz push -u origin main)",
+      "Bash(mkdir -p /Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/services /Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/walkin /Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/today /Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/staff/\\\\[id\\\\] /Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/clients /Users/raphaelokolo/Documents/clips-n-cutz/app/dashboard/manager/walk-in /Users/raphaelokolo/Documents/clips-n-cutz/app/dashboard/manager/team /Users/raphaelokolo/Documents/clips-n-cutz/app/dashboard/manager/clients && echo \"dirs created\")",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz add app/dashboard/manager/ app/api/manager/)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz push)",
+      "Bash(node -e ' *)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz add app/globals.css app/layout.tsx app/dashboard/manager/ components/)",
+      "Bash(git -C /Users/raphaelokolo/Documents/clips-n-cutz add app/api/owner/ app/dashboard/owner/ components/owner-sidebar.tsx)"
+    ],
+    "additionalDirectories": [
+      "/Users/raphaelokolo/Documents/clips-n-cutz/app/api/manager/staff"
     ]
   }
 }

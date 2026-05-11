@@ -150,9 +150,9 @@ export default function OwnerHome() {
                 See breakdown →
               </Link>
             </div>
-            <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-5">
+            <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-5">
               <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Your Earnings <span className="text-[#444] normal-case">(70%)</span></p>
-              <p className="text-emerald-400 text-2xl font-bold tabular-nums">{fmtNairaFull(ownerCut)}</p>
+              <p className="text-[#C49A3C] text-2xl font-bold tabular-nums">{fmtNairaFull(ownerCut)}</p>
               <p className="text-[#555] text-xs mt-1.5">After staff commission</p>
             </div>
           </div>
