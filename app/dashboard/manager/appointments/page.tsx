@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -59,10 +59,9 @@ function fmtDateTime(iso: string) {
   }
 }
 
-const emptyForm = { clientName: '', clientPhone: '', date: '', timeValue: '', timeLabel: '', serviceIds: [] as string[] }
-
 export default function AppointmentsPage() {
   const router = useRouter()
+  const [ready, setReady]       = useState(false)
   const [appts, setAppts]       = useState<ApptRow[]>([])
   const [loading, setLoading]   = useState(true)
   const [filter, setFilter]     = useState<FilterTab>('today')
@@ -71,59 +70,96 @@ export default function AppointmentsPage() {
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [statusMenu, setStatusMenu] = useState<string | null>(null)
 
-  const [showNew, setShowNew]   = useState(false)
-  const [newForm, setNewForm]   = useState(emptyForm)
+  const [showNew, setShowNew]       = useState(false)
+  const [clientName, setClientName] = useState('')
+  const [clientPhone, setClientPhone] = useState('')
+  const [apptDate, setApptDate]     = useState('')
+  const [timeValue, setTimeValue]   = useState('')
+  const [timeLabel, setTimeLabel]   = useState('')
+  const [selectedSvcs, setSelectedSvcs] = useState<string[]>([])
   const [newLoading, setNewLoading] = useState(false)
-  const [newError, setNewError] = useState('')
+  const [newError, setNewError]     = useState('')
 
-  const loadAppts = useCallback(async (f: FilterTab) => {
-    setLoading(true)
-    const res = await fetch(`/api/manager/appointments?filter=${f}`)
-    if (res.ok) setAppts(await res.json())
-    setLoading(false)
-  }, [])
-
+  // Auth check
   useEffect(() => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
-    fetch('/api/manager/services').then(r => r.json()).then(setServices)
-    loadAppts(filter)
-  }, [router, loadAppts, filter])
+    setReady(true)
+    fetch('/api/manager/services')
+      .then(r => r.ok ? r.json() : [])
+      .then(setServices)
+      .catch(() => {})
+  }, [router])
+
+  // Load appointments when filter changes
+  useEffect(() => {
+    if (!ready) return
+    setLoading(true)
+    fetch(`/api/manager/appointments?filter=${filter}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { setAppts(data); setLoading(false) })
+      .catch(() => { setAppts([]); setLoading(false) })
+  }, [filter, ready])
 
   async function updateStatus(id: string, status: string) {
     setUpdatingId(id)
     setStatusMenu(null)
-    await fetch(`/api/manager/appointments/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    setAppts(prev => prev.map(a => a.id === id ? { ...a, status } : a))
-    setUpdatingId(null)
+    try {
+      await fetch(`/api/manager/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      setAppts(prev => prev.map(a => a.id === id ? { ...a, status } : a))
+    } finally {
+      setUpdatingId(null)
+    }
   }
 
   async function submitNew(e: React.FormEvent) {
     e.preventDefault()
     setNewError('')
-    if (!newForm.clientName || !newForm.clientPhone || !newForm.date || !newForm.timeValue || !newForm.serviceIds.length) {
+    if (!clientName || !clientPhone || !apptDate || !timeValue || !selectedSvcs.length) {
       setNewError('Please fill in all fields and select at least one service.')
       return
     }
     setNewLoading(true)
-    const res = await fetch('/api/manager/appointments', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newForm),
-    })
-    const data = await res.json()
-    if (!res.ok) { setNewError(data.error ?? 'Failed to create appointment.'); setNewLoading(false); return }
-    setShowNew(false)
-    setNewForm(emptyForm)
-    loadAppts(filter)
-    setNewLoading(false)
+    try {
+      const res = await fetch('/api/manager/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clientName, clientPhone, date: apptDate, timeValue, timeLabel, serviceIds: selectedSvcs }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setNewError(data.error ?? 'Failed to create appointment.'); return }
+      // Reset form and reload
+      setShowNew(false)
+      setClientName(''); setClientPhone(''); setApptDate(''); setTimeValue(''); setTimeLabel(''); setSelectedSvcs([])
+      setLoading(true)
+      fetch(`/api/manager/appointments?filter=${filter}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(d => { setAppts(d); setLoading(false) })
+        .catch(() => setLoading(false))
+    } catch {
+      setNewError('Connection error. Try again.')
+    } finally {
+      setNewLoading(false)
+    }
+  }
+
+  function toggleService(id: string) {
+    setSelectedSvcs(prev => prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id])
   }
 
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-4xl mx-auto">
@@ -149,10 +185,10 @@ export default function AppointmentsPage() {
       <div className="flex gap-1 bg-[#141414] border border-[#1e1e1e] rounded-xl p-1 mb-6 w-fit">
         {(['today', 'upcoming', 'all'] as FilterTab[]).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
               filter === f ? 'bg-white text-gray-950' : 'text-[#666] hover:text-white'
             }`}>
-            {f === 'upcoming' ? 'Upcoming' : f.charAt(0).toUpperCase() + f.slice(1)}
+            {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'All'}
           </button>
         ))}
       </div>
@@ -177,8 +213,7 @@ export default function AppointmentsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="text-white text-sm font-semibold">{a.clients?.name ?? '—'}</p>
-                    <span className="text-[#444] text-xs">·</span>
-                    <p className="text-[#555] text-xs">{a.clients?.phone ?? ''}</p>
+                    {a.clients?.phone && <><span className="text-[#444] text-xs">·</span><p className="text-[#555] text-xs">{a.clients.phone}</p></>}
                   </div>
                   <p className="text-[#888] text-xs mt-1">{svcNames}</p>
                   <p className="text-[#555] text-xs mt-0.5">{date} · {time}</p>
@@ -212,7 +247,6 @@ export default function AppointmentsPage() {
         </div>
       )}
 
-      {/* Click outside to close status menu */}
       {statusMenu && <div className="fixed inset-0 z-0" onClick={() => setStatusMenu(null)} />}
 
       {/* New Appointment Modal */}
@@ -233,14 +267,12 @@ export default function AppointmentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[#888] text-xs font-medium mb-1.5">Client Name</label>
-                  <input value={newForm.clientName}
-                    onChange={e => setNewForm(p => ({ ...p, clientName: e.target.value }))}
+                  <input value={clientName} onChange={e => setClientName(e.target.value)}
                     placeholder="Full name" required className="input" />
                 </div>
                 <div>
                   <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
-                  <input value={newForm.clientPhone}
-                    onChange={e => setNewForm(p => ({ ...p, clientPhone: e.target.value.replace(/\D/g, '') }))}
+                  <input value={clientPhone} onChange={e => setClientPhone(e.target.value.replace(/\D/g, ''))}
                     placeholder="08012345678" inputMode="numeric" required className="input" />
                 </div>
               </div>
@@ -248,16 +280,16 @@ export default function AppointmentsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[#888] text-xs font-medium mb-1.5">Date</label>
-                  <input type="date" min={todayStr} value={newForm.date}
-                    onChange={e => setNewForm(p => ({ ...p, date: e.target.value }))}
-                    required className="input" />
+                  <input type="date" min={todayStr} value={apptDate}
+                    onChange={e => setApptDate(e.target.value)} required className="input" />
                 </div>
                 <div>
                   <label className="block text-[#888] text-xs font-medium mb-1.5">Time</label>
-                  <select value={newForm.timeValue}
+                  <select value={timeValue}
                     onChange={e => {
                       const opt = TIME_SLOTS.find(t => t.value === e.target.value)
-                      setNewForm(p => ({ ...p, timeValue: e.target.value, timeLabel: opt?.label ?? '' }))
+                      setTimeValue(e.target.value)
+                      setTimeLabel(opt?.label ?? '')
                     }}
                     required className="input">
                     <option value="">Select time</option>
@@ -270,19 +302,12 @@ export default function AppointmentsPage() {
                 <label className="block text-[#888] text-xs font-medium mb-2">Services</label>
                 <div className="grid grid-cols-2 gap-2">
                   {services.map(s => {
-                    const selected = newForm.serviceIds.includes(s.id)
+                    const sel = selectedSvcs.includes(s.id)
                     return (
-                      <button type="button" key={s.id}
-                        onClick={() => setNewForm(p => ({
-                          ...p,
-                          serviceIds: selected
-                            ? p.serviceIds.filter(id => id !== s.id)
-                            : [...p.serviceIds, s.id],
-                        }))}
+                      <button type="button" key={s.id} onClick={() => toggleService(s.id)}
                         className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                          selected
-                            ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-[#C49A3C]'
-                            : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
+                          sel ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-[#C49A3C]'
+                              : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
                         }`}>
                         <p className="font-medium leading-tight">{s.name}</p>
                         <p className="text-xs opacity-60 mt-0.5">₦{s.price_ngn.toLocaleString()}</p>
