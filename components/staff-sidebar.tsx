@@ -47,15 +47,13 @@ export function StaffSidebar({ user }: { user: SessionUser }) {
   return (
     <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[#1e1e1e] bg-[#0f0f0f] h-full">
       {/* Brand */}
-      <div className="px-5 py-6 border-b border-[#1e1e1e]">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0 overflow-hidden">
-            <Image src="/logo.jpg" alt="Clips N'Cutz" width={32} height={32} className="object-contain" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-white text-sm font-semibold leading-tight truncate">Clips N&apos;Cutz</p>
-            <p className="text-[#555] text-[11px] leading-tight">Staff Portal</p>
-          </div>
+      <div className="py-6 border-b border-[#1e1e1e] flex flex-col items-center gap-3">
+        <div className="w-16 h-16 rounded-2xl bg-white overflow-hidden flex items-center justify-center">
+          <Image src="/logo.jpg" alt="Clips N'Cutz" width={64} height={64} className="object-contain" />
+        </div>
+        <div className="text-center">
+          <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
+          <p className="text-[#555] text-[11px] leading-tight mt-0.5">Staff Portal</p>
         </div>
       </div>
 

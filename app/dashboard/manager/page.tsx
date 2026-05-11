@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -83,16 +82,11 @@ export default function ManagerHome() {
 
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
-            <Image src="/logo.jpg" alt="Clips N'Cutz" width={48} height={48} className="object-contain" />
-          </div>
-          <div>
-            <p className="text-[#555] text-sm mb-1">{today}</p>
-            <h1 className="text-white text-2xl font-bold tracking-tight">
-              Good {getGreeting()}, {userName}
-            </h1>
-          </div>
+        <div>
+          <p className="text-[#555] text-sm mb-1">{today}</p>
+          <h1 className="text-white text-2xl font-bold tracking-tight">
+            Good {getGreeting()}, {userName}
+          </h1>
         </div>
         <Link
           href="/dashboard/manager/walk-in"
