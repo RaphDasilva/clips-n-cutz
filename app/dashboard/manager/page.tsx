@@ -85,7 +85,7 @@ export default function ManagerHome() {
         <div>
           <p className="text-[#555] text-sm mb-1">{today}</p>
           <h1 className="text-white text-2xl font-bold tracking-tight">
-            Good {getGreeting()}, {userName}
+            Good {getGreeting()}
           </h1>
         </div>
         <Link
