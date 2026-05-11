@@ -114,11 +114,6 @@ export default function StaffHistory() {
             <p className="text-[#C49A3C] text-3xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.totalEarnings ?? 0)}
             </p>
-            {(data?.totalTips ?? 0) > 0 && (
-              <p className="text-[#C49A3C]/70 text-xs mt-1">
-                incl. {fmtNaira(data!.totalTips)} tips
-              </p>
-            )}
             <p className="text-[#555] text-xs mt-1">{PERIODS[period].label.toLowerCase()}</p>
           </div>
           <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
@@ -127,6 +122,23 @@ export default function StaffHistory() {
               {data?.totalServices ?? 0}
             </p>
             <p className="text-[#555] text-xs mt-1.5">{PERIODS[period].label.toLowerCase()}</p>
+          </div>
+        </div>
+        {/* Commission vs Tips breakdown */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission</p>
+            <p className="text-white text-2xl font-bold tabular-nums">
+              {fmtNaira(data?.totalCommission ?? 0)}
+            </p>
+            <p className="text-[#555] text-xs mt-1">30% of services</p>
+          </div>
+          <div className="bg-[#141414] border border-[#C49A3C]/20 rounded-xl p-5">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Tips</p>
+            <p className={`text-2xl font-bold tabular-nums ${(data?.totalTips ?? 0) > 0 ? 'text-[#C49A3C]' : 'text-[#333]'}`}>
+              {fmtNaira(data?.totalTips ?? 0)}
+            </p>
+            <p className="text-[#555] text-xs mt-1">100% yours</p>
           </div>
         </div>
       )}

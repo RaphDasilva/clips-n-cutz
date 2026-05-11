@@ -98,15 +98,17 @@ export default function StaffHome() {
             <p className="text-white text-4xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.todayEarnings ?? 0)}
             </p>
-            <div className="flex items-center gap-3 mt-2">
-              <p className="text-[#555] text-sm">
-                {data?.todayServices ?? 0} service{(data?.todayServices ?? 0) !== 1 ? 's' : ''}
-              </p>
-              {(data?.todayTips ?? 0) > 0 && (
-                <span className="text-[#C49A3C] text-xs font-medium px-2 py-0.5 rounded-full bg-[#C49A3C]/10 border border-[#C49A3C]/20">
-                  +{fmtNaira(data!.todayTips)} tips
-                </span>
-              )}
+            <div className="mt-4 pt-4 border-t border-[#1e1e1e] grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[#555] text-xs mb-1">Commission</p>
+                <p className="text-white text-base font-semibold tabular-nums">{fmtNaira(data?.todayCommission ?? 0)}</p>
+              </div>
+              <div>
+                <p className="text-[#555] text-xs mb-1">Tips</p>
+                <p className={`text-base font-semibold tabular-nums ${(data?.todayTips ?? 0) > 0 ? 'text-[#C49A3C]' : 'text-[#333]'}`}>
+                  {fmtNaira(data?.todayTips ?? 0)}
+                </p>
+              </div>
             </div>
           </>
         )}
