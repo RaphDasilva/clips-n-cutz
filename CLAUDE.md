@@ -9,7 +9,7 @@ Email: hello@lvdlabs.io
 
 ## What This Project Is
 A salon management CRM for Clips N'Cutz Unisex Salon, Lagos Nigeria.
-Client: Okolo Jovita (owner), Okolo Cajetan (manager).
+Client: Okolo Cajetan (owner and manager).
 Built as a free case study — goal is a paid template sold to
 other Nigerian salons through LVD Labs.
 
@@ -35,7 +35,7 @@ I am not a developer. I work entirely through Claude Code prompts.
 ## Role System — Critical
 Three roles. Same URL. Completely different dashboard per role.
 
-  owner   → Okolo Jovita: financial view (revenue, commission, reports)
+  owner   → Okolo Cajetan: financial view (revenue, commission, reports)
             read-only — cannot manage operations
 
   manager → Okolo Cajetan: full operational control (bookings,
@@ -106,7 +106,7 @@ from within their dashboard — no manager needed.
 
 ## Initial Staff Setup
 Before launch, create migration file 003_seed_users.sql to
-insert Jovita, Cajetan, and all 7 staff members at once.
+insert Cajetan and all 7 staff members at once.
 Required from client before this file can be written:
   - Full name of each staff member
   - Phone number of each staff member
@@ -123,8 +123,7 @@ Required from client before this file can be written:
 ## Client Details
   Business:   Clips N'Cutz Unisex Salon
   Type:       Unisex hair salon (Beauty Lounge)
-  Owner:      Okolo Jovita
-  Manager:    Okolo Cajetan (primary daily user of the system)
+  Owner:      Okolo Cajetan (owner and primary daily user of the system)
   Staff:      7 people, all paid 30% commission per service
   WhatsApp:   +2348062510256
   Instagram:  @_clipsncutz

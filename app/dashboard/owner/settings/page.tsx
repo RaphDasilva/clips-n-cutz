@@ -8,25 +8,62 @@ export default function OwnerSettings() {
   const router = useRouter()
   const [user, setUser] = useState<{ id: string; name: string; phone: string } | null>(null)
 
+  // Profile
+  const [editName, setEditName]   = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [profilePIN, setProfilePIN]     = useState('')
+  const [profileError, setProfileError] = useState('')
+  const [profileSuccess, setProfileSuccess] = useState(false)
+  const [profileLoading, setProfileLoading] = useState(false)
+
+  // PIN
   const [currentPIN, setCurrentPIN] = useState('')
   const [newPIN, setNewPIN]         = useState('')
   const [confirmPIN, setConfirmPIN] = useState('')
-  const [error, setError]           = useState('')
-  const [success, setSuccess]       = useState(false)
-  const [loading, setLoading]       = useState(false)
+  const [pinError, setPinError]     = useState('')
+  const [pinSuccess, setPinSuccess] = useState(false)
+  const [pinLoading, setPinLoading] = useState(false)
 
   useEffect(() => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setUser({ id: s.id, name: s.name, phone: s.phone })
+    setEditName(s.name)
+    setEditPhone(s.phone)
   }, [router])
+
+  async function handleUpdateProfile(e: React.FormEvent) {
+    e.preventDefault()
+    setProfileError(''); setProfileSuccess(false)
+    setProfileLoading(true)
+    try {
+      const res = await fetch('/api/auth/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user!.id, currentPIN: profilePIN, name: editName, phone: editPhone }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setProfileError(data.error ?? 'Failed to save changes.'); return }
+      setProfileSuccess(true)
+      setProfilePIN('')
+      setTimeout(() => {
+        setProfileSuccess(false)
+        clearSession()
+        router.replace('/login')
+      }, 2000)
+    } catch {
+      setProfileError('Connection error. Try again.')
+    } finally {
+      setProfileLoading(false)
+    }
+  }
 
   async function handleChangePIN(e: React.FormEvent) {
     e.preventDefault()
-    setError(''); setSuccess(false)
-    if (newPIN !== confirmPIN) { setError('New PINs do not match.'); return }
-    if (newPIN === currentPIN) { setError('New PIN must be different from your current PIN.'); return }
-    setLoading(true)
+    setPinError(''); setPinSuccess(false)
+    if (newPIN !== confirmPIN) { setPinError('New PINs do not match.'); return }
+    if (newPIN === currentPIN) { setPinError('New PIN must be different from your current PIN.'); return }
+    setPinLoading(true)
     try {
       const res = await fetch('/api/auth/change-pin', {
         method: 'POST',
@@ -34,14 +71,14 @@ export default function OwnerSettings() {
         body: JSON.stringify({ userId: user!.id, currentPIN, newPIN }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Failed to change PIN.'); return }
-      setSuccess(true)
+      if (!res.ok) { setPinError(data.error ?? 'Failed to change PIN.'); return }
+      setPinSuccess(true)
       setCurrentPIN(''); setNewPIN(''); setConfirmPIN('')
       setTimeout(() => { clearSession(); router.replace('/login') }, 2000)
     } catch {
-      setError('Connection error. Try again.')
+      setPinError('Connection error. Try again.')
     } finally {
-      setLoading(false)
+      setPinLoading(false)
     }
   }
 
@@ -53,25 +90,52 @@ export default function OwnerSettings() {
         <p className="text-[#555] text-sm mt-0.5">Manage your account</p>
       </div>
 
-      {/* Profile */}
+      {/* Update Profile */}
       <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 mb-6">
-        <h2 className="text-[#666] text-xs font-semibold uppercase tracking-wider mb-4">Your Account</h2>
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-lg font-bold">{user?.name.charAt(0).toUpperCase() ?? '?'}</span>
+        <h2 className="text-[#666] text-xs font-semibold uppercase tracking-wider mb-5">Login Details</h2>
+        {profileSuccess ? (
+          <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-4 text-center">
+            <p className="text-emerald-400 text-sm font-medium">Details updated successfully.</p>
+            <p className="text-[#555] text-xs mt-1">Signing you out — please log in again.</p>
           </div>
-          <div>
-            <p className="text-white font-semibold">{user?.name}</p>
-            <p className="text-[#555] text-sm">{user?.phone}</p>
-            <p className="text-[#444] text-xs mt-0.5">Owner</p>
-          </div>
-        </div>
+        ) : (
+          <form onSubmit={handleUpdateProfile} className="space-y-4">
+            <div>
+              <label className="block text-[#888] text-xs font-medium mb-1.5">Full Name</label>
+              <input value={editName} onChange={e => setEditName(e.target.value)}
+                placeholder="Your full name" required className="input" />
+            </div>
+            <div>
+              <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
+              <input value={editPhone} onChange={e => setEditPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="08012345678" inputMode="numeric" required className="input" />
+            </div>
+            <div>
+              <label className="block text-[#888] text-xs font-medium mb-1.5">Confirm with Current PIN</label>
+              <input type="password" value={profilePIN}
+                onChange={e => setProfilePIN(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                placeholder="••••" inputMode="numeric" maxLength={4} required
+                className="input text-center tracking-[0.5em] max-w-[180px]" />
+              <p className="text-[#444] text-xs mt-1.5">Enter your PIN to confirm the changes.</p>
+            </div>
+            {profileError && (
+              <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
+                <p className="text-red-400 text-sm">{profileError}</p>
+              </div>
+            )}
+            <button type="submit"
+              disabled={profileLoading || profilePIN.length !== 4 || !editName || !editPhone}
+              className="bg-white text-gray-950 font-semibold px-6 py-2.5 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 active:scale-[0.98] transition-all">
+              {profileLoading ? 'Saving…' : 'Save Changes'}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Change PIN */}
       <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 mb-6">
         <h2 className="text-[#666] text-xs font-semibold uppercase tracking-wider mb-5">Change PIN</h2>
-        {success ? (
+        {pinSuccess ? (
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-4 text-center">
             <p className="text-emerald-400 text-sm font-medium">PIN changed successfully.</p>
             <p className="text-[#555] text-xs mt-1">Signing you out — please log in with your new PIN.</p>
@@ -99,15 +163,15 @@ export default function OwnerSettings() {
                 placeholder="••••" inputMode="numeric" maxLength={4} required
                 className="input text-center tracking-[0.5em] max-w-[180px]" />
             </div>
-            {error && (
+            {pinError && (
               <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
-                <p className="text-red-400 text-sm">{error}</p>
+                <p className="text-red-400 text-sm">{pinError}</p>
               </div>
             )}
             <button type="submit"
-              disabled={loading || currentPIN.length !== 4 || newPIN.length !== 4 || confirmPIN.length !== 4}
+              disabled={pinLoading || currentPIN.length !== 4 || newPIN.length !== 4 || confirmPIN.length !== 4}
               className="bg-white text-gray-950 font-semibold px-6 py-2.5 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 active:scale-[0.98] transition-all">
-              {loading ? 'Saving…' : 'Save New PIN'}
+              {pinLoading ? 'Saving…' : 'Save New PIN'}
             </button>
           </form>
         )}
