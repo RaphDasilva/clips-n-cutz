@@ -86,8 +86,8 @@ export default function AppointmentsPage() {
     if (!s) { router.replace('/login'); return }
     setReady(true)
     fetch('/api/manager/services')
-      .then(r => r.ok ? r.json() : [])
-      .then(setServices)
+      .then(r => r.ok ? r.json() : { services: [] })
+      .then(d => setServices(d.services ?? []))
       .catch(() => {})
   }, [router])
 
