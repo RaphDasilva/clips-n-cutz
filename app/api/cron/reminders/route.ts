@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/twilio'
+import { sendMessage } from '@/lib/messaging'
 
 // Runs every hour via Vercel Cron (Pro plan).
 // Each run handles two reminder types:
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
           `_Clips N'Cutz Unisex Salon, Lagos_`,
         ].join('\n')
 
-        const sid = await sendWhatsApp(phone, msg)
+        const sid = await sendMessage(phone, msg)
         await supabase.from('whatsapp_messages').insert({
           to_phone:               phone,
           message_type:           'reminder_24h',
@@ -143,7 +143,7 @@ export async function GET(req: NextRequest) {
           `_Clips N'Cutz Unisex Salon, Lagos_`,
         ].join('\n')
 
-        const sid = await sendWhatsApp(phone, msg)
+        const sid = await sendMessage(phone, msg)
         await supabase.from('whatsapp_messages').insert({
           to_phone:               phone,
           message_type:           'reminder_2h',

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/twilio'
+import { sendMessage } from '@/lib/messaging'
 
 // Runs every day at 7am UTC (8am Lagos) via Vercel Cron.
 // Handles two tasks in one pass:
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       `_Clips N'Cutz Unisex Salon, Lagos_`,
     ].join('\n')
 
-    const sid = await sendWhatsApp(phone, msg)
+    const sid = await sendMessage(phone, msg)
     const now = new Date().toISOString()
 
     await supabase
@@ -158,7 +158,7 @@ export async function GET(req: NextRequest) {
       `_Clips N'Cutz Unisex Salon, Lagos_`,
     ].join('\n')
 
-    const sid = await sendWhatsApp(phone, msg)
+    const sid = await sendMessage(phone, msg)
     const now = new Date().toISOString()
 
     await supabase.from('whatsapp_messages').insert({

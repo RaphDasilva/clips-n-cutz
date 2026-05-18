@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { sendWhatsApp } from '@/lib/twilio'
+import { sendMessage } from '@/lib/messaging'
 import type { Service, Client } from '@/types/database'
 
 interface Appointment { id: string; scheduled_at: string }
@@ -92,15 +92,15 @@ export async function POST(req: NextRequest) {
     `_Clips N'Cutz Unisex Salon, Lagos_`,
   ].join('\n')
 
-  const twilioSid = await sendWhatsApp(clientPhone, clientMsg)
+  const sid = await sendMessage(clientPhone, clientMsg)
 
   await supabase.from('whatsapp_messages').insert({
     to_phone:               clientPhone,
     message_type:           'booking_confirmation',
     body:                   clientMsg,
     related_appointment_id: appt.id,
-    twilio_sid:             twilioSid ?? undefined,
-    status:                 twilioSid ? 'sent' : 'failed',
+    twilio_sid:             sid ?? undefined,
+    status:                 sid ? 'sent' : 'failed',
     sent_at:                new Date().toISOString(),
   })
 
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       `Date: ${displayDate}`,
       `Time: ${timeLabel}`,
     ].join('\n')
-    await sendWhatsApp(managerPhone, managerMsg)
+    await sendMessage(managerPhone, managerMsg)
   }
 
   return NextResponse.json({ success: true, appointmentId: appt.id, displayDate, timeLabel, serviceNames })
