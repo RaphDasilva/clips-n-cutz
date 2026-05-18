@@ -234,16 +234,17 @@ export default function WalkInPage() {
                 )}
               </div>
 
-              {!staffId ? (
-                <p className="text-[#555] text-xs">Select a staff member to continue</p>
-              ) : (
-                <ServicePicker
-                  services={services}
-                  selectedIds={selectedIds}
-                  onChange={setSelectedIds}
-                  availableIds={staffHasServices ? staffServiceIds : undefined}
-                  placeholder="+ Add services for this visit"
-                />
+              <ServicePicker
+                services={services}
+                selectedIds={selectedIds}
+                onChange={setSelectedIds}
+                availableIds={staffId && staffHasServices ? staffServiceIds : undefined}
+                placeholder="+ Add services for this visit"
+              />
+              {staffId && staffHasServices && (
+                <p className="text-[#555] text-[10px] mt-2.5">
+                  Filtered to services this staff member can perform.
+                </p>
               )}
             </div>
           </div>
