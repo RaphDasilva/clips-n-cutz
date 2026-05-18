@@ -7,7 +7,8 @@ export async function GET() {
   const { data, error } = await supabase
     .from('services')
     .select('*')
-    .order('price_ngn') as { data: Service[] | null; error: unknown }
+    .eq('is_active', true)
+    .order('sort_order') as { data: Service[] | null; error: unknown }
 
   if (error) return NextResponse.json({ error: 'Failed to load services.' }, { status: 500 })
   return NextResponse.json({ services: data ?? [] })

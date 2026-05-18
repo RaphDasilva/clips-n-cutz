@@ -9,7 +9,7 @@ export async function GET() {
     .from('services')
     .select('*')
     .eq('is_active', true)
-    .order('name') as { data: Service[] | null; error: { message: string } | null }
+    .order('sort_order') as { data: Service[] | null; error: { message: string } | null }
 
   if (error) {
     return NextResponse.json({ error: 'Failed to load services.' }, { status: 500 })

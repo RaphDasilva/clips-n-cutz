@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import type { Service } from '@/types/database'
+import { groupServicesByCategory } from '@/lib/services'
 
 const TIME_SLOTS = [
   { label: '9:00 AM',  value: '09:00' },
@@ -60,6 +61,8 @@ export default function BookPage() {
   const selectedTotal = services
     .filter(s => selectedIds.includes(s.id))
     .reduce((sum, s) => sum + s.price_ngn, 0)
+
+  const serviceGroups = useMemo(() => groupServicesByCategory(services), [services])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -179,34 +182,43 @@ export default function BookPage() {
               ))}
             </div>
           ) : (
-            <div className="space-y-2">
-              {services.map(s => {
-                const on = selectedIds.includes(s.id)
-                return (
-                  <button key={s.id} type="button" onClick={() => toggleService(s.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all text-left ${
-                      on
-                        ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-white'
-                        : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                    }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                        on ? 'bg-[#C49A3C] border-[#C49A3C]' : 'border-[#444]'
-                      }`}>
-                        {on && (
-                          <svg className="w-2.5 h-2.5 text-[#090909]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium">{s.name}</span>
-                    </div>
-                    <span className={`text-sm font-semibold tabular-nums ${on ? 'text-[#C49A3C]' : 'text-[#888]'}`}>
-                      {fmtNaira(s.price_ngn)}
-                    </span>
-                  </button>
-                )
-              })}
+            <div className="space-y-5">
+              {serviceGroups.map(group => (
+                <div key={group.category}>
+                  <p className="text-[#C49A3C] text-[10px] font-bold uppercase tracking-wider mb-2 px-1">
+                    {group.category}
+                  </p>
+                  <div className="space-y-2">
+                    {group.services.map(s => {
+                      const on = selectedIds.includes(s.id)
+                      return (
+                        <button key={s.id} type="button" onClick={() => toggleService(s.id)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-lg border transition-all text-left ${
+                            on
+                              ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-white'
+                              : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                          }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                              on ? 'bg-[#C49A3C] border-[#C49A3C]' : 'border-[#444]'
+                            }`}>
+                              {on && (
+                                <svg className="w-2.5 h-2.5 text-[#090909]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium">{s.name}</span>
+                          </div>
+                          <span className={`text-sm font-semibold tabular-nums ${on ? 'text-[#C49A3C]' : 'text-[#888]'}`}>
+                            {fmtNaira(s.price_ngn)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

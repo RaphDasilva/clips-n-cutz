@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Service, User } from '@/types/database'
+import { groupServicesByCategory } from '@/lib/services'
 
 type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
@@ -69,6 +70,8 @@ export default function WalkInPage() {
   const selectedTotal = services
     .filter(s => selectedIds.includes(s.id))
     .reduce((sum, s) => sum + s.price_ngn, 0)
+
+  const serviceGroups = useMemo(() => groupServicesByCategory(services), [services])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -249,36 +252,47 @@ export default function WalkInPage() {
                 </div>
               )}
 
-              <div className="divide-y divide-[#1e1e1e] flex-1">
-                {services.map(s => {
-                  const on        = selectedIds.includes(s.id)
-                  const available = canDo(s.id)
-                  return (
-                    <button key={s.id} type="button" onClick={() => toggle(s.id)}
-                      disabled={!available}
-                      className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-all ${
-                        on        ? 'bg-white/[0.04]'
-                        : available ? 'hover:bg-[#1a1a1a]'
-                        : 'opacity-30 cursor-not-allowed'
-                      }`}>
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
-                        on ? 'bg-white border-white' : available ? 'border-[#3a3a3a]' : 'border-[#2a2a2a]'
-                      }`}>
-                        {on && (
-                          <svg className="w-2.5 h-2.5 text-gray-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className={`flex-1 text-sm font-medium ${on ? 'text-white' : available ? 'text-[#999]' : 'text-[#555]'}`}>
-                        {s.name}
-                      </span>
-                      <span className={`text-sm tabular-nums font-semibold ${on ? 'text-white' : 'text-[#555]'}`}>
-                        {fmtNaira(s.price_ngn)}
-                      </span>
-                    </button>
-                  )
-                })}
+              <div className="flex-1 overflow-y-auto max-h-[600px]">
+                {serviceGroups.map(group => (
+                  <div key={group.category}>
+                    <div className="sticky top-0 z-10 bg-[#0f0f0f] border-b border-[#1e1e1e] px-5 py-2">
+                      <p className="text-[#888] text-[10px] font-semibold uppercase tracking-wider">
+                        {group.category}
+                      </p>
+                    </div>
+                    <div className="divide-y divide-[#1e1e1e]">
+                      {group.services.map(s => {
+                        const on        = selectedIds.includes(s.id)
+                        const available = canDo(s.id)
+                        return (
+                          <button key={s.id} type="button" onClick={() => toggle(s.id)}
+                            disabled={!available}
+                            className={`w-full flex items-center gap-3 px-5 py-3 text-left transition-all ${
+                              on        ? 'bg-white/[0.04]'
+                              : available ? 'hover:bg-[#1a1a1a]'
+                              : 'opacity-30 cursor-not-allowed'
+                            }`}>
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 transition-all ${
+                              on ? 'bg-white border-white' : available ? 'border-[#3a3a3a]' : 'border-[#2a2a2a]'
+                            }`}>
+                              {on && (
+                                <svg className="w-2.5 h-2.5 text-gray-950" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className={`flex-1 text-sm font-medium ${on ? 'text-white' : available ? 'text-[#999]' : 'text-[#555]'}`}>
+                              {s.name}
+                            </span>
+                            <span className={`text-sm tabular-nums font-semibold ${on ? 'text-white' : 'text-[#555]'}`}>
+                              {fmtNaira(s.price_ngn)}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>

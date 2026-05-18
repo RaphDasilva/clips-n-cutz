@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 
@@ -19,7 +19,25 @@ interface ApptRow {
   users: { name: string } | null
 }
 
-interface ServiceOption { id: string; name: string; price_ngn: number }
+interface ServiceOption { id: string; name: string; price_ngn: number; category: string; sort_order: number }
+
+interface ServiceGroup { category: string; services: ServiceOption[] }
+
+function groupOptions(items: ServiceOption[]): ServiceGroup[] {
+  const groups: ServiceGroup[] = []
+  const byKey = new Map<string, ServiceGroup>()
+  for (const s of items) {
+    const key = s.category || 'Other'
+    let group = byKey.get(key)
+    if (!group) {
+      group = { category: key, services: [] }
+      byKey.set(key, group)
+      groups.push(group)
+    }
+    group.services.push(s)
+  }
+  return groups
+}
 interface StaffOption   { id: string; name: string }
 
 type FilterTab = 'today' | 'upcoming' | 'all'
@@ -71,6 +89,8 @@ export default function AppointmentsPage() {
   const [filter, setFilter]     = useState<FilterTab>('today')
   const [services, setServices] = useState<ServiceOption[]>([])
   const [staff, setStaff]       = useState<StaffOption[]>([])
+
+  const serviceGroups = useMemo(() => groupOptions(services), [services])
 
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [statusMenu, setStatusMenu] = useState<string | null>(null)
@@ -355,26 +375,35 @@ export default function AppointmentsPage() {
                       </span>
                     )}
                   </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {services.map(s => {
-                      const selected = checkInServiceIds.includes(s.id)
-                      return (
-                        <button type="button" key={s.id}
-                          onClick={() => setCheckInServiceIds(prev =>
-                            prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
-                          )}
-                          className={`text-left px-3 py-2 rounded-lg border transition-all ${
-                            selected
-                              ? 'bg-white border-white text-gray-950'
-                              : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
-                          }`}>
-                          <p className="text-xs font-medium leading-tight">{s.name}</p>
-                          <p className={`text-[11px] mt-0.5 tabular-nums ${selected ? 'text-gray-600' : 'text-[#555]'}`}>
-                            ₦{s.price_ngn.toLocaleString()}
-                          </p>
-                        </button>
-                      )
-                    })}
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                    {serviceGroups.map(group => (
+                      <div key={group.category}>
+                        <p className="text-[#666] text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                          {group.category}
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {group.services.map(s => {
+                            const selected = checkInServiceIds.includes(s.id)
+                            return (
+                              <button type="button" key={s.id}
+                                onClick={() => setCheckInServiceIds(prev =>
+                                  prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                )}
+                                className={`text-left px-3 py-2 rounded-lg border transition-all ${
+                                  selected
+                                    ? 'bg-white border-white text-gray-950'
+                                    : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
+                                }`}>
+                                <p className="text-xs font-medium leading-tight">{s.name}</p>
+                                <p className={`text-[11px] mt-0.5 tabular-nums ${selected ? 'text-gray-600' : 'text-[#555]'}`}>
+                                  ₦{s.price_ngn.toLocaleString()}
+                                </p>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
@@ -499,20 +528,29 @@ export default function AppointmentsPage() {
 
               <div>
                 <label className="block text-[#888] text-xs font-medium mb-2">Services</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {services.map(s => {
-                    const sel = selectedSvcs.includes(s.id)
-                    return (
-                      <button type="button" key={s.id} onClick={() => toggleService(s.id)}
-                        className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
-                          sel ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-[#C49A3C]'
-                              : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
-                        }`}>
-                        <p className="font-medium leading-tight">{s.name}</p>
-                        <p className="text-xs opacity-60 mt-0.5">₦{s.price_ngn.toLocaleString()}</p>
-                      </button>
-                    )
-                  })}
+                <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1">
+                  {serviceGroups.map(group => (
+                    <div key={group.category}>
+                      <p className="text-[#C49A3C] text-[10px] font-bold uppercase tracking-wider mb-1.5">
+                        {group.category}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {group.services.map(s => {
+                          const sel = selectedSvcs.includes(s.id)
+                          return (
+                            <button type="button" key={s.id} onClick={() => toggleService(s.id)}
+                              className={`text-left px-3 py-2.5 rounded-xl border text-sm transition-all ${
+                                sel ? 'bg-[#C49A3C]/10 border-[#C49A3C]/50 text-[#C49A3C]'
+                                    : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a]'
+                              }`}>
+                              <p className="font-medium leading-tight">{s.name}</p>
+                              <p className="text-xs opacity-60 mt-0.5">₦{s.price_ngn.toLocaleString()}</p>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

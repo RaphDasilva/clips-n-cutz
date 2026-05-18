@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import type { User, Service } from '@/types/database'
+import { groupServicesByCategory } from '@/lib/services'
 
 type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
@@ -9,6 +10,8 @@ export default function TeamPage() {
   const [staff, setStaff]             = useState<StaffMember[]>([])
   const [services, setServices]       = useState<Service[]>([])
   const [loading, setLoading]         = useState(true)
+
+  const serviceGroups = useMemo(() => groupServicesByCategory(services), [services])
   const [showAdd, setShowAdd]         = useState(false)
   const [resetTarget, setResetTarget] = useState<StaffMember | null>(null)
   const [servicesTarget, setServicesTarget] = useState<StaffMember | null>(null)
@@ -317,29 +320,38 @@ export default function TeamPage() {
             Select all services {servicesTarget.name.split(' ')[0]} can perform.
           </p>
           <form onSubmit={handleSaveServices}>
-            <div className="space-y-2 mb-5">
-              {services.map(sv => {
-                const on = editIds.includes(sv.id)
-                return (
-                  <button key={sv.id} type="button" onClick={() => toggleService(sv.id)}
-                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                      on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                    }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                        on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
-                      }`}>
-                        {on && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
-                        )}
-                      </div>
-                      <span className="text-sm font-medium">{sv.name}</span>
-                    </div>
-                  </button>
-                )
-              })}
+            <div className="space-y-4 mb-5 max-h-[500px] overflow-y-auto pr-1">
+              {serviceGroups.map(group => (
+                <div key={group.category}>
+                  <p className="text-[#666] text-[10px] font-bold uppercase tracking-wider mb-2">
+                    {group.category}
+                  </p>
+                  <div className="space-y-2">
+                    {group.services.map(sv => {
+                      const on = editIds.includes(sv.id)
+                      return (
+                        <button key={sv.id} type="button" onClick={() => toggleService(sv.id)}
+                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                            on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                          }`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                              on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                            }`}>
+                              {on && (
+                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="text-sm font-medium">{sv.name}</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
             {editError && <p className="text-red-400 text-sm mb-3">{editError}</p>}
             <button type="submit" disabled={editLoading}
