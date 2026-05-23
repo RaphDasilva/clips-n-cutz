@@ -51,6 +51,8 @@ export function getSession(): SessionUser | null {
 export function clearSession(): void {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(SESSION_KEY)
+    // Fire-and-forget: clear server-side cookie too
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {})
   }
 }
 

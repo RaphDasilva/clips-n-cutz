@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifyPIN } from '@/lib/auth'
+import { signSessionToken, SESSION_COOKIE } from '@/lib/auth-server'
 import type { User, SessionUser } from '@/types/database'
 
 export async function POST(req: NextRequest) {
@@ -53,5 +54,12 @@ export async function POST(req: NextRequest) {
     mustChangePIN: user.must_change_pin,
   }
 
-  return NextResponse.json({ user: sessionUser })
+  const token = await signSessionToken(sessionUser)
+
+  const res = NextResponse.json({ user: sessionUser })
+  res.cookies.set({
+    ...SESSION_COOKIE,
+    value: token,
+  })
+  return res
 }

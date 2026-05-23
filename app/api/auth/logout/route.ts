@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
+import { SESSION_COOKIE } from '@/lib/auth-server'
 
 export async function POST() {
-  // The session lives in localStorage — the client clears it.
-  // This route exists so every logout goes through a consistent API call.
-  return NextResponse.json({ success: true })
+  const res = NextResponse.json({ success: true })
+  res.cookies.set({
+    ...SESSION_COOKIE,
+    value:  '',
+    maxAge: 0,
+  })
+  return res
 }
