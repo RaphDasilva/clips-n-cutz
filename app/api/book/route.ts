@@ -5,6 +5,15 @@ import type { Service, Client } from '@/types/database'
 
 interface Appointment { id: string; scheduled_at: string }
 
+const RATE_LIMIT_WINDOW_MIN  = 60
+const RATE_LIMIT_MAX_PER_IP  = 5
+
+function getClientIP(req: NextRequest): string {
+  const fwd = req.headers.get('x-forwarded-for')
+  if (fwd) return fwd.split(',')[0].trim()
+  return req.headers.get('x-real-ip') ?? 'unknown'
+}
+
 export async function POST(req: NextRequest) {
   const body        = await req.json()
   const clientName  = (body.clientName  ?? '').trim() as string
@@ -19,6 +28,32 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = createClient()
+
+  // ── Rate limit by IP ─────────────────────────────────────────
+  const ip          = getClientIP(req)
+  const windowStart = new Date(Date.now() - RATE_LIMIT_WINDOW_MIN * 60_000).toISOString()
+
+  const { count } = await supabase
+    .from('booking_rate_limit')
+    .select('id', { count: 'exact', head: true })
+    .eq('ip', ip)
+    .gte('created_at', windowStart) as { count: number | null }
+
+  if ((count ?? 0) >= RATE_LIMIT_MAX_PER_IP) {
+    return NextResponse.json(
+      { error: 'Too many booking attempts. Please try again in an hour.' },
+      { status: 429 }
+    )
+  }
+
+  // Record this attempt (best-effort, fire and forget after)
+  await supabase.from('booking_rate_limit').insert({ ip })
+
+  // Opportunistically purge entries older than the window
+  await supabase
+    .from('booking_rate_limit')
+    .delete()
+    .lt('created_at', windowStart)
 
   // 1. Load service details
   const { data: services, error: svErr } = await supabase
