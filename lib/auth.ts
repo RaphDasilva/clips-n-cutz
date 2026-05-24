@@ -56,6 +56,20 @@ export function clearSession(): void {
   }
 }
 
+export async function switchRole(targetRole: UserRole): Promise<SessionUser | null> {
+  const res = await fetch('/api/auth/switch-role', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ role: targetRole }),
+  })
+  if (!res.ok) return null
+  const data = await res.json()
+  const user = data.user as SessionUser
+  // Refresh localStorage so the UI immediately reflects the new role
+  createSession(user)
+  return user
+}
+
 export function getDashboardPath(role: UserRole): string {
   switch (role) {
     case 'owner':   return '/dashboard/owner'

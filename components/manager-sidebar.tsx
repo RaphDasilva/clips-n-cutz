@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { clearSession } from '@/lib/auth'
+import { useState } from 'react'
+import { clearSession, switchRole } from '@/lib/auth'
 import type { SessionUser } from '@/types/database'
 
 const NAV_ITEMS = [
@@ -94,10 +95,20 @@ const NAV_ITEMS = [
 export function ManagerSidebar({ user }: { user: SessionUser }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [switching, setSwitching] = useState(false)
+
+  const isImpersonating = user.actualRole === 'owner' && user.role === 'manager'
 
   function handleLogout() {
     clearSession()
     router.replace('/login')
+  }
+
+  async function handleSwitchBack() {
+    setSwitching(true)
+    const result = await switchRole('owner')
+    if (result) router.replace('/dashboard/owner')
+    else setSwitching(false)
   }
 
   return (
@@ -152,6 +163,15 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
             <p className="text-[#555] text-[11px] capitalize">{user.role}</p>
           </div>
         </div>
+        {isImpersonating && (
+          <button onClick={handleSwitchBack} disabled={switching}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#C49A3C] hover:bg-[#C49A3C]/10 transition-all text-sm disabled:opacity-40 mb-1">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+            </svg>
+            {switching ? 'Switching…' : 'Switch back to Owner'}
+          </button>
+        )}
         <button
           onClick={handleLogout}
           className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#666] hover:text-white hover:bg-[#1a1a1a] transition-all text-sm"

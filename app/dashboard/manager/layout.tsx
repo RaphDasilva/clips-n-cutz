@@ -2,6 +2,7 @@
 
 import { AuthGuard } from '@/components/auth-guard'
 import { ManagerSidebar, MobileNav } from '@/components/manager-sidebar'
+import { ImpersonationBanner } from '@/components/impersonation-banner'
 import type { SessionUser } from '@/types/database'
 
 export default function ManagerLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
 
           {/* Main content */}
           <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
+            <ImpersonationBanner user={user} />
             {children}
           </main>
 

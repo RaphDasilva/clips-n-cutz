@@ -17,6 +17,7 @@ export async function signSessionToken(user: SessionUser): Promise<string> {
     phone:         user.phone,
     role:          user.role,
     mustChangePIN: user.mustChangePIN,
+    actualRole:    user.actualRole ?? user.role,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -33,6 +34,7 @@ export async function verifySessionToken(token: string): Promise<SessionUser | n
       phone:         payload.phone as string,
       role:          payload.role as SessionUser['role'],
       mustChangePIN: payload.mustChangePIN as boolean,
+      actualRole:    (payload.actualRole as SessionUser['role']) ?? (payload.role as SessionUser['role']),
     }
   } catch {
     return null

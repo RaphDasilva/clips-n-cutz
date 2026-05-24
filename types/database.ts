@@ -138,6 +138,7 @@ export interface SessionUser {
   phone: string
   role: UserRole
   mustChangePIN: boolean
+  actualRole?: UserRole  // set when impersonating; equals the role the user truly has
 }
 
 // ============================================================
