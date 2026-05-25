@@ -32,11 +32,11 @@ export async function GET(req: NextRequest) {
       .gte('visits.visit_date', weekStart)
       .lte('visits.visit_date', weekEnd) as unknown as Promise<{ data: { commission_ngn: number }[] | null; error: unknown }>,
     supabase
-      .from('visits')
-      .select('tip_ngn')
+      .from('visit_services')
+      .select('tip_ngn, visits!inner(visit_date)')
       .eq('staff_id', staffId)
-      .gte('visit_date', weekStart)
-      .lte('visit_date', weekEnd) as unknown as Promise<{ data: { tip_ngn: number }[] | null; error: unknown }>,
+      .gte('visits.visit_date', weekStart)
+      .lte('visits.visit_date', weekEnd) as unknown as Promise<{ data: { tip_ngn: number }[] | null; error: unknown }>,
     supabase
       .from('attendance')
       .select('penalty_ngn')

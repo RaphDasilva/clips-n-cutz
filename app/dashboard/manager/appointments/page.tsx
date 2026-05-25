@@ -89,10 +89,11 @@ export default function AppointmentsPage() {
   const [newError, setNewError]     = useState('')
 
   // Check-in modal
-  const [checkInAppt, setCheckInAppt]         = useState<ApptRow | null>(null)
-  const [checkInStaffId, setCheckInStaffId]   = useState('')
-  const [checkInServiceIds, setCheckInServiceIds] = useState<string[]>([])
-  const [checkInTip, setCheckInTip]                 = useState('')
+  const [checkInAppt, setCheckInAppt]               = useState<ApptRow | null>(null)
+  const [checkInDefaultStaff, setCheckInDefaultStaff] = useState('')
+  const [checkInServiceIds, setCheckInServiceIds]   = useState<string[]>([])
+  const [checkInStaffByService, setCheckInStaffByService] = useState<Record<string, string>>({})
+  const [checkInTipByStaff, setCheckInTipByStaff]   = useState<Record<string, string>>({})
   const [checkInPayment, setCheckInPayment]         = useState<'cash' | 'transfer' | 'pos'>('cash')
   const [checkInLoading, setCheckInLoading]         = useState(false)
   const [checkInError, setCheckInError]             = useState('')
@@ -138,20 +139,31 @@ export default function AppointmentsPage() {
   async function submitCheckIn(e: React.FormEvent) {
     e.preventDefault()
     setCheckInError('')
-    if (!checkInStaffId) { setCheckInError('Please select a staff member.'); return }
+    if (checkInServiceIds.length === 0) { setCheckInError('Pick at least one service.'); return }
+    const unassigned = checkInServiceIds.find(id => !checkInStaffByService[id])
+    if (unassigned) { setCheckInError('Every service needs a staff member assigned.'); return }
     setCheckInLoading(true)
     try {
       const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: checkInStaffId, serviceIds: checkInServiceIds, tipNgn: checkInTip, paymentMethod: checkInPayment }),
+        body: JSON.stringify({
+          serviceIds:     checkInServiceIds,
+          staffByService: checkInStaffByService,
+          tipByStaff:     checkInTipByStaff,
+          paymentMethod:  checkInPayment,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setCheckInError(data.error ?? 'Failed to check in.'); return }
       setCheckInSuccess(true)
-      // Mark as completed in list
       setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
-      setTimeout(() => { setCheckInAppt(null); setCheckInSuccess(false); setCheckInStaffId(''); setCheckInServiceIds([]); setCheckInTip(''); setCheckInPayment('cash') }, 1500)
+      setTimeout(() => {
+        setCheckInAppt(null); setCheckInSuccess(false)
+        setCheckInDefaultStaff(''); setCheckInServiceIds([])
+        setCheckInStaffByService({}); setCheckInTipByStaff({})
+        setCheckInPayment('cash')
+      }, 1500)
     } catch {
       setCheckInError('Connection error. Try again.')
     } finally {
@@ -288,9 +300,10 @@ export default function AppointmentsPage() {
                   <button
                     onClick={() => {
                         setCheckInAppt(a)
-                        setCheckInStaffId('')
+                        setCheckInDefaultStaff('')
                         setCheckInServiceIds(a.appointment_services.map(s => s.service_id))
-                        setCheckInTip('')
+                        setCheckInStaffByService({})
+                        setCheckInTipByStaff({})
                         setCheckInPayment('cash')
                         setCheckInError('')
                         setCheckInSuccess(false)
@@ -341,91 +354,23 @@ export default function AppointmentsPage() {
                 <p className="text-[var(--text-dim)] text-xs mt-1">Visit recorded and commission tracked.</p>
               </div>
             ) : (
-              <form onSubmit={submitCheckIn} className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
-
-                {/* Services */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-[var(--text-muted)] text-xs font-medium">Services</label>
-                    {checkInServiceIds.length > 0 && (
-                      <span className="text-[var(--accent)] text-xs font-semibold tabular-nums">
-                        {fmtNaira(services.filter(s => checkInServiceIds.includes(s.id)).reduce((sum, s) => sum + s.price_ngn, 0))}
-                      </span>
-                    )}
-                  </div>
-                  <ServicePicker
-                    services={services}
-                    selectedIds={checkInServiceIds}
-                    onChange={setCheckInServiceIds}
-                    placeholder="+ Select services"
-                  />
-                </div>
-
-                {/* Staff — dropdown */}
-                <div>
-                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Staff Member</label>
-                  <select
-                    value={checkInStaffId}
-                    onChange={e => setCheckInStaffId(e.target.value)}
-                    className="input"
-                    required>
-                    <option value="">Select staff member…</option>
-                    {staff.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Payment method */}
-                <div>
-                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Payment Method</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { value: 'cash',     label: 'Cash' },
-                      { value: 'transfer', label: 'Transfer' },
-                      { value: 'pos',      label: 'POS' },
-                    ] as const).map(opt => (
-                      <button key={opt.value} type="button"
-                        onClick={() => setCheckInPayment(opt.value)}
-                        className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
-                          checkInPayment === opt.value
-                            ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]'
-                            : 'bg-[var(--card)] border-[var(--border-strong)] text-[var(--text-muted)] hover:border-[var(--text-faint)] hover:text-[var(--text)]'
-                        }`}>
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Tip */}
-                <div>
-                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
-                    Tip <span className="text-[var(--text-dim)] font-normal">(optional)</span>
-                  </label>
-                  <div className="relative max-w-[160px]">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm">₦</span>
-                    <input
-                      type="text" inputMode="numeric"
-                      value={checkInTip}
-                      onChange={e => setCheckInTip(e.target.value.replace(/\D/g, ''))}
-                      placeholder="0"
-                      className="input pl-7"
-                    />
-                  </div>
-                </div>
-
-                {checkInError && (
-                  <div className="bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2.5">
-                    <p className="text-red-400 text-xs">{checkInError}</p>
-                  </div>
-                )}
-
-                <button type="submit" disabled={checkInLoading || !checkInStaffId || checkInServiceIds.length === 0}
-                  className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
-                  {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
-                </button>
-              </form>
+              <CheckInForm
+                services={services}
+                staff={staff}
+                checkInServiceIds={checkInServiceIds}
+                setCheckInServiceIds={setCheckInServiceIds}
+                checkInStaffByService={checkInStaffByService}
+                setCheckInStaffByService={setCheckInStaffByService}
+                checkInTipByStaff={checkInTipByStaff}
+                setCheckInTipByStaff={setCheckInTipByStaff}
+                checkInDefaultStaff={checkInDefaultStaff}
+                setCheckInDefaultStaff={setCheckInDefaultStaff}
+                checkInPayment={checkInPayment}
+                setCheckInPayment={setCheckInPayment}
+                checkInError={checkInError}
+                checkInLoading={checkInLoading}
+                onSubmit={submitCheckIn}
+              />
             )}
           </div>
         </div>
@@ -506,5 +451,220 @@ export default function AppointmentsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+interface CheckInFormProps {
+  services:               ServiceOption[]
+  staff:                  StaffOption[]
+  checkInServiceIds:      string[]
+  setCheckInServiceIds:   (v: string[]) => void
+  checkInStaffByService:  Record<string, string>
+  setCheckInStaffByService: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  checkInTipByStaff:      Record<string, string>
+  setCheckInTipByStaff:   React.Dispatch<React.SetStateAction<Record<string, string>>>
+  checkInDefaultStaff:    string
+  setCheckInDefaultStaff: (v: string) => void
+  checkInPayment:         'cash' | 'transfer' | 'pos'
+  setCheckInPayment:      (v: 'cash' | 'transfer' | 'pos') => void
+  checkInError:           string
+  checkInLoading:         boolean
+  onSubmit:               (e: React.FormEvent) => void
+}
+
+function CheckInForm(props: CheckInFormProps) {
+  const {
+    services, staff,
+    checkInServiceIds, setCheckInServiceIds,
+    checkInStaffByService, setCheckInStaffByService,
+    checkInTipByStaff, setCheckInTipByStaff,
+    checkInDefaultStaff, setCheckInDefaultStaff,
+    checkInPayment, setCheckInPayment,
+    checkInError, checkInLoading, onSubmit,
+  } = props
+
+  const serviceById = new Map(services.map(s => [s.id, s]))
+  const staffById   = new Map(staff.map(s => [s.id, s]))
+
+  function handlePickerChange(nextIds: string[]) {
+    setCheckInServiceIds(nextIds)
+    setCheckInStaffByService(prev => {
+      const next: Record<string, string> = {}
+      for (const id of nextIds) next[id] = prev[id] ?? checkInDefaultStaff
+      return next
+    })
+  }
+
+  // When the default staff changes, populate any service rows that
+  // haven't been assigned yet.
+  useEffect(() => {
+    if (!checkInDefaultStaff) return
+    setCheckInStaffByService(prev => {
+      const next = { ...prev }
+      let changed = false
+      for (const id of checkInServiceIds) {
+        if (!next[id]) { next[id] = checkInDefaultStaff; changed = true }
+      }
+      return changed ? next : prev
+    })
+  }, [checkInDefaultStaff, checkInServiceIds, setCheckInStaffByService])
+
+  // Prune tip entries when their staff is no longer involved.
+  useEffect(() => {
+    const involved = new Set(
+      checkInServiceIds.map(id => checkInStaffByService[id]).filter(Boolean)
+    )
+    setCheckInTipByStaff(prev => {
+      const next: Record<string, string> = {}
+      for (const sid of involved) if (prev[sid] !== undefined) next[sid] = prev[sid]
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next
+    })
+  }, [checkInServiceIds, checkInStaffByService, setCheckInTipByStaff])
+
+  const involvedStaffIds = Array.from(new Set(
+    checkInServiceIds.map(id => checkInStaffByService[id]).filter(Boolean)
+  ))
+
+  const total = checkInServiceIds
+    .map(id => serviceById.get(id))
+    .filter((s): s is ServiceOption => Boolean(s))
+    .reduce((sum, s) => sum + s.price_ngn, 0)
+
+  const totalTips = Object.values(checkInTipByStaff)
+    .reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
+
+  return (
+    <form onSubmit={onSubmit} className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
+
+      {/* Default staff */}
+      <div>
+        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Default Staff</label>
+        <select
+          value={checkInDefaultStaff}
+          onChange={e => setCheckInDefaultStaff(e.target.value)}
+          className="input">
+          <option value="">No default — assign each service</option>
+          {staff.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Services */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[var(--text-muted)] text-xs font-medium">Services</label>
+          {total > 0 && (
+            <span className="text-[var(--accent)] text-xs font-semibold tabular-nums">
+              ₦{total.toLocaleString('en-NG')}
+            </span>
+          )}
+        </div>
+        <ServicePicker
+          services={services}
+          selectedIds={checkInServiceIds}
+          onChange={handlePickerChange}
+          placeholder="+ Select services"
+        />
+      </div>
+
+      {/* Per-service staff */}
+      {checkInServiceIds.length > 0 && (
+        <div>
+          <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">Who did what</label>
+          <div className="space-y-2">
+            {checkInServiceIds.map(sid => {
+              const sv = serviceById.get(sid)
+              if (!sv) return null
+              const assigned = checkInStaffByService[sid] ?? ''
+              return (
+                <div key={sid} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
+                    <p className="text-[var(--text-dim)] text-[11px] tabular-nums">₦{sv.price_ngn.toLocaleString('en-NG')}</p>
+                  </div>
+                  <select value={assigned}
+                    onChange={e => setCheckInStaffByService(prev => ({ ...prev, [sid]: e.target.value }))}
+                    className={`bg-[var(--card)] border rounded-md px-2 py-1.5 text-xs font-medium focus:outline-none focus:border-[var(--accent)] ${
+                      assigned ? 'border-[var(--border-strong)] text-[var(--text)]' : 'border-amber-500/40 text-amber-500'
+                    }`}>
+                    <option value="">Pick…</option>
+                    {staff.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Payment method */}
+      <div>
+        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Payment Method</label>
+        <div className="grid grid-cols-3 gap-2">
+          {([
+            { value: 'cash',     label: 'Cash' },
+            { value: 'transfer', label: 'Transfer' },
+            { value: 'pos',      label: 'POS' },
+          ] as const).map(opt => (
+            <button key={opt.value} type="button"
+              onClick={() => setCheckInPayment(opt.value)}
+              className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
+                checkInPayment === opt.value
+                  ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]'
+                  : 'bg-[var(--card)] border-[var(--border-strong)] text-[var(--text-muted)] hover:border-[var(--text-faint)] hover:text-[var(--text)]'
+              }`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Per-staff tips */}
+      {involvedStaffIds.length > 0 && (
+        <div>
+          <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">
+            Tips <span className="text-[var(--text-faint)] font-normal">(optional, per staff)</span>
+          </label>
+          <div className="space-y-2">
+            {involvedStaffIds.map(sid => {
+              const s = staffById.get(sid)
+              if (!s) return null
+              return (
+                <div key={sid} className="flex items-center gap-3">
+                  <p className="text-[var(--text)] text-sm font-medium flex-1 truncate">{s.name}</p>
+                  <div className="relative w-32">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm">₦</span>
+                    <input type="text" inputMode="numeric"
+                      value={checkInTipByStaff[sid] ?? ''}
+                      onChange={e => setCheckInTipByStaff(prev => ({ ...prev, [sid]: e.target.value.replace(/\D/g, '') }))}
+                      placeholder="0"
+                      className="input pl-7 text-right" />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          {totalTips > 0 && (
+            <p className="text-[var(--accent)] text-[11px] font-semibold mt-2 text-right tabular-nums">
+              Total tips: ₦{totalTips.toLocaleString('en-NG')}
+            </p>
+          )}
+        </div>
+      )}
+
+      {checkInError && (
+        <div className="bg-red-500/5 border border-red-500/20 rounded-lg px-3 py-2.5">
+          <p className="text-red-400 text-xs">{checkInError}</p>
+        </div>
+      )}
+
+      <button type="submit" disabled={checkInLoading || checkInServiceIds.length === 0}
+        className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
+        {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
+      </button>
+    </form>
   )
 }

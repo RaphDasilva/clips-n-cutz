@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Service, User } from '@/types/database'
 import ServicePicker from '@/components/ServicePicker'
@@ -18,11 +18,12 @@ export default function WalkInPage() {
   const [staff, setStaff]       = useState<StaffMember[]>([])
   const [loading, setLoading]   = useState(true)
 
-  const [clientName, setClientName]       = useState('')
-  const [clientPhone, setClientPhone]     = useState('')
-  const [staffId, setStaffId]             = useState('')
-  const [selectedIds, setSelectedIds]     = useState<string[]>([])
-  const [tipNgn, setTipNgn]               = useState('')
+  const [clientName, setClientName]     = useState('')
+  const [clientPhone, setClientPhone]   = useState('')
+  const [defaultStaffId, setDefaultStaffId] = useState('')
+  const [selectedIds, setSelectedIds]   = useState<string[]>([])
+  const [staffByService, setStaffByService] = useState<Record<string, string>>({})
+  const [tipByStaff, setTipByStaff]     = useState<Record<string, string>>({})
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'transfer' | 'pos'>('cash')
 
   const [submitting, setSubmitting] = useState(false)
@@ -45,35 +46,103 @@ export default function WalkInPage() {
     load()
   }, [])
 
-  const selectedStaff    = staff.find(s => s.id === staffId) ?? null
-  const staffServiceIds  = selectedStaff?.serviceIds ?? []
-  const staffHasServices = staffServiceIds.length > 0
+  const staffById   = useMemo(() => new Map(staff.map(s => [s.id, s])), [staff])
+  const serviceById = useMemo(() => new Map(services.map(s => [s.id, s])), [services])
 
-  function selectStaff(id: string) {
-    setStaffId(id)
-    const member = staff.find(s => s.id === id)
-    if (member && member.serviceIds.length > 0) {
-      setSelectedIds(p => p.filter(sid => member.serviceIds.includes(sid)))
-    }
+  // Each selected service's chosen staff defaults to defaultStaffId.
+  // If the default changes, only services that haven't been re-assigned
+  // pick up the new default — leave already-customised ones alone.
+  function handleServicesChange(nextIds: string[]) {
+    setSelectedIds(nextIds)
+    setStaffByService(prev => {
+      const next: Record<string, string> = {}
+      for (const id of nextIds) {
+        next[id] = prev[id] ?? defaultStaffId
+      }
+      return next
+    })
   }
 
-  const selectedTotal = services
-    .filter(s => selectedIds.includes(s.id))
+  function setServiceStaff(serviceId: string, staffId: string) {
+    setStaffByService(prev => ({ ...prev, [serviceId]: staffId }))
+  }
+
+  // Whenever default changes, fill in any unassigned services with the new default
+  useEffect(() => {
+    if (!defaultStaffId) return
+    setStaffByService(prev => {
+      const next = { ...prev }
+      for (const id of selectedIds) {
+        if (!next[id]) next[id] = defaultStaffId
+      }
+      return next
+    })
+  }, [defaultStaffId, selectedIds])
+
+  // Unique staff currently assigned to at least one selected service
+  const involvedStaffIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const id of selectedIds) {
+      const s = staffByService[id]
+      if (s) ids.add(s)
+    }
+    return Array.from(ids)
+  }, [selectedIds, staffByService])
+
+  // Prune tip entries when their staff is no longer involved
+  useEffect(() => {
+    setTipByStaff(prev => {
+      const next: Record<string, string> = {}
+      for (const id of involvedStaffIds) {
+        if (prev[id] !== undefined) next[id] = prev[id]
+      }
+      return next
+    })
+  }, [involvedStaffIds])
+
+  const selectedTotal = selectedIds
+    .map(id => serviceById.get(id))
+    .filter((s): s is Service => Boolean(s))
     .reduce((sum, s) => sum + s.price_ngn, 0)
+
+  const totalTipsEntered = Object.values(tipByStaff)
+    .reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
+
+  // For the per-service staff dropdown: when a default staff has a
+  // restricted service list, we still show every staff member —
+  // splitting work between staff is the whole point. We rely on the
+  // manager to assign appropriately.
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
+    if (selectedIds.length === 0) { setError('Pick at least one service.'); return }
+    const unassigned = selectedIds.find(id => !staffByService[id])
+    if (unassigned) {
+      setError('Every service needs a staff member assigned.')
+      return
+    }
     setSubmitting(true)
     try {
       const res = await fetch('/api/manager/walkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientName, clientPhone, staffId, serviceIds: selectedIds, tipNgn, paymentMethod }),
+        body: JSON.stringify({
+          clientName, clientPhone,
+          serviceIds:     selectedIds,
+          staffByService,
+          tipByStaff,
+          paymentMethod,
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error ?? 'Something went wrong.'); return }
-      setSuccess({ clientName: data.clientName, totalNgn: data.totalNgn, serviceCount: data.serviceCount, tipNgn: parseInt(tipNgn || '0', 10) })
+      setSuccess({
+        clientName:   data.clientName,
+        totalNgn:     data.totalNgn,
+        serviceCount: data.serviceCount,
+        tipNgn:       totalTipsEntered,
+      })
     } catch {
       setError('Connection error. Try again.')
     } finally {
@@ -82,8 +151,9 @@ export default function WalkInPage() {
   }
 
   function reset() {
-    setClientName(''); setClientPhone(''); setStaffId('')
-    setSelectedIds([]); setTipNgn(''); setPaymentMethod('cash'); setSuccess(null); setError('')
+    setClientName(''); setClientPhone(''); setDefaultStaffId('')
+    setSelectedIds([]); setStaffByService({}); setTipByStaff({})
+    setPaymentMethod('cash'); setSuccess(null); setError('')
   }
 
   /* ── Success screen ─────────────────────────────────────── */
@@ -134,7 +204,7 @@ export default function WalkInPage() {
         </button>
         <div>
           <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">New Walk-in</h1>
-          <p className="text-[var(--text-dim)] text-sm mt-0.5">Log a client visit — takes under 30 seconds</p>
+          <p className="text-[var(--text-dim)] text-sm mt-0.5">Log a client visit — assign staff per service</p>
         </div>
       </div>
 
@@ -147,7 +217,7 @@ export default function WalkInPage() {
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-5">
 
-            {/* ── Left column — all details in one unified card ── */}
+            {/* ── Left column ── */}
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
 
               {/* Client */}
@@ -175,17 +245,19 @@ export default function WalkInPage() {
               </div>
 
               <div className="border-t border-[var(--border)] px-5 py-4">
-                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">Staff Member</p>
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-2">Default Staff</p>
                 <select
-                  value={staffId}
-                  onChange={e => selectStaff(e.target.value)}
-                  className="input"
-                  required>
-                  <option value="">Select staff member…</option>
+                  value={defaultStaffId}
+                  onChange={e => setDefaultStaffId(e.target.value)}
+                  className="input">
+                  <option value="">No default — assign each service manually</option>
                   {staff.map(s => (
                     <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
+                <p className="text-[var(--text-dim)] text-[10px] mt-2">
+                  Auto-assigned to new services. Change per service on the right.
+                </p>
               </div>
 
               <div className="border-t border-[var(--border)] px-5 py-4">
@@ -208,44 +280,93 @@ export default function WalkInPage() {
                   ))}
                 </div>
               </div>
-
-              <div className="border-t border-[var(--border)] px-5 py-4">
-                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">
-                  Tip <span className="normal-case text-[var(--text-faint)] font-normal">(optional)</span>
-                </p>
-                <div className="relative max-w-[180px]">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm font-medium">₦</span>
-                  <input
-                    type="text" inputMode="numeric"
-                    value={tipNgn}
-                    onChange={e => setTipNgn(e.target.value.replace(/\D/g, ''))}
-                    placeholder="0"
-                    className="input pl-8"
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* ── Right column — services picker ── */}
-            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider">Services</p>
-                {selectedTotal > 0 && (
-                  <span className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(selectedTotal)}</span>
-                )}
+            {/* ── Right column — services + assignments + tips ── */}
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex flex-col gap-5">
+
+              {/* Service picker */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider">Services</p>
+                  {selectedTotal > 0 && (
+                    <span className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(selectedTotal)}</span>
+                  )}
+                </div>
+
+                <ServicePicker
+                  services={services}
+                  selectedIds={selectedIds}
+                  onChange={handleServicesChange}
+                  placeholder="+ Add services for this visit"
+                />
               </div>
 
-              <ServicePicker
-                services={services}
-                selectedIds={selectedIds}
-                onChange={setSelectedIds}
-                availableIds={staffId && staffHasServices ? staffServiceIds : undefined}
-                placeholder="+ Add services for this visit"
-              />
-              {staffId && staffHasServices && (
-                <p className="text-[var(--text-dim)] text-[10px] mt-2.5">
-                  Filtered to services this staff member can perform.
-                </p>
+              {/* Per-service staff assignment */}
+              {selectedIds.length > 0 && (
+                <div className="border-t border-[var(--border)] pt-4">
+                  <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">
+                    Who did what
+                  </p>
+                  <div className="space-y-2">
+                    {selectedIds.map(sid => {
+                      const sv  = serviceById.get(sid)
+                      if (!sv) return null
+                      const assigned = staffByService[sid] ?? ''
+                      return (
+                        <div key={sid} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
+                            <p className="text-[var(--text-dim)] text-[11px] tabular-nums">{fmtNaira(sv.price_ngn)}</p>
+                          </div>
+                          <select value={assigned}
+                            onChange={e => setServiceStaff(sid, e.target.value)}
+                            className={`bg-[var(--card)] border rounded-md px-2 py-1.5 text-xs font-medium focus:outline-none focus:border-[var(--accent)] ${
+                              assigned ? 'border-[var(--border-strong)] text-[var(--text)]' : 'border-amber-500/40 text-amber-500'
+                            }`}>
+                            <option value="">Pick staff…</option>
+                            {staff.map(s => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Per-staff tips */}
+              {involvedStaffIds.length > 0 && (
+                <div className="border-t border-[var(--border)] pt-4">
+                  <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">
+                    Tips <span className="text-[var(--text-faint)] font-normal normal-case">(optional, per staff)</span>
+                  </p>
+                  <div className="space-y-2">
+                    {involvedStaffIds.map(sid => {
+                      const s = staffById.get(sid)
+                      if (!s) return null
+                      return (
+                        <div key={sid} className="flex items-center gap-3">
+                          <p className="text-[var(--text)] text-sm font-medium flex-1 truncate">{s.name}</p>
+                          <div className="relative w-32">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm">₦</span>
+                            <input type="text" inputMode="numeric"
+                              value={tipByStaff[sid] ?? ''}
+                              onChange={e => setTipByStaff(prev => ({ ...prev, [sid]: e.target.value.replace(/\D/g, '') }))}
+                              placeholder="0"
+                              className="input pl-7 text-right" />
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  {totalTipsEntered > 0 && (
+                    <p className="text-[var(--accent)] text-[11px] font-semibold mt-2 text-right tabular-nums">
+                      Total tips: {fmtNaira(totalTipsEntered)}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -257,7 +378,7 @@ export default function WalkInPage() {
           )}
 
           <button type="submit"
-            disabled={submitting || selectedIds.length === 0 || !staffId || !clientName}
+            disabled={submitting || selectedIds.length === 0 || !clientName}
             className="w-full bg-[var(--text)] text-[var(--bg)] font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all">
             {submitting ? 'Saving…' : selectedTotal > 0 ? `Log Visit · ${fmtNaira(selectedTotal)}` : 'Log Visit'}
           </button>

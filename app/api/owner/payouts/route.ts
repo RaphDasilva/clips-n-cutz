@@ -3,8 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth-server'
 import { sendMessage } from '@/lib/messaging'
 
-interface VisitServiceRow { staff_id: string; commission_ngn: number; visits: { visit_date: string } | null }
-interface VisitRow        { staff_id: string; tip_ngn: number; visit_date: string }
+interface VisitServiceRow    { staff_id: string; commission_ngn: number; visits: { visit_date: string } | null }
+interface VisitServiceTipRow { staff_id: string; tip_ngn: number; visits: { visit_date: string } | null }
 interface AttendanceRow   { staff_id: string; penalty_ngn: number; date: string }
 interface StaffRow        { id: string; name: string; is_active: boolean }
 interface PayoutRow {
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
   const refDate  = req.nextUrl.searchParams.get('week') ?? lagosToday()
   const { start, end } = weekBoundaries(refDate)
 
-  const [staffRes, vsRes, visitsRes, attRes, paidRes] = await Promise.all([
+  const [staffRes, vsRes, tipsRes, attRes, paidRes] = await Promise.all([
     supabase
       .from('users')
       .select('id, name, is_active')
@@ -62,10 +62,10 @@ export async function GET(req: NextRequest) {
       .gte('visits.visit_date', start)
       .lte('visits.visit_date', end) as unknown as Promise<{ data: VisitServiceRow[] | null; error: unknown }>,
     supabase
-      .from('visits')
-      .select('staff_id, tip_ngn, visit_date')
-      .gte('visit_date', start)
-      .lte('visit_date', end) as unknown as Promise<{ data: VisitRow[] | null; error: unknown }>,
+      .from('visit_services')
+      .select('staff_id, tip_ngn, visits!inner(visit_date)')
+      .gte('visits.visit_date', start)
+      .lte('visits.visit_date', end) as unknown as Promise<{ data: VisitServiceTipRow[] | null; error: unknown }>,
     supabase
       .from('attendance')
       .select('staff_id, penalty_ngn, date')
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
       .eq('week_start', start) as unknown as Promise<{ data: PayoutRow[] | null; error: unknown }>,
   ])
 
-  if (staffRes.error || vsRes.error || visitsRes.error || attRes.error || paidRes.error) {
+  if (staffRes.error || vsRes.error || tipsRes.error || attRes.error || paidRes.error) {
     return NextResponse.json({ error: 'Failed to load payout data.' }, { status: 500 })
   }
 
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
   }
 
   const tipsMap = new Map<string, number>()
-  for (const r of visitsRes.data ?? []) {
+  for (const r of tipsRes.data ?? []) {
     tipsMap.set(r.staff_id, (tipsMap.get(r.staff_id) ?? 0) + (r.tip_ngn ?? 0))
   }
 
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
   const supabase = createClient()
 
   // Recompute totals server-side — never trust client numbers
-  const [vsRes, visitsRes, attRes] = await Promise.all([
+  const [vsRes, tipsRes, attRes] = await Promise.all([
     supabase
       .from('visit_services')
       .select('commission_ngn, visits!inner(visit_date)')
@@ -180,11 +180,11 @@ export async function POST(req: NextRequest) {
       .gte('visits.visit_date', weekStart)
       .lte('visits.visit_date', weekEnd) as unknown as Promise<{ data: { commission_ngn: number }[] | null; error: unknown }>,
     supabase
-      .from('visits')
-      .select('tip_ngn')
+      .from('visit_services')
+      .select('tip_ngn, visits!inner(visit_date)')
       .eq('staff_id', staffId)
-      .gte('visit_date', weekStart)
-      .lte('visit_date', weekEnd) as unknown as Promise<{ data: { tip_ngn: number }[] | null; error: unknown }>,
+      .gte('visits.visit_date', weekStart)
+      .lte('visits.visit_date', weekEnd) as unknown as Promise<{ data: { tip_ngn: number }[] | null; error: unknown }>,
     supabase
       .from('attendance')
       .select('penalty_ngn')
@@ -193,13 +193,13 @@ export async function POST(req: NextRequest) {
       .lte('date', weekEnd) as unknown as Promise<{ data: { penalty_ngn: number }[] | null; error: unknown }>,
   ])
 
-  if (vsRes.error || visitsRes.error || attRes.error) {
+  if (vsRes.error || tipsRes.error || attRes.error) {
     return NextResponse.json({ error: 'Failed to compute payout.' }, { status: 500 })
   }
 
-  const commission = (vsRes.data     ?? []).reduce((s, r) => s + (r.commission_ngn ?? 0), 0)
-  const tips       = (visitsRes.data ?? []).reduce((s, r) => s + (r.tip_ngn        ?? 0), 0)
-  const penalty    = (attRes.data    ?? []).reduce((s, r) => s + (r.penalty_ngn    ?? 0), 0)
+  const commission = (vsRes.data   ?? []).reduce((s, r) => s + (r.commission_ngn ?? 0), 0)
+  const tips       = (tipsRes.data ?? []).reduce((s, r) => s + (r.tip_ngn        ?? 0), 0)
+  const penalty    = (attRes.data  ?? []).reduce((s, r) => s + (r.penalty_ngn    ?? 0), 0)
   const total      = Math.max(0, commission + tips - penalty)
 
   const { data, error } = await supabase

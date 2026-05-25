@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-interface VisitRow {
+interface TipRow {
   staff_id: string
   tip_ngn: number
   users: { name: string } | null
+  visits: { visit_date: string } | null
 }
 
 // Manager-visible tip aggregation per staff.
@@ -23,10 +24,10 @@ export async function GET(req: NextRequest) {
   const supabase = createClient()
 
   const { data, error } = await supabase
-    .from('visits')
-    .select('staff_id, tip_ngn, users!staff_id(name)')
-    .gte('visit_date', from)
-    .lte('visit_date', to) as unknown as { data: VisitRow[] | null; error: unknown }
+    .from('visit_services')
+    .select('staff_id, tip_ngn, users!staff_id(name), visits!inner(visit_date)')
+    .gte('visits.visit_date', from)
+    .lte('visits.visit_date', to) as unknown as { data: TipRow[] | null; error: unknown }
 
   if (error || !data) {
     return NextResponse.json({ error: 'Failed to load tips data.' }, { status: 500 })

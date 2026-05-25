@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: VSRow[] | null; error: unknown }>,
     supabase
-      .from('visits')
+      .from('visit_services')
       .select('staff_id, tip_ngn')
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: VisitTipRow[] | null; error: unknown }>,

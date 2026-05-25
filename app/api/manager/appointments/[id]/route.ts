@@ -26,16 +26,29 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const body          = await req.json()
-  const staffId       = body.staffId    as string
-  const serviceIds    = body.serviceIds as string[] | undefined
-  const tipNgn        = Math.max(0, parseInt(body.tipNgn ?? '0', 10) || 0)
+  const serviceIds    = (Array.isArray(body.serviceIds) ? body.serviceIds : []) as string[]
+  const staffByService: Record<string, string> = body.staffByService ?? {}
+  const tipByStaff:     Record<string, string | number> = body.tipByStaff ?? {}
   const paymentMethod = ['cash', 'transfer', 'pos'].includes(body.paymentMethod)
     ? (body.paymentMethod as string)
     : 'cash'
 
-  if (!staffId) return NextResponse.json({ error: 'Please select a staff member.' }, { status: 400 })
-  if (serviceIds !== undefined && serviceIds.length === 0) {
+  if (serviceIds.length === 0) {
     return NextResponse.json({ error: 'Please select at least one service.' }, { status: 400 })
+  }
+  const unassigned = serviceIds.find(sid => !staffByService[sid])
+  if (unassigned) {
+    return NextResponse.json(
+      { error: 'Every service must be assigned to a staff member.' },
+      { status: 400 }
+    )
+  }
+
+  // Normalise tips
+  const tipsByStaff = new Map<string, number>()
+  for (const [staffId, raw] of Object.entries(tipByStaff)) {
+    const n = Math.max(0, parseInt(String(raw), 10) || 0)
+    if (n > 0) tipsByStaff.set(staffId, n)
   }
 
   const supabase = createClient()
@@ -43,68 +56,71 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // Fetch appointment for client_id and status check
   const { data: appt, error: apptErr } = await supabase
     .from('appointments')
-    .select('id, client_id, status, appointment_services(service_id, services(id, name, price_ngn))')
+    .select('id, client_id, status')
     .eq('id', id)
-    .single() as {
-      data: {
-        id: string
-        client_id: string
-        status: string
-        appointment_services: { service_id: string; services: { id: string; name: string; price_ngn: number } | null }[]
-      } | null
-      error: unknown
-    }
+    .single() as { data: { id: string; client_id: string; status: string } | null; error: unknown }
 
   if (apptErr || !appt) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   if (appt.status === 'completed') return NextResponse.json({ error: 'This appointment has already been checked in.' }, { status: 400 })
 
-  let services: { id: string; name: string; price_ngn: number }[]
+  const { data: services, error: svErr } = await supabase
+    .from('services').select('id, name, price_ngn').in('id', serviceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
+  if (svErr || !services?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
 
-  if (serviceIds && serviceIds.length > 0) {
-    // Manager confirmed (possibly edited) services at check-in
-    const { data, error } = await supabase
-      .from('services')
-      .select('id, name, price_ngn')
-      .in('id', serviceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
-    if (error || !data?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
-    services = data
-  } else {
-    // Fall back to what was originally booked
-    services = appt.appointment_services.map(s => s.services).filter(Boolean) as { id: string; name: string; price_ngn: number }[]
-  }
-
-  if (services.length === 0) return NextResponse.json({ error: 'No services selected.' }, { status: 400 })
-
-  const totalNgn  = services.reduce((sum, s) => sum + s.price_ngn, 0)
-  const visitDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+  const totalNgn    = services.reduce((sum, s) => sum + s.price_ngn, 0)
+  const totalTipNgn = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
+  const visitDate   = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+  const primaryStaffId = staffByService[serviceIds[0]]
 
   const { data: visit, error: visitErr } = await supabase
     .from('visits')
-    .insert({ client_id: appt.client_id, staff_id: staffId, appointment_id: id, visit_date: visitDate, total_ngn: totalNgn, tip_ngn: tipNgn, payment_method: paymentMethod })
+    .insert({
+      client_id:      appt.client_id,
+      staff_id:       primaryStaffId,
+      appointment_id: id,
+      visit_date:     visitDate,
+      total_ngn:      totalNgn,
+      tip_ngn:        totalTipNgn,
+      payment_method: paymentMethod,
+    })
     .select()
     .single() as { data: { id: string } | null; error: unknown }
 
   if (visitErr || !visit) return NextResponse.json({ error: 'Failed to create visit record.' }, { status: 500 })
 
-  const { error: vsErr } = await supabase.from('visit_services').insert(
-    services.map(s => ({
+  // Per-line writes — each service gets its own staff_id and an
+  // optional tip drop (whole staff tip lands on first line for
+  // that staff).
+  const tipsPlaced = new Set<string>()
+  const serviceById = new Map(services.map(s => [s.id, s]))
+  const vsRows = serviceIds.map(sid => {
+    const s       = serviceById.get(sid)!
+    const staffId = staffByService[sid]
+    const tip     = !tipsPlaced.has(staffId) && tipsByStaff.has(staffId)
+      ? tipsByStaff.get(staffId)!
+      : 0
+    if (tip > 0) tipsPlaced.add(staffId)
+    return {
       visit_id:       visit.id,
       service_id:     s.id,
       staff_id:       staffId,
       price_ngn:      s.price_ngn,
       commission_ngn: Math.round(s.price_ngn * 0.3),
-    }))
-  )
+      tip_ngn:        tip,
+    }
+  })
+
+  const { error: vsErr } = await supabase.from('visit_services').insert(vsRows)
   if (vsErr) return NextResponse.json({ error: 'Failed to save services.' }, { status: 500 })
 
   await supabase
     .from('appointments')
-    .update({ status: 'completed', staff_id: staffId, updated_at: new Date().toISOString() })
+    .update({ status: 'completed', staff_id: primaryStaffId, updated_at: new Date().toISOString() })
     .eq('id', id)
 
   const followUp = new Date()
   followUp.setDate(followUp.getDate() + 7)
   await supabase.from('follow_ups').insert({ client_id: appt.client_id, visit_id: visit.id, scheduled_for: followUp.toISOString() })
 
-  return NextResponse.json({ success: true, visitId: visit.id, totalNgn })
+  return NextResponse.json({ success: true, visitId: visit.id, totalNgn, tipNgn: totalTipNgn })
 }

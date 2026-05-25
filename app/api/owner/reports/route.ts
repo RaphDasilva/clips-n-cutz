@@ -15,6 +15,7 @@ interface VisitRow {
 interface ServiceRow {
   price_ngn: number
   commission_ngn: number
+  tip_ngn: number
   services: { name: string } | null
   users: { name: string } | null
 }
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
 
     supabase
       .from('visit_services')
-      .select('price_ngn, commission_ngn, services(name), users!staff_id(name)')
+      .select('price_ngn, commission_ngn, tip_ngn, services(name), users!staff_id(name)')
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: ServiceRow[] | null; error: unknown }>,
   ])
@@ -80,7 +81,9 @@ export async function GET(req: NextRequest) {
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // Revenue by staff (commission from visit_services, tips from visits)
+  // Revenue by staff — commission AND tips both come from
+  // visit_services (per-line). Tips can now differ from
+  // visits.staff_id if multiple staff worked one visit.
   const staffMap = new Map<string, { services: number; revenue: number; commission: number; tips: number }>()
   for (const r of vsRows) {
     const name = r.users?.name ?? 'Unknown'
@@ -89,13 +92,8 @@ export async function GET(req: NextRequest) {
       services:   cur.services + 1,
       revenue:    cur.revenue + r.price_ngn,
       commission: cur.commission + r.commission_ngn,
-      tips:       cur.tips,
+      tips:       cur.tips + (r.tip_ngn ?? 0),
     })
-  }
-  for (const v of visits) {
-    const name = v.users?.name ?? 'Unknown'
-    const cur  = staffMap.get(name) ?? { services: 0, revenue: 0, commission: 0, tips: 0 }
-    staffMap.set(name, { ...cur, tips: cur.tips + (v.tip_ngn ?? 0) })
   }
   const byStaff = [...staffMap.entries()]
     .map(([name, v]) => ({ name, ...v, totalPayout: v.commission + v.tips }))

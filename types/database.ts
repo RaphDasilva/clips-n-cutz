@@ -103,6 +103,7 @@ export interface VisitService {
   staff_id: string
   price_ngn: number
   commission_ngn: number
+  tip_ngn: number
   created_at: string
 }
 
