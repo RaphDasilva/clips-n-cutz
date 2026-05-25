@@ -82,10 +82,34 @@ function greeting() {
   return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
 }
 
+interface PayoutPending {
+  commission_ngn: number
+  tips_ngn:       number
+  penalty_ngn:    number
+  total_ngn:      number
+  alreadyPaid:    { paid_at: string; paid_amount_ngn: number | null } | null
+}
+
+interface PayoutHistoryRow {
+  week_start: string
+  week_end:   string
+  total_ngn:  number
+  paid_at:    string
+  paid_amount_ngn: number | null
+}
+
+interface NextPayoutResp {
+  weekStart: string
+  weekEnd:   string
+  pending:   PayoutPending
+  history:   PayoutHistoryRow[]
+}
+
 export default function StaffHome() {
   const router = useRouter()
   const [user, setUser]             = useState<{ name: string; id: string } | null>(null)
   const [data, setData]             = useState<TodayData | null>(null)
+  const [payout, setPayout]         = useState<NextPayoutResp | null>(null)
   const [loading, setLoading]       = useState(true)
   const [checkingIn, setCheckingIn] = useState(false)
   const [window_, setWindow_]       = useState(getCheckinWindow)
@@ -94,8 +118,12 @@ export default function StaffHome() {
     const session = getSession()
     if (!session) { router.replace('/login'); return }
     setUser({ name: session.name, id: session.id })
-    const res = await fetch(`/api/staff/today?staffId=${session.id}`)
-    if (res.ok) setData(await res.json())
+    const [todayRes, payoutRes] = await Promise.all([
+      fetch(`/api/staff/today?staffId=${session.id}`),
+      fetch('/api/staff/next-payout'),
+    ])
+    if (todayRes.ok) setData(await todayRes.json())
+    if (payoutRes.ok) setPayout(await payoutRes.json())
     setLoading(false)
   }, [router])
 
@@ -342,9 +370,77 @@ export default function StaffHome() {
         </div>
       )}
 
+      {/* Next payout */}
+      {!loading && payout && (
+        <section className="mt-8">
+          <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-3">
+            {payout.pending.alreadyPaid ? 'This Week — Paid' : 'Next Payout (Sunday)'}
+          </h2>
+          <div className={`bg-[var(--card)] border rounded-2xl p-5 ${
+            payout.pending.alreadyPaid ? 'border-emerald-500/30' : 'border-[var(--accent)]/30'
+          }`}>
+            <div className="flex items-end justify-between gap-3 mb-3">
+              <div>
+                <p className="text-[var(--text-dim)] text-xs mb-1">
+                  {new Date(payout.weekStart + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                  {' – '}
+                  {new Date(payout.weekEnd + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                </p>
+                <p className={`text-3xl font-bold tracking-tight tabular-nums ${
+                  payout.pending.alreadyPaid ? 'text-emerald-500' : 'text-[var(--accent)]'
+                }`}>
+                  {fmtNaira(payout.pending.alreadyPaid?.paid_amount_ngn ?? payout.pending.total_ngn)}
+                </p>
+              </div>
+              {payout.pending.alreadyPaid && (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-500 font-medium">
+                  ✓ Paid
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-xs pt-3 border-t border-[var(--border)]">
+              <div>
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Commission</p>
+                <p className="text-[var(--text)] font-semibold tabular-nums">{fmtNaira(payout.pending.commission_ngn)}</p>
+              </div>
+              <div>
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Tips</p>
+                <p className={`font-semibold tabular-nums ${payout.pending.tips_ngn > 0 ? 'text-emerald-500' : 'text-[var(--text-faint)]'}`}>
+                  {payout.pending.tips_ngn > 0 ? fmtNaira(payout.pending.tips_ngn) : '—'}
+                </p>
+              </div>
+              <div>
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Penalty</p>
+                <p className={`font-semibold tabular-nums ${payout.pending.penalty_ngn > 0 ? 'text-red-400' : 'text-[var(--text-faint)]'}`}>
+                  {payout.pending.penalty_ngn > 0 ? `-${fmtNaira(payout.pending.penalty_ngn)}` : '—'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {payout.history.length > 0 && (
+            <div className="mt-4">
+              <p className="text-[var(--text-dim)] text-[11px] uppercase tracking-wider mb-2 px-1">Recent Payments</p>
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
+                {payout.history.map(h => (
+                  <div key={h.week_start} className="flex items-center justify-between px-4 py-3 text-sm">
+                    <span className="text-[var(--text-muted)]">
+                      {new Date(h.week_start + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                      {' – '}
+                      {new Date(h.week_end + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                    </span>
+                    <span className="text-emerald-500 font-semibold tabular-nums">{fmtNaira(h.paid_amount_ngn ?? h.total_ngn)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {/* Link to history */}
       <Link href="/dashboard/staff/history"
-        className="flex items-center justify-between bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl px-5 py-4 transition-colors group mt-2">
+        className="flex items-center justify-between bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl px-5 py-4 transition-colors group mt-6">
         <div>
           <p className="text-[var(--text)] text-sm font-semibold">My Earnings History</p>
           <p className="text-[var(--text-dim)] text-xs mt-0.5">See your weekly and monthly totals</p>

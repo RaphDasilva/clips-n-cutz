@@ -28,6 +28,7 @@ export type MessageType =
   | 'reminder_24h'
   | 'reminder_2h'
   | 'followup_7day'
+  | 'payout_summary'
 
 // ============================================================
 // TABLE TYPES
