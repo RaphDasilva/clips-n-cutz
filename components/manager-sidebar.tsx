@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { clearSession, switchRole } from '@/lib/auth'
+import { ThemeToggle } from './theme-toggle'
 import type { SessionUser } from '@/types/database'
 
 const NAV_ITEMS = [
@@ -112,16 +113,16 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[#1e1e1e] bg-[#0f0f0f] h-full">
+    <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] h-full">
 
       {/* Brand */}
-      <div className="py-6 border-b border-[#1e1e1e] flex flex-col items-center gap-3">
+      <div className="py-6 border-b border-[var(--border)] flex flex-col items-center gap-3">
         <div className="w-16 h-16 rounded-2xl bg-white overflow-hidden flex items-center justify-center">
           <Image src="/logo.jpg" alt="Clips N'Cutz" width={64} height={64} className="object-contain" />
         </div>
         <div className="text-center">
-          <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
-          <p className="text-[#555] text-[11px] leading-tight mt-0.5">Management</p>
+          <p className="text-[var(--text)] text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
+          <p className="text-[var(--text-dim)] text-[11px] leading-tight mt-0.5">Management</p>
         </div>
       </div>
 
@@ -137,11 +138,11 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 active
-                  ? 'bg-white text-gray-950'
-                  : 'text-[#888] hover:text-white hover:bg-[#1a1a1a]'
+                  ? 'bg-[var(--text)] text-[var(--bg)]'
+                  : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)]'
               }`}
             >
-              <span className={active ? 'text-gray-950' : 'text-[#666]'}>
+              <span className={active ? 'text-[var(--bg)]' : 'text-[var(--text-muted)]'}>
                 {item.icon}
               </span>
               {item.label}
@@ -151,30 +152,31 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
       </nav>
 
       {/* User + Logout */}
-      <div className="px-4 py-4 border-t border-[#1e1e1e]">
+      <div className="px-4 py-4 border-t border-[var(--border)]">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-semibold">
+          <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
+            <span className="text-[var(--text)] text-xs font-semibold">
               {user.name.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-white text-sm font-medium truncate">{user.name}</p>
-            <p className="text-[#555] text-[11px] capitalize">{user.role}</p>
+            <p className="text-[var(--text)] text-sm font-medium truncate">{user.name}</p>
+            <p className="text-[var(--text-dim)] text-[11px] capitalize">{user.role}</p>
           </div>
         </div>
         {isImpersonating && (
           <button onClick={handleSwitchBack} disabled={switching}
-            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#C49A3C] hover:bg-[#C49A3C]/10 transition-all text-sm disabled:opacity-40 mb-1">
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[var(--accent)] hover:bg-[var(--accent)]/10 transition-all text-sm disabled:opacity-40 mb-1">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
             </svg>
             {switching ? 'Switching…' : 'Switch back to Owner'}
           </button>
         )}
+        <ThemeToggle />
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#666] hover:text-white hover:bg-[#1a1a1a] transition-all text-sm"
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all text-sm"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
@@ -191,7 +193,7 @@ export function MobileNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0f0f0f] border-t border-[#1e1e1e] z-50 safe-bottom">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] z-50 safe-bottom">
       <div className="flex">
         {NAV_ITEMS.map((item) => {
           const active = item.exact
@@ -202,13 +204,13 @@ export function MobileNav() {
               key={item.href}
               href={item.href}
               className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${
-                active ? 'text-white' : 'text-[#555]'
+                active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'
               }`}
             >
-              <span className={active ? 'text-white' : 'text-[#555]'}>
+              <span className={active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'}>
                 {item.icon}
               </span>
-              <span className={`text-[10px] font-medium ${active ? 'text-white' : 'text-[#555]'}`}>
+              <span className={`text-[10px] font-medium ${active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'}`}>
                 {item.label}
               </span>
             </Link>

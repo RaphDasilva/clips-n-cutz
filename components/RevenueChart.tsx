@@ -25,9 +25,9 @@ function CustomTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl px-3 py-2.5 shadow-xl">
-      <p className="text-[#888] text-[11px] mb-1">{label}</p>
-      <p className="text-white text-sm font-bold tabular-nums">{fmtNairaFull(payload[0].value)}</p>
+    <div className="bg-[var(--elevated)] border border-[var(--border-strong)] rounded-xl px-3 py-2.5 shadow-xl">
+      <p className="text-[var(--text-muted)] text-[11px] mb-1">{label}</p>
+      <p className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNairaFull(payload[0].value)}</p>
     </div>
   )
 }
@@ -52,12 +52,12 @@ export default function RevenueChart() {
   return (
     <section className="mb-8">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider">Revenue</h2>
-        <div className="flex bg-[#141414] border border-[#1e1e1e] rounded-lg p-0.5 gap-0.5">
+        <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider">Revenue</h2>
+        <div className="flex bg-[var(--card)] border border-[var(--border)] rounded-lg p-0.5 gap-0.5">
           {([7, 30] as const).map(d => (
             <button key={d} onClick={() => setRange(d)}
               className={`px-3 py-1 rounded-md text-xs font-semibold transition-all ${
-                range === d ? 'bg-white text-gray-950' : 'text-[#666] hover:text-white'
+                range === d ? 'bg-[var(--text)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}>
               {d === 7 ? '7 days' : '30 days'}
             </button>
@@ -65,13 +65,13 @@ export default function RevenueChart() {
         </div>
       </div>
 
-      <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
         {/* Summary row */}
-        <div className="px-5 pt-5 pb-4 border-b border-[#1e1e1e]">
-          <p className="text-[#555] text-xs mb-1">Total — last {range} days</p>
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
+          <p className="text-[var(--text-dim)] text-xs mb-1">Total — last {range} days</p>
           {loading
-            ? <div className="h-7 w-32 bg-[#1e1e1e] rounded animate-pulse" />
-            : <p className="text-white text-2xl font-bold tabular-nums tracking-tight">{fmtNairaFull(total)}</p>
+            ? <div className="h-7 w-32 bg-[var(--border)] rounded animate-pulse" />
+            : <p className="text-[var(--text)] text-2xl font-bold tabular-nums tracking-tight">{fmtNairaFull(total)}</p>
           }
         </div>
 
@@ -79,50 +79,50 @@ export default function RevenueChart() {
         <div className="px-2 pt-4 pb-2">
           {loading ? (
             <div className="h-48 flex items-center justify-center">
-              <div className="w-5 h-5 border-2 border-[#2a2a2a] border-t-[#555] rounded-full animate-spin" />
+              <div className="w-5 h-5 border-2 border-[var(--border-strong)] border-t-[#555] rounded-full animate-spin" />
             </div>
           ) : !hasDdata ? (
             <div className="h-48 flex items-center justify-center">
-              <p className="text-[#333] text-sm">No revenue data for this period.</p>
+              <p className="text-[var(--text-faint)] text-sm">No revenue data for this period.</p>
             </div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#C49A3C" stopOpacity={0.25} />
-                    <stop offset="100%" stopColor="#C49A3C" stopOpacity={0}    />
+                    <stop offset="0%"   stopColor="var(--accent)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="var(--accent)" stopOpacity={0}    />
                   </linearGradient>
                 </defs>
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke="#1e1e1e"
+                  stroke="var(--border)"
                   vertical={false}
                 />
                 <XAxis
                   dataKey="label"
-                  tick={{ fill: '#555', fontSize: 11 }}
+                  tick={{ fill: 'var(--text-dim)', fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
                   interval={range === 30 ? 4 : 0}
                 />
                 <YAxis
-                  tick={{ fill: '#555', fontSize: 11 }}
+                  tick={{ fill: 'var(--text-dim)', fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={fmtNaira}
                   width={48}
                   domain={[0, maxRev * 1.2]}
                 />
-                <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#2a2a2a', strokeWidth: 1 }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--border-strong)', strokeWidth: 1 }} />
                 <Area
                   type="monotone"
                   dataKey="revenue"
-                  stroke="#C49A3C"
+                  stroke="var(--accent)"
                   strokeWidth={2}
                   fill="url(#revenueGrad)"
                   dot={false}
-                  activeDot={{ r: 4, fill: '#C49A3C', strokeWidth: 0 }}
+                  activeDot={{ r: 4, fill: 'var(--accent)', strokeWidth: 0 }}
                 />
               </AreaChart>
             </ResponsiveContainer>

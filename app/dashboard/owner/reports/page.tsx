@@ -73,41 +73,41 @@ export default function ReportsPage() {
 
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-white text-2xl font-bold tracking-tight">Reports</h1>
-        <p className="text-[#555] text-sm mt-0.5">Choose a date range to generate a full financial report</p>
+        <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Reports</h1>
+        <p className="text-[var(--text-dim)] text-sm mt-0.5">Choose a date range to generate a full financial report</p>
       </div>
 
       {/* Filters */}
-      <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 mb-8 space-y-4">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 mb-8 space-y-4">
         {/* Date range */}
         <div className="flex flex-col sm:flex-row gap-4 items-end">
           <div className="flex-1">
-            <label className="block text-[#888] text-xs font-medium mb-1.5">From</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">From</label>
             <input type="date" value={from} onChange={e => setFrom(e.target.value)}
               max={to} className="input" />
           </div>
           <div className="flex-1">
-            <label className="block text-[#888] text-xs font-medium mb-1.5">To</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">To</label>
             <input type="date" value={to} onChange={e => setTo(e.target.value)}
               min={from} max={lagosToday()} className="input" />
           </div>
           <button onClick={run} disabled={loading || !from || !to}
-            className="sm:w-auto w-full bg-white text-gray-950 font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-gray-100 disabled:opacity-40 active:scale-[0.98] transition-all whitespace-nowrap">
+            className="sm:w-auto w-full bg-[var(--text)] text-[var(--bg)] font-semibold px-6 py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] disabled:opacity-40 active:scale-[0.98] transition-all whitespace-nowrap">
             {loading ? 'Generating…' : 'Run Report'}
           </button>
         </div>
 
         {/* Payment method filter */}
         <div>
-          <p className="text-[#888] text-xs font-medium mb-2">Payment Method</p>
+          <p className="text-[var(--text-muted)] text-xs font-medium mb-2">Payment Method</p>
           <div className="flex gap-2 flex-wrap">
             {(['all', 'cash', 'transfer', 'pos'] as const).map(opt => (
               <button key={opt} type="button"
                 onClick={() => setPayment(opt)}
                 className={`px-4 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
                   payment === opt
-                    ? 'bg-white border-white text-gray-950'
-                    : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#3a3a3a]'
+                    ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]'
+                    : 'bg-[var(--elevated)] border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text-faint)]'
                 }`}>
                 {opt === 'all' ? 'All Methods' : opt === 'pos' ? 'POS' : opt.charAt(0).toUpperCase() + opt.slice(1)}
               </button>
@@ -126,10 +126,10 @@ export default function ReportsPage() {
       {loading && (
         <div className="space-y-4">
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {[0,1,2,3,4].map(i => <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-20 animate-pulse" />)}
+            {[0,1,2,3,4].map(i => <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-20 animate-pulse" />)}
           </div>
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-48 animate-pulse" />
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-48 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-48 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-48 animate-pulse" />
         </div>
       )}
 
@@ -138,7 +138,7 @@ export default function ReportsPage() {
         <>
           {/* Summary cards */}
           <section className="mb-8">
-            <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">
+            <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">
               Summary · {fmtDate(from)} – {fmtDate(to)}
             </h2>
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -154,7 +154,7 @@ export default function ReportsPage() {
           {/* Payment method breakdown */}
           {payment === 'all' && (
             <section className="mb-8">
-              <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">By Payment Method</h2>
+              <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">By Payment Method</h2>
               <div className="grid grid-cols-3 gap-4">
                 {([
                   { key: 'cash',     label: 'Cash' },
@@ -166,13 +166,13 @@ export default function ReportsPage() {
                     ? Math.round((amount / data!.summary.totalRevenue) * 100)
                     : 0
                   return (
-                    <div key={key} className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
-                      <p className="text-[#555] text-xs font-medium mb-2">{label}</p>
-                      <p className={`text-lg font-bold tabular-nums ${amount > 0 ? 'text-white' : 'text-[#333]'}`}>
+                    <div key={key} className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+                      <p className="text-[var(--text-dim)] text-xs font-medium mb-2">{label}</p>
+                      <p className={`text-lg font-bold tabular-nums ${amount > 0 ? 'text-[var(--text)]' : 'text-[var(--text-faint)]'}`}>
                         {amount > 0 ? fmtNaira(amount) : '—'}
                       </p>
                       {amount > 0 && (
-                        <p className="text-[#444] text-xs mt-1">{pct}% of total</p>
+                        <p className="text-[var(--text-faint)] text-xs mt-1">{pct}% of total</p>
                       )}
                     </div>
                   )
@@ -186,22 +186,22 @@ export default function ReportsPage() {
 
             {/* By service */}
             <section>
-              <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Revenue by Service</h2>
-              <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+              <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Revenue by Service</h2>
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
                 {data.byService.length === 0
                   ? <EmptyRow text="No services in this period." />
                   : data.byService.map(s => (
                   <div key={s.name} className="px-5 py-3.5">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-white text-sm font-medium">{s.name}</p>
-                      <p className="text-white text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
+                      <p className="text-[var(--text)] text-sm font-medium">{s.name}</p>
+                      <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-[#1e1e1e] rounded-full h-1">
-                        <div className="bg-white/30 h-1 rounded-full"
+                      <div className="flex-1 bg-[var(--border)] rounded-full h-1">
+                        <div className="bg-[var(--text)]/30 h-1 rounded-full"
                           style={{ width: `${Math.round((s.revenue / maxServiceRev) * 100)}%` }} />
                       </div>
-                      <span className="text-[#555] text-xs">{s.count}×</span>
+                      <span className="text-[var(--text-dim)] text-xs">{s.count}×</span>
                     </div>
                   </div>
                 ))}
@@ -210,33 +210,33 @@ export default function ReportsPage() {
 
             {/* By staff */}
             <section>
-              <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Revenue by Staff</h2>
-              <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+              <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Revenue by Staff</h2>
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
                 {data.byStaff.length === 0
                   ? <EmptyRow text="No staff data in this period." />
                   : data.byStaff.map(s => (
                   <div key={s.name} className="px-5 py-3.5">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-                          <span className="text-white text-[10px] font-semibold">{s.name.charAt(0).toUpperCase()}</span>
+                        <div className="w-6 h-6 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
+                          <span className="text-[var(--text)] text-[10px] font-semibold">{s.name.charAt(0).toUpperCase()}</span>
                         </div>
-                        <p className="text-white text-sm font-medium">{s.name}</p>
+                        <p className="text-[var(--text)] text-sm font-medium">{s.name}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-white text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
-                        <p className="text-[10px] text-[#666] tabular-nums">
+                        <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
+                        <p className="text-[10px] text-[var(--text-muted)] tabular-nums">
                           <span className="text-amber-400">{fmtNaira(s.commission)}</span>
                           {s.tips > 0 && <> + <span className="text-emerald-400">{fmtNaira(s.tips)}</span> tip</>}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-[#1e1e1e] rounded-full h-1">
-                        <div className="bg-white/30 h-1 rounded-full"
+                      <div className="flex-1 bg-[var(--border)] rounded-full h-1">
+                        <div className="bg-[var(--text)]/30 h-1 rounded-full"
                           style={{ width: `${Math.round((s.revenue / maxStaffRev) * 100)}%` }} />
                       </div>
-                      <span className="text-[#555] text-xs">{s.services} svcs</span>
+                      <span className="text-[var(--text-dim)] text-xs">{s.services} svcs</span>
                     </div>
                   </div>
                 ))}
@@ -247,37 +247,37 @@ export default function ReportsPage() {
           {/* Visit log */}
           {data.visits.length > 0 && (
             <section>
-              <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">
-                Visit Log <span className="normal-case text-[#333]">(up to 50 most recent)</span>
+              <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">
+                Visit Log <span className="normal-case text-[var(--text-faint)]">(up to 50 most recent)</span>
               </h2>
 
               {/* Desktop */}
-              <div className="hidden lg:block bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="hidden lg:block bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e1e1e]">
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Date</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Client</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Staff</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Payment</th>
-                      <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Amount</th>
+                    <tr className="border-b border-[var(--border)]">
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Date</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Client</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Staff</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Payment</th>
+                      <th className="text-right text-[var(--text-dim)] text-xs font-medium px-5 py-3">Amount</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1e1e1e]">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {data.visits.map(v => (
-                      <tr key={v.id} className="hover:bg-[#1a1a1a] transition-colors">
-                        <td className="px-5 py-3 text-[#888]">{fmtDate(v.visit_date)}</td>
+                      <tr key={v.id} className="hover:bg-[var(--elevated)] transition-colors">
+                        <td className="px-5 py-3 text-[var(--text-muted)]">{fmtDate(v.visit_date)}</td>
                         <td className="px-5 py-3">
-                          <p className="text-white font-medium">{v.clients?.name ?? '—'}</p>
-                          <p className="text-[#555] text-xs">{v.clients?.phone}</p>
+                          <p className="text-[var(--text)] font-medium">{v.clients?.name ?? '—'}</p>
+                          <p className="text-[var(--text-dim)] text-xs">{v.clients?.phone}</p>
                         </td>
-                        <td className="px-5 py-3 text-[#888]">{v.users?.name ?? '—'}</td>
+                        <td className="px-5 py-3 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
                         <td className="px-5 py-3">
-                          <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[#2a2a2a] text-[#888]">
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--border-strong)] text-[var(--text-muted)]">
                             {v.payment_method === 'pos' ? 'POS' : v.payment_method.charAt(0).toUpperCase() + v.payment_method.slice(1)}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-right text-white font-semibold tabular-nums">
+                        <td className="px-5 py-3 text-right text-[var(--text)] font-semibold tabular-nums">
                           {fmtNaira(v.total_ngn)}
                         </td>
                       </tr>
@@ -289,13 +289,13 @@ export default function ReportsPage() {
               {/* Mobile */}
               <div className="lg:hidden space-y-2">
                 {data.visits.map(v => (
-                  <div key={v.id} className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3">
+                  <div key={v.id} className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white text-sm font-medium">{v.clients?.name ?? '—'}</p>
-                        <p className="text-[#555] text-xs">{v.users?.name} · {fmtDate(v.visit_date)}</p>
+                        <p className="text-[var(--text)] text-sm font-medium">{v.clients?.name ?? '—'}</p>
+                        <p className="text-[var(--text-dim)] text-xs">{v.users?.name} · {fmtDate(v.visit_date)}</p>
                       </div>
-                      <p className="text-white text-sm font-bold tabular-nums">{fmtNaira(v.total_ngn)}</p>
+                      <p className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(v.total_ngn)}</p>
                     </div>
                   </div>
                 ))}
@@ -307,9 +307,9 @@ export default function ReportsPage() {
 
       {/* Pre-run empty state */}
       {!ran && !loading && (
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-16 text-center">
-          <p className="text-[#444] text-sm">Select a date range above and tap Run Report.</p>
-          <p className="text-[#333] text-xs mt-1">Default range is this month.</p>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-16 text-center">
+          <p className="text-[var(--text-faint)] text-sm">Select a date range above and tap Run Report.</p>
+          <p className="text-[var(--text-faint)] text-xs mt-1">Default range is this month.</p>
         </div>
       )}
     </div>
@@ -318,23 +318,23 @@ export default function ReportsPage() {
 
 function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: 'gold' | 'amber' | 'emerald' }) {
   return (
-    <div className={`bg-[#141414] rounded-xl p-4 border ${
-      accent === 'gold'    ? 'border-[#C49A3C]/30'     :
+    <div className={`bg-[var(--card)] rounded-xl p-4 border ${
+      accent === 'gold'    ? 'border-[var(--accent)]/30'     :
       accent === 'amber'   ? 'border-amber-500/20'    :
       accent === 'emerald' ? 'border-emerald-500/20'  :
-      'border-[#1e1e1e]'
+      'border-[var(--border)]'
     }`}>
-      <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">{label}</p>
+      <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">{label}</p>
       <p className={`text-lg font-bold tabular-nums ${
-        accent === 'gold'    ? 'text-[#C49A3C]'   :
+        accent === 'gold'    ? 'text-[var(--accent)]'   :
         accent === 'amber'   ? 'text-amber-400'   :
         accent === 'emerald' ? 'text-emerald-400' :
-        'text-white'
+        'text-[var(--text)]'
       }`}>{value}</p>
     </div>
   )
 }
 
 function EmptyRow({ text }: { text: string }) {
-  return <div className="px-5 py-8 text-center text-[#444] text-sm">{text}</div>
+  return <div className="px-5 py-8 text-center text-[var(--text-faint)] text-sm">{text}</div>
 }

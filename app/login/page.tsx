@@ -56,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#090909] flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
 
         {/* Logo */}
@@ -64,13 +64,13 @@ export default function LoginPage() {
           <div className="w-24 h-24 rounded-2xl bg-white mx-auto mb-5 flex items-center justify-center overflow-hidden">
             <Image src="/logo.jpg" alt="Clips N'Cutz" width={96} height={96} className="object-contain" />
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Clips N&apos;Cutz</h1>
-          <p className="text-[#555] text-sm mt-1">Unisex Salon</p>
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Clips N&apos;Cutz</h1>
+          <p className="text-[var(--text-dim)] text-sm mt-1">Unisex Salon</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Phone Number</label>
             <input
               type="tel"
               value={phone}
@@ -83,7 +83,7 @@ export default function LoginPage() {
           </div>
 
           <div>
-            <label className="block text-[#888] text-xs font-medium mb-1.5">4-Digit PIN</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">4-Digit PIN</label>
             <input
               type="password"
               value={pin}
@@ -106,13 +106,13 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || phone.length < 7 || pin.length !== 4}
-            className="w-full bg-white text-gray-950 font-semibold py-3.5 rounded-xl text-sm mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+            className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3.5 rounded-xl text-sm mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
           >
             {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-[#444] text-xs mt-8">
+        <p className="text-center text-[var(--text-faint)] text-xs mt-8">
           Forgot your PIN? Ask the manager to reset it.
         </p>
       </div>

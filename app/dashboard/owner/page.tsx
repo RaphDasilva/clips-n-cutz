@@ -41,9 +41,9 @@ function StatCard({
   href?: string
 }) {
   const inner = (
-    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 h-full hover:border-[#2a2a2a] transition-colors">
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 h-full hover:border-[var(--border-strong)] transition-colors">
       <div className="flex items-start justify-between mb-4">
-        <p className="text-[#666] text-xs font-medium uppercase tracking-wider">{label}</p>
+        <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider">{label}</p>
         {d && (
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
             d.up
@@ -54,8 +54,8 @@ function StatCard({
           </span>
         )}
       </div>
-      <p className="text-white text-3xl font-bold tracking-tight tabular-nums">{value}</p>
-      {sub && <p className="text-[#555] text-xs mt-1.5">{sub}</p>}
+      <p className="text-[var(--text)] text-3xl font-bold tracking-tight tabular-nums">{value}</p>
+      {sub && <p className="text-[var(--text-dim)] text-xs mt-1.5">{sub}</p>}
     </div>
   )
   return href ? <Link href={href} className="block">{inner}</Link> : inner
@@ -91,16 +91,16 @@ export default function OwnerHome() {
 
       {/* Header */}
       <div className="mb-8">
-        <p className="text-[#555] text-sm mb-1">{today}</p>
-        <h1 className="text-white text-2xl font-bold tracking-tight">
+        <p className="text-[var(--text-dim)] text-sm mb-1">{today}</p>
+        <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">
           Good {greeting()}, {name}
         </h1>
-        <p className="text-[#555] text-sm mt-1">Financial overview — read only</p>
+        <p className="text-[var(--text-dim)] text-sm mt-1">Financial overview — read only</p>
       </div>
 
       {/* Today vs Yesterday */}
       <section className="mb-8">
-        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Today</h2>
+        <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Today</h2>
         {loading ? <SkeletonGrid n={3} /> : (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
@@ -128,7 +128,7 @@ export default function OwnerHome() {
 
       {/* Payment method breakdown — today */}
       <section className="mb-8">
-        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Today — Payment Methods</h2>
+        <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Today — Payment Methods</h2>
         {loading ? <SkeletonGrid n={3} /> : (
           <div className="grid grid-cols-3 gap-4">
             <PaymentCard label="Cash"     amount={data!.today.byPayment.cash}     />
@@ -140,7 +140,7 @@ export default function OwnerHome() {
 
       {/* This week / This month */}
       <section className="mb-8">
-        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Periods</h2>
+        <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Periods</h2>
         {loading ? <SkeletonGrid n={4} /> : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard label="This week" value={fmtNaira(data!.week.revenue)} sub={`${data!.week.visits} visits`} />
@@ -153,31 +153,31 @@ export default function OwnerHome() {
 
       {/* Month profit split */}
       <section className="mb-8">
-        <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">
+        <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">
           This Month — Profit Split
         </h2>
         {loading ? <SkeletonGrid n={3} /> : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Total Revenue</p>
-              <p className="text-white text-2xl font-bold tabular-nums">{fmtNairaFull(data!.month.revenue)}</p>
-              <p className="text-[#555] text-xs mt-1.5">All services this month</p>
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-3">Total Revenue</p>
+              <p className="text-[var(--text)] text-2xl font-bold tabular-nums">{fmtNairaFull(data!.month.revenue)}</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1.5">All services this month</p>
             </div>
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Staff Payout</p>
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-3">Staff Payout</p>
               <p className="text-amber-400 text-2xl font-bold tabular-nums">{fmtNairaFull(commissionOwed + data!.month.tips)}</p>
-              <p className="text-[#555] text-xs mt-1.5">
+              <p className="text-[var(--text-dim)] text-xs mt-1.5">
                 Commission {fmtNairaFull(commissionOwed)} + Tips {fmtNairaFull(data!.month.tips)}
               </p>
               <Link href="/dashboard/owner/commission"
-                className="text-[#555] text-xs mt-3 inline-flex items-center gap-1 hover:text-white transition-colors">
+                className="text-[var(--text-dim)] text-xs mt-3 inline-flex items-center gap-1 hover:text-[var(--text)] transition-colors">
                 See breakdown →
               </Link>
             </div>
-            <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Your Earnings <span className="text-[#444] normal-case">(70%)</span></p>
-              <p className="text-[#C49A3C] text-2xl font-bold tabular-nums">{fmtNairaFull(ownerCut)}</p>
-              <p className="text-[#555] text-xs mt-1.5">After staff commission</p>
+            <div className="bg-[var(--card)] border border-[var(--accent)]/30 rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-3">Your Earnings <span className="text-[var(--text-faint)] normal-case">(70%)</span></p>
+              <p className="text-[var(--accent)] text-2xl font-bold tabular-nums">{fmtNairaFull(ownerCut)}</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1.5">After staff commission</p>
             </div>
           </div>
         )}
@@ -186,22 +186,22 @@ export default function OwnerHome() {
       {/* Quick links */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Link href="/dashboard/owner/commission"
-          className="flex items-center justify-between bg-[#141414] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 transition-colors group">
+          className="flex items-center justify-between bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl px-5 py-4 transition-colors group">
           <div>
-            <p className="text-white text-sm font-semibold">Commission Breakdown</p>
-            <p className="text-[#555] text-xs mt-0.5">See what each staff member earned</p>
+            <p className="text-[var(--text)] text-sm font-semibold">Commission Breakdown</p>
+            <p className="text-[var(--text-dim)] text-xs mt-0.5">See what each staff member earned</p>
           </div>
-          <svg className="w-4 h-4 text-[#444] group-hover:text-[#888] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
         </Link>
         <Link href="/dashboard/owner/reports"
-          className="flex items-center justify-between bg-[#141414] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 transition-colors group">
+          className="flex items-center justify-between bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl px-5 py-4 transition-colors group">
           <div>
-            <p className="text-white text-sm font-semibold">Custom Reports</p>
-            <p className="text-[#555] text-xs mt-0.5">Revenue and visits for any date range</p>
+            <p className="text-[var(--text)] text-sm font-semibold">Custom Reports</p>
+            <p className="text-[var(--text-dim)] text-xs mt-0.5">Revenue and visits for any date range</p>
           </div>
-          <svg className="w-4 h-4 text-[#444] group-hover:text-[#888] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
           </svg>
         </Link>
@@ -214,7 +214,7 @@ function SkeletonGrid({ n }: { n: number }) {
   return (
     <div className={`grid grid-cols-2 ${n === 4 ? 'lg:grid-cols-4' : n === 3 ? 'lg:grid-cols-3' : ''} gap-4`}>
       {Array.from({ length: n }).map((_, i) => (
-        <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-24 animate-pulse" />
+        <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-24 animate-pulse" />
       ))}
     </div>
   )
@@ -222,9 +222,9 @@ function SkeletonGrid({ n }: { n: number }) {
 
 function PaymentCard({ label, amount }: { label: string; amount: number }) {
   return (
-    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
-      <p className="text-[#555] text-xs font-medium mb-2">{label}</p>
-      <p className={`text-base font-bold tabular-nums ${amount > 0 ? 'text-white' : 'text-[#333]'}`}>
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+      <p className="text-[var(--text-dim)] text-xs font-medium mb-2">{label}</p>
+      <p className={`text-base font-bold tabular-nums ${amount > 0 ? 'text-[var(--text)]' : 'text-[var(--text-faint)]'}`}>
         {amount > 0 ? fmtNairaFull(amount) : '—'}
       </p>
     </div>

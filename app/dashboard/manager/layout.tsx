@@ -9,7 +9,7 @@ export default function ManagerLayout({ children }: { children: React.ReactNode 
   return (
     <AuthGuard allowedRoles={['manager']}>
       {(user: SessionUser) => (
-        <div className="flex h-full bg-[#090909]">
+        <div className="flex h-full bg-[var(--bg)]">
           {/* Desktop sidebar */}
           <ManagerSidebar user={user} />
 

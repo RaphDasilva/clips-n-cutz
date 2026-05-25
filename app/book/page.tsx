@@ -92,26 +92,26 @@ export default function BookPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
-          <h2 className="text-white text-2xl font-bold">Booking Confirmed!</h2>
-          <p className="text-[#888] text-sm mt-2 leading-relaxed">
+          <h2 className="text-[var(--text)] text-2xl font-bold">Booking Confirmed!</h2>
+          <p className="text-[var(--text-muted)] text-sm mt-2 leading-relaxed">
             {success.serviceNames}
           </p>
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4 mt-6 text-left space-y-2">
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 mt-6 text-left space-y-2">
             <div className="flex items-center gap-3">
               <span className="text-lg">📅</span>
-              <span className="text-white text-sm">{success.displayDate}</span>
+              <span className="text-[var(--text)] text-sm">{success.displayDate}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="text-lg">⏰</span>
-              <span className="text-white text-sm">{success.timeLabel}</span>
+              <span className="text-[var(--text)] text-sm">{success.timeLabel}</span>
             </div>
           </div>
-          <p className="text-[#555] text-xs mt-5 leading-relaxed">
+          <p className="text-[var(--text-dim)] text-xs mt-5 leading-relaxed">
             We&apos;ve sent a WhatsApp confirmation to your number. See you soon!
           </p>
-          <p className="text-[#333] text-xs mt-3">
+          <p className="text-[var(--text-faint)] text-xs mt-3">
             Need to reschedule? WhatsApp us at{' '}
-            <span className="text-[#555]">+2348062510256</span>
+            <span className="text-[var(--text-dim)]">+2348062510256</span>
           </p>
         </div>
       </div>
@@ -129,21 +129,21 @@ export default function BookPage() {
             <Image src="/logo.jpg" alt="Clips N'Cutz" width={48} height={48} className="object-contain" />
           </div>
           <div>
-            <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
-            <p className="text-[#555] text-[11px]">Unisex Salon, Lagos</p>
+            <p className="text-[var(--text)] text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
+            <p className="text-[var(--text-dim)] text-[11px]">Unisex Salon, Lagos</p>
           </div>
         </div>
-        <h1 className="text-white text-2xl font-bold tracking-tight">Book an Appointment</h1>
-        <p className="text-[#555] text-sm mt-1">Pick your service, date, and time — we&apos;ll confirm on WhatsApp.</p>
+        <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Book an Appointment</h1>
+        <p className="text-[var(--text-dim)] text-sm mt-1">Pick your service, date, and time — we&apos;ll confirm on WhatsApp.</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
 
         {/* Client info */}
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 space-y-4">
-          <h2 className="text-white text-sm font-semibold">Your Details</h2>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 space-y-4">
+          <h2 className="text-[var(--text)] text-sm font-semibold">Your Details</h2>
           <div>
-            <label className="block text-[#888] text-xs font-medium mb-1.5">Full Name</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Full Name</label>
             <input type="text" value={clientName}
               onChange={e => setClientName(e.target.value)}
               placeholder="e.g. Emeka Obi"
@@ -151,26 +151,26 @@ export default function BookPage() {
               className="input" />
           </div>
           <div>
-            <label className="block text-[#888] text-xs font-medium mb-1.5">WhatsApp Number</label>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">WhatsApp Number</label>
             <input type="tel" value={clientPhone}
               onChange={e => setClientPhone(e.target.value)}
               placeholder="08012345678"
               required
               className="input" />
-            <p className="text-[#444] text-xs mt-1">We&apos;ll send your confirmation here.</p>
+            <p className="text-[var(--text-faint)] text-xs mt-1">We&apos;ll send your confirmation here.</p>
           </div>
         </div>
 
         {/* Service selection */}
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-white text-sm font-semibold">Select Service</h2>
+            <h2 className="text-[var(--text)] text-sm font-semibold">Select Service</h2>
             {selectedTotal > 0 && (
-              <span className="text-[#C49A3C] text-sm font-bold">{fmtNaira(selectedTotal)}</span>
+              <span className="text-[var(--accent)] text-sm font-bold">{fmtNaira(selectedTotal)}</span>
             )}
           </div>
           {loadingServices ? (
-            <div className="h-12 bg-[#1a1a1a] rounded-lg animate-pulse" />
+            <div className="h-12 bg-[var(--elevated)] rounded-lg animate-pulse" />
           ) : (
             <ServicePicker
               services={services}
@@ -183,8 +183,8 @@ export default function BookPage() {
         </div>
 
         {/* Date */}
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-          <h2 className="text-white text-sm font-semibold mb-4">Pick a Date</h2>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+          <h2 className="text-[var(--text)] text-sm font-semibold mb-4">Pick a Date</h2>
           <input
             type="date"
             value={date}
@@ -197,8 +197,8 @@ export default function BookPage() {
         </div>
 
         {/* Time */}
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-          <h2 className="text-white text-sm font-semibold mb-4">Pick a Time</h2>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+          <h2 className="text-[var(--text)] text-sm font-semibold mb-4">Pick a Time</h2>
           <div className="grid grid-cols-3 gap-2">
             {TIME_SLOTS.map(slot => {
               const active = timeSlot?.value === slot.value
@@ -207,8 +207,8 @@ export default function BookPage() {
                   onClick={() => setTimeSlot(slot)}
                   className={`py-2.5 rounded-lg border text-sm font-medium transition-all ${
                     active
-                      ? 'bg-[#C49A3C] border-[#C49A3C] text-[#090909]'
-                      : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                      ? 'bg-[var(--accent)] border-[var(--accent)] text-[var(--bg)]'
+                      : 'bg-[var(--elevated)] border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--text-faint)]'
                   }`}>
                   {slot.label}
                 </button>
@@ -225,13 +225,13 @@ export default function BookPage() {
 
         <button type="submit"
           disabled={submitting || !clientName || !clientPhone || !selectedIds.length || !date || !timeSlot}
-          className="w-full bg-[#C49A3C] text-[#090909] font-bold py-4 rounded-xl text-sm disabled:opacity-40 hover:bg-[#B8912A] active:scale-[0.98] transition-all">
+          className="w-full bg-[var(--accent)] text-[var(--bg)] font-bold py-4 rounded-xl text-sm disabled:opacity-40 hover:bg-[#B8912A] active:scale-[0.98] transition-all">
           {submitting ? 'Booking…' : selectedTotal > 0 ? `Book Appointment · ${fmtNaira(selectedTotal)}` : 'Book Appointment'}
         </button>
 
-        <p className="text-center text-[#444] text-xs pb-4">
+        <p className="text-center text-[var(--text-faint)] text-xs pb-4">
           Questions? WhatsApp us at{' '}
-          <span className="text-[#666]">+2348062510256</span>
+          <span className="text-[var(--text-muted)]">+2348062510256</span>
         </p>
       </form>
     </div>

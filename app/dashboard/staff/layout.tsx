@@ -8,7 +8,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   return (
     <AuthGuard allowedRoles={['staff']}>
       {(user: SessionUser) => (
-        <div className="flex h-full bg-[#090909]">
+        <div className="flex h-full bg-[var(--bg)]">
           <StaffSidebar user={user} />
           <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
             {children}

@@ -96,22 +96,22 @@ export default function WalkInPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
-          <h2 className="text-white text-2xl font-bold">Visit Logged</h2>
-          <p className="text-[#888] text-sm mt-2">
+          <h2 className="text-[var(--text)] text-2xl font-bold">Visit Logged</h2>
+          <p className="text-[var(--text-muted)] text-sm mt-2">
             {success.clientName} &middot; {success.serviceCount} service{success.serviceCount !== 1 ? 's' : ''}
           </p>
-          <p className="text-white text-3xl font-bold tracking-tight mt-4">{fmtNaira(success.totalNgn)}</p>
+          <p className="text-[var(--text)] text-3xl font-bold tracking-tight mt-4">{fmtNaira(success.totalNgn)}</p>
           {success.tipNgn > 0 && (
-            <p className="text-[#C49A3C] text-sm font-medium mt-1">+{fmtNaira(success.tipNgn)} tip recorded</p>
+            <p className="text-[var(--accent)] text-sm font-medium mt-1">+{fmtNaira(success.tipNgn)} tip recorded</p>
           )}
-          <p className="text-[#555] text-xs mt-2">Follow-up scheduled in 7 days</p>
+          <p className="text-[var(--text-dim)] text-xs mt-2">Follow-up scheduled in 7 days</p>
           <div className="flex flex-col sm:flex-row gap-3 mt-8">
             <button onClick={reset}
-              className="flex-1 bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm hover:bg-gray-100 transition-all">
+              className="flex-1 bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm hover:bg-[var(--text-muted)] transition-all">
               Another Walk-in
             </button>
             <button onClick={() => router.push('/dashboard/manager')}
-              className="flex-1 bg-[#1a1a1a] border border-[#2a2a2a] text-[#888] font-medium py-3 rounded-xl text-sm hover:text-white transition-all">
+              className="flex-1 bg-[var(--elevated)] border border-[var(--border-strong)] text-[var(--text-muted)] font-medium py-3 rounded-xl text-sm hover:text-[var(--text)] transition-all">
               Back to Today
             </button>
           </div>
@@ -127,35 +127,35 @@ export default function WalkInPage() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <button onClick={() => router.back()}
-          className="w-9 h-9 rounded-lg bg-[#141414] border border-[#1e1e1e] flex items-center justify-center text-[#888] hover:text-white transition-colors lg:hidden">
+          className="w-9 h-9 rounded-lg bg-[var(--card)] border border-[var(--border)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] transition-colors lg:hidden">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
           </svg>
         </button>
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">New Walk-in</h1>
-          <p className="text-[#555] text-sm mt-0.5">Log a client visit — takes under 30 seconds</p>
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">New Walk-in</h1>
+          <p className="text-[var(--text-dim)] text-sm mt-0.5">Log a client visit — takes under 30 seconds</p>
         </div>
       </div>
 
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-80 animate-pulse" />
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-80 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-80 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-80 animate-pulse" />
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-5">
 
             {/* ── Left column — all details in one unified card ── */}
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
 
               {/* Client */}
               <div className="px-5 pt-5 pb-4">
-                <p className="text-[#555] text-[11px] font-semibold uppercase tracking-wider mb-4">Client</p>
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-4">Client</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[#888] text-xs font-medium mb-1.5">Full Name</label>
+                    <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Full Name</label>
                     <input type="text" value={clientName}
                       onChange={e => setClientName(e.target.value)}
                       placeholder="e.g. Emeka Obi"
@@ -163,8 +163,8 @@ export default function WalkInPage() {
                       className="input" />
                   </div>
                   <div>
-                    <label className="block text-[#888] text-xs font-medium mb-1.5">
-                      Phone Number <span className="text-[#555] font-normal">(optional)</span>
+                    <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                      Phone Number <span className="text-[var(--text-dim)] font-normal">(optional)</span>
                     </label>
                     <input type="tel" value={clientPhone}
                       onChange={e => setClientPhone(e.target.value)}
@@ -174,8 +174,8 @@ export default function WalkInPage() {
                 </div>
               </div>
 
-              <div className="border-t border-[#1e1e1e] px-5 py-4">
-                <p className="text-[#555] text-[11px] font-semibold uppercase tracking-wider mb-3">Staff Member</p>
+              <div className="border-t border-[var(--border)] px-5 py-4">
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">Staff Member</p>
                 <select
                   value={staffId}
                   onChange={e => selectStaff(e.target.value)}
@@ -188,9 +188,9 @@ export default function WalkInPage() {
                 </select>
               </div>
 
-              <div className="border-t border-[#1e1e1e] px-5 py-4">
-                <p className="text-[#555] text-[11px] font-semibold uppercase tracking-wider mb-3">Payment Method</p>
-                <div className="flex bg-[#1a1a1a] rounded-lg p-0.5 gap-0.5">
+              <div className="border-t border-[var(--border)] px-5 py-4">
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">Payment Method</p>
+                <div className="flex bg-[var(--elevated)] rounded-lg p-0.5 gap-0.5">
                   {([
                     { value: 'cash',     label: 'Cash' },
                     { value: 'transfer', label: 'Transfer' },
@@ -200,8 +200,8 @@ export default function WalkInPage() {
                       onClick={() => setPaymentMethod(opt.value)}
                       className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
                         paymentMethod === opt.value
-                          ? 'bg-white text-gray-950 shadow-sm'
-                          : 'text-[#666] hover:text-white'
+                          ? 'bg-[var(--text)] text-[var(--bg)] shadow-sm'
+                          : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                       }`}>
                       {opt.label}
                     </button>
@@ -209,12 +209,12 @@ export default function WalkInPage() {
                 </div>
               </div>
 
-              <div className="border-t border-[#1e1e1e] px-5 py-4">
-                <p className="text-[#555] text-[11px] font-semibold uppercase tracking-wider mb-3">
-                  Tip <span className="normal-case text-[#444] font-normal">(optional)</span>
+              <div className="border-t border-[var(--border)] px-5 py-4">
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider mb-3">
+                  Tip <span className="normal-case text-[var(--text-faint)] font-normal">(optional)</span>
                 </p>
                 <div className="relative max-w-[180px]">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#555] text-sm font-medium">₦</span>
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm font-medium">₦</span>
                   <input
                     type="text" inputMode="numeric"
                     value={tipNgn}
@@ -227,11 +227,11 @@ export default function WalkInPage() {
             </div>
 
             {/* ── Right column — services picker ── */}
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5 flex flex-col">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 flex flex-col">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[#555] text-[11px] font-semibold uppercase tracking-wider">Services</p>
+                <p className="text-[var(--text-dim)] text-[11px] font-semibold uppercase tracking-wider">Services</p>
                 {selectedTotal > 0 && (
-                  <span className="text-white text-sm font-bold tabular-nums">{fmtNaira(selectedTotal)}</span>
+                  <span className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(selectedTotal)}</span>
                 )}
               </div>
 
@@ -243,7 +243,7 @@ export default function WalkInPage() {
                 placeholder="+ Add services for this visit"
               />
               {staffId && staffHasServices && (
-                <p className="text-[#555] text-[10px] mt-2.5">
+                <p className="text-[var(--text-dim)] text-[10px] mt-2.5">
                   Filtered to services this staff member can perform.
                 </p>
               )}
@@ -258,7 +258,7 @@ export default function WalkInPage() {
 
           <button type="submit"
             disabled={submitting || selectedIds.length === 0 || !staffId || !clientName}
-            className="w-full bg-white text-gray-950 font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 active:scale-[0.98] transition-all">
+            className="w-full bg-[var(--text)] text-[var(--bg)] font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all">
             {submitting ? 'Saving…' : selectedTotal > 0 ? `Log Visit · ${fmtNaira(selectedTotal)}` : 'Log Visit'}
           </button>
         </form>

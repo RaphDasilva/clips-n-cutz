@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { clearSession, switchRole } from '@/lib/auth'
 import { useState } from 'react'
+import { ThemeToggle } from './theme-toggle'
 import type { SessionUser } from '@/types/database'
 
 const NAV = [
@@ -74,15 +75,15 @@ export function OwnerSidebar({ user }: { user: SessionUser }) {
   }
 
   return (
-    <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[#1e1e1e] bg-[#0f0f0f] h-full">
+    <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] h-full">
       {/* Brand */}
-      <div className="py-6 border-b border-[#1e1e1e] flex flex-col items-center gap-3">
+      <div className="py-6 border-b border-[var(--border)] flex flex-col items-center gap-3">
         <div className="w-16 h-16 rounded-2xl bg-white overflow-hidden flex items-center justify-center">
           <Image src="/logo.jpg" alt="Clips N'Cutz" width={64} height={64} className="object-contain" />
         </div>
         <div className="text-center">
-          <p className="text-white text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
-          <p className="text-[#555] text-[11px] leading-tight mt-0.5">Owner Portal</p>
+          <p className="text-[var(--text)] text-sm font-semibold leading-tight">Clips N&apos;Cutz</p>
+          <p className="text-[var(--text-dim)] text-[11px] leading-tight mt-0.5">Owner Portal</p>
         </div>
       </div>
 
@@ -93,9 +94,9 @@ export function OwnerSidebar({ user }: { user: SessionUser }) {
           return (
             <Link key={item.href} href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                active ? 'bg-white text-gray-950' : 'text-[#888] hover:text-white hover:bg-[#1a1a1a]'
+                active ? 'bg-[var(--text)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)]'
               }`}>
-              <span className={active ? 'text-gray-950' : 'text-[#666]'}>{item.icon}</span>
+              <span className={active ? 'text-[var(--bg)]' : 'text-[var(--text-muted)]'}>{item.icon}</span>
               {item.label}
             </Link>
           )
@@ -103,25 +104,26 @@ export function OwnerSidebar({ user }: { user: SessionUser }) {
       </nav>
 
       {/* User */}
-      <div className="px-4 py-4 border-t border-[#1e1e1e]">
+      <div className="px-4 py-4 border-t border-[var(--border)]">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
-            <span className="text-white text-xs font-semibold">{user.name.charAt(0).toUpperCase()}</span>
+          <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center">
+            <span className="text-[var(--text)] text-xs font-semibold">{user.name.charAt(0).toUpperCase()}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-white text-sm font-medium truncate">{user.name}</p>
-            <p className="text-[#555] text-[11px]">Owner</p>
+            <p className="text-[var(--text)] text-sm font-medium truncate">{user.name}</p>
+            <p className="text-[var(--text-dim)] text-[11px]">Owner</p>
           </div>
         </div>
         <button onClick={handleSwitchToManager} disabled={switching}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#888] hover:text-white hover:bg-[#1a1a1a] transition-all text-sm disabled:opacity-40 mb-1">
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all text-sm disabled:opacity-40 mb-1">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
           </svg>
           {switching ? 'Switching…' : 'Switch to Manager View'}
         </button>
+        <ThemeToggle />
         <button onClick={() => { clearSession(); router.replace('/login') }}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[#666] hover:text-white hover:bg-[#1a1a1a] transition-all text-sm">
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all text-sm">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
           </svg>
@@ -135,15 +137,15 @@ export function OwnerSidebar({ user }: { user: SessionUser }) {
 export function OwnerMobileNav() {
   const pathname = usePathname()
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[#0f0f0f] border-t border-[#1e1e1e] z-50">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[var(--surface)] border-t border-[var(--border)] z-50">
       <div className="flex">
         {NAV.map((item) => {
           const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
           return (
             <Link key={item.href} href={item.href}
-              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${active ? 'text-white' : 'text-[#555]'}`}>
-              <span className={active ? 'text-white' : 'text-[#555]'}>{item.icon}</span>
-              <span className={`text-[10px] font-medium ${active ? 'text-white' : 'text-[#555]'}`}>{item.label}</span>
+              className={`flex-1 flex flex-col items-center justify-center py-3 gap-1 transition-colors ${active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'}`}>
+              <span className={active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'}>{item.icon}</span>
+              <span className={`text-[10px] font-medium ${active ? 'text-[var(--text)]' : 'text-[var(--text-dim)]'}`}>{item.label}</span>
             </Link>
           )
         })}

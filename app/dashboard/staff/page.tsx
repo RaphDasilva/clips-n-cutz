@@ -64,7 +64,7 @@ function fmtTime(t: string) {
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  completed: 'bg-[#1e1e1e] text-[#888] border-[#2a2a2a]',
+  completed: 'bg-[var(--border)] text-[var(--text-muted)] border-[var(--border-strong)]',
   pending:   'bg-amber-500/10 text-amber-400 border-amber-500/20',
   cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
 }
@@ -141,8 +141,8 @@ export default function StaffHome() {
 
       {/* Header */}
       <div className="mb-8">
-        <p className="text-[#555] text-sm mb-1">{today}</p>
-        <h1 className="text-white text-2xl font-bold tracking-tight">
+        <p className="text-[var(--text-dim)] text-sm mb-1">{today}</p>
+        <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">
           Good {greeting()}, {firstName}
         </h1>
       </div>
@@ -182,7 +182,7 @@ export default function StaffHome() {
                 <p className="text-emerald-400 text-sm font-semibold">
                   Checked in {data.todayCheckedInAt ? `at ${fmtTime(data.todayCheckedInAt)}` : ''}
                 </p>
-                <p className="text-[#555] text-xs mt-0.5">
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">
                   {data.todayAttStatus === 'on_time' ? 'On time — no penalty' : `Late — ₦${data.todayPenalty.toLocaleString('en-NG')} deducted`}
                 </p>
               </div>
@@ -194,7 +194,7 @@ export default function StaffHome() {
             <div className={`rounded-xl border px-4 py-4 mb-4 ${
               data.checkinStatus === 'pending'
                 ? 'bg-amber-500/5 border-amber-500/20'
-                : 'bg-[#141414] border-[#1e1e1e]'
+                : 'bg-[var(--card)] border-[var(--border)]'
             }`}>
               {data.checkinStatus === 'pending' ? (
                 /* State 3: waiting — auto-polls every 12s */
@@ -203,10 +203,10 @@ export default function StaffHome() {
                     <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse flex-shrink-0" />
                     <div>
                       <p className="text-amber-400 text-sm font-semibold">Waiting for confirmation…</p>
-                      <p className="text-[#555] text-xs mt-0.5">Cajetan will confirm when he sees you</p>
+                      <p className="text-[var(--text-dim)] text-xs mt-0.5">Cajetan will confirm when he sees you</p>
                     </div>
                   </div>
-                  <button onClick={load} className="text-[#444] text-xs hover:text-white transition-colors">
+                  <button onClick={load} className="text-[var(--text-faint)] text-xs hover:text-[var(--text)] transition-colors">
                     Refresh
                   </button>
                 </div>
@@ -214,13 +214,13 @@ export default function StaffHome() {
                 /* State 2: window open — show button */
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-white text-sm font-semibold">Ready to check in?</p>
-                    <p className="text-[#555] text-xs mt-0.5">Tap when you arrive at the salon</p>
+                    <p className="text-[var(--text)] text-sm font-semibold">Ready to check in?</p>
+                    <p className="text-[var(--text-dim)] text-xs mt-0.5">Tap when you arrive at the salon</p>
                   </div>
                   <button
                     onClick={checkIn}
                     disabled={checkingIn}
-                    className="bg-white text-gray-950 font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40"
+                    className="bg-[var(--text)] text-[var(--bg)] font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40"
                   >
                     {checkingIn ? 'Sending…' : 'Check In'}
                   </button>
@@ -229,11 +229,11 @@ export default function StaffHome() {
                 /* State 1: outside window — disabled */
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-[#555] text-sm font-medium">{window_.reason}</p>
-                    <p className="text-[#333] text-xs mt-0.5">Mon–Sat: 6:30am – 3:00pm · Sunday: 10:00am – 2:00pm</p>
+                    <p className="text-[var(--text-dim)] text-sm font-medium">{window_.reason}</p>
+                    <p className="text-[var(--text-faint)] text-xs mt-0.5">Mon–Sat: 6:30am – 3:00pm · Sunday: 10:00am – 2:00pm</p>
                   </div>
                   <button disabled
-                    className="bg-[#1a1a1a] text-[#444] font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed border border-[#2a2a2a]">
+                    className="bg-[var(--elevated)] text-[var(--text-faint)] font-semibold text-sm px-5 py-2.5 rounded-xl cursor-not-allowed border border-[var(--border-strong)]">
                     Check In
                   </button>
                 </div>
@@ -244,27 +244,27 @@ export default function StaffHome() {
       )}
 
       {/* Today's earnings hero */}
-      <div className="bg-[#141414] border border-[#1e1e1e] rounded-2xl p-6 mb-6">
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 mb-6">
         {loading ? (
           <div className="animate-pulse space-y-2">
-            <div className="h-3 w-24 bg-[#2a2a2a] rounded" />
-            <div className="h-9 w-40 bg-[#2a2a2a] rounded" />
-            <div className="h-3 w-32 bg-[#2a2a2a] rounded" />
+            <div className="h-3 w-24 bg-[var(--border-strong)] rounded" />
+            <div className="h-9 w-40 bg-[var(--border-strong)] rounded" />
+            <div className="h-3 w-32 bg-[var(--border-strong)] rounded" />
           </div>
         ) : (
           <>
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Your earnings today</p>
-            <p className="text-white text-4xl font-bold tracking-tight tabular-nums">
+            <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Your earnings today</p>
+            <p className="text-[var(--text)] text-4xl font-bold tracking-tight tabular-nums">
               {fmtNaira(data?.todayEarnings ?? 0)}
             </p>
-            <div className="mt-4 pt-4 border-t border-[#1e1e1e] grid grid-cols-2 gap-3">
+            <div className="mt-4 pt-4 border-t border-[var(--border)] grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[#555] text-xs mb-1">Commission</p>
-                <p className="text-white text-base font-semibold tabular-nums">{fmtNaira(data?.todayCommission ?? 0)}</p>
+                <p className="text-[var(--text-dim)] text-xs mb-1">Commission</p>
+                <p className="text-[var(--text)] text-base font-semibold tabular-nums">{fmtNaira(data?.todayCommission ?? 0)}</p>
               </div>
               <div>
-                <p className="text-[#555] text-xs mb-1">Tips</p>
-                <p className={`text-base font-semibold tabular-nums ${(data?.todayTips ?? 0) > 0 ? 'text-[#C49A3C]' : 'text-[#333]'}`}>
+                <p className="text-[var(--text-dim)] text-xs mb-1">Tips</p>
+                <p className={`text-base font-semibold tabular-nums ${(data?.todayTips ?? 0) > 0 ? 'text-[var(--accent)]' : 'text-[var(--text-faint)]'}`}>
                   {fmtNaira(data?.todayTips ?? 0)}
                 </p>
               </div>
@@ -276,13 +276,13 @@ export default function StaffHome() {
       {/* Two stat mini-cards */}
       {!loading && (
         <div className="grid grid-cols-2 gap-3 mb-8">
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Services done</p>
-            <p className="text-white text-2xl font-bold">{data?.todayServices ?? 0}</p>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+            <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Services done</p>
+            <p className="text-[var(--text)] text-2xl font-bold">{data?.todayServices ?? 0}</p>
           </div>
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Appointments</p>
-            <p className="text-white text-2xl font-bold">{data?.appointments.length ?? 0}</p>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4">
+            <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Appointments</p>
+            <p className="text-[var(--text)] text-2xl font-bold">{data?.appointments.length ?? 0}</p>
           </div>
         </div>
       )}
@@ -290,13 +290,13 @@ export default function StaffHome() {
       {/* Today's Appointments */}
       {!loading && (data?.appointments.length ?? 0) > 0 && (
         <section className="mb-8">
-          <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Your Appointments Today</h2>
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+          <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Your Appointments Today</h2>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
             {data!.appointments.map((a) => (
               <div key={a.id} className="flex items-center justify-between px-4 py-3.5">
                 <div>
-                  <p className="text-white text-sm font-medium">{a.clients?.name ?? '—'}</p>
-                  <p className="text-[#555] text-xs mt-0.5">{fmt12h(a.scheduled_at)}</p>
+                  <p className="text-[var(--text)] text-sm font-medium">{a.clients?.name ?? '—'}</p>
+                  <p className="text-[var(--text-dim)] text-xs mt-0.5">{fmt12h(a.scheduled_at)}</p>
                 </div>
                 <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize ${
                   STATUS_STYLES[a.status] ?? STATUS_STYLES.pending
@@ -312,21 +312,21 @@ export default function StaffHome() {
       {/* Services done today */}
       {!loading && (data?.services.length ?? 0) > 0 && (
         <section className="mb-8">
-          <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Services Completed Today</h2>
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+          <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Services Completed Today</h2>
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
             {data!.services.map((s, i) => (
               <div key={i} className="flex items-center justify-between px-4 py-3.5">
                 <div>
-                  <p className="text-white text-sm font-medium">{s.services?.name ?? '—'}</p>
-                  <p className="text-[#555] text-xs mt-0.5">
+                  <p className="text-[var(--text)] text-sm font-medium">{s.services?.name ?? '—'}</p>
+                  <p className="text-[var(--text-dim)] text-xs mt-0.5">
                     {s.visits?.clients?.name ?? 'Unknown client'} · {fmt12h(s.created_at)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[#C49A3C] text-sm font-semibold tabular-nums">
+                  <p className="text-[var(--accent)] text-sm font-semibold tabular-nums">
                     {fmtNaira(s.commission_ngn)}
                   </p>
-                  <p className="text-[#444] text-xs tabular-nums">of {fmtNaira(s.price_ngn)}</p>
+                  <p className="text-[var(--text-faint)] text-xs tabular-nums">of {fmtNaira(s.price_ngn)}</p>
                 </div>
               </div>
             ))}
@@ -336,20 +336,20 @@ export default function StaffHome() {
 
       {/* Empty state */}
       {!loading && data?.todayServices === 0 && data?.appointments.length === 0 && (
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-2xl px-4 py-12 text-center">
-          <p className="text-[#555] text-sm">Nothing recorded yet today.</p>
-          <p className="text-[#333] text-sm mt-1">Services will appear here after the manager logs them.</p>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl px-4 py-12 text-center">
+          <p className="text-[var(--text-dim)] text-sm">Nothing recorded yet today.</p>
+          <p className="text-[var(--text-faint)] text-sm mt-1">Services will appear here after the manager logs them.</p>
         </div>
       )}
 
       {/* Link to history */}
       <Link href="/dashboard/staff/history"
-        className="flex items-center justify-between bg-[#141414] border border-[#1e1e1e] hover:border-[#2a2a2a] rounded-xl px-5 py-4 transition-colors group mt-2">
+        className="flex items-center justify-between bg-[var(--card)] border border-[var(--border)] hover:border-[var(--border-strong)] rounded-xl px-5 py-4 transition-colors group mt-2">
         <div>
-          <p className="text-white text-sm font-semibold">My Earnings History</p>
-          <p className="text-[#555] text-xs mt-0.5">See your weekly and monthly totals</p>
+          <p className="text-[var(--text)] text-sm font-semibold">My Earnings History</p>
+          <p className="text-[var(--text-dim)] text-xs mt-0.5">See your weekly and monthly totals</p>
         </div>
-        <svg className="w-4 h-4 text-[#444] group-hover:text-[#888] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
         </svg>
       </Link>

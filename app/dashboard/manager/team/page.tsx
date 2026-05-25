@@ -169,11 +169,11 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Team</h1>
-          <p className="text-[#555] text-sm mt-0.5">{staff.length} staff member{staff.length !== 1 ? 's' : ''}</p>
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Team</h1>
+          <p className="text-[var(--text-dim)] text-sm mt-0.5">{staff.length} staff member{staff.length !== 1 ? 's' : ''}</p>
         </div>
         <button onClick={() => { setShowAdd(true); setAddError('') }}
-          className="inline-flex items-center gap-2 bg-white text-gray-950 font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all">
+          className="inline-flex items-center gap-2 bg-[var(--text)] text-[var(--bg)] font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
@@ -183,28 +183,28 @@ export default function TeamPage() {
 
       {loading ? (
         <div className="space-y-2">
-          {[0,1,2,3].map(i => <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-16 animate-pulse" />)}
+          {[0,1,2,3].map(i => <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-16 animate-pulse" />)}
         </div>
       ) : (
         <>
           {active.length > 0 && (
             <section className="mb-8">
-              <p className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-3">
+              <p className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-3">
                 Active · {active.length}
               </p>
               {/* Desktop table */}
-              <div className="hidden lg:block bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden">
+              <div className="hidden lg:block bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e1e1e]">
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Name</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Services</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Days Off</th>
-                      <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Phone</th>
-                      <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Actions</th>
+                    <tr className="border-b border-[var(--border)]">
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Name</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Services</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Days Off</th>
+                      <th className="text-left text-[var(--text-dim)] text-xs font-medium px-5 py-3">Phone</th>
+                      <th className="text-right text-[var(--text-dim)] text-xs font-medium px-5 py-3">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#1e1e1e]">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {active.map(m => (
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
@@ -230,12 +230,12 @@ export default function TeamPage() {
 
           {inactive.length > 0 && (
             <section>
-              <p className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-3">
+              <p className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-3">
                 Inactive · {inactive.length}
               </p>
-              <div className="hidden lg:block bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden opacity-60">
+              <div className="hidden lg:block bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden opacity-60">
                 <table className="w-full text-sm">
-                  <tbody className="divide-y divide-[#1e1e1e]">
+                  <tbody className="divide-y divide-[var(--border)]">
                     {inactive.map(m => (
                       <StaffRow key={m.id} member={m} services={services}
                         onToggle={toggle} onReset={setResetTarget}
@@ -259,8 +259,8 @@ export default function TeamPage() {
           )}
 
           {staff.length === 0 && (
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-12 text-center">
-              <p className="text-[#444] text-sm">No staff yet. Tap Add Staff to create the first account.</p>
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-12 text-center">
+              <p className="text-[var(--text-faint)] text-sm">No staff yet. Tap Add Staff to create the first account.</p>
             </div>
           )}
         </>
@@ -271,31 +271,31 @@ export default function TeamPage() {
         <Modal title="Add Staff Member" onClose={() => setShowAdd(false)}>
           <form onSubmit={handleAdd} className="space-y-4">
             <div>
-              <label className="block text-[#888] text-xs font-medium mb-1.5">Full Name</label>
+              <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Full Name</label>
               <input type="text" value={newName} onChange={e => setNewName(e.target.value)}
                 placeholder="e.g. Chukwu Nnamdi" required autoCapitalize="words" className="input" />
             </div>
             <div>
-              <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
+              <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Phone Number</label>
               <input type="tel" value={newPhone} onChange={e => setNewPhone(e.target.value)}
                 placeholder="08012345678" required className="input" />
             </div>
             <div>
-              <label className="block text-[#888] text-xs font-medium mb-1.5">Starting PIN</label>
+              <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Starting PIN</label>
               <input type="password" value={newPIN}
                 onChange={e => setNewPIN(e.target.value.replace(/\D/g,'').slice(0,4))}
                 placeholder="••••" inputMode="numeric" maxLength={4} required
                 className="input text-center tracking-[0.5em]" />
-              <p className="text-[#444] text-xs mt-1.5">Staff will change this on first login.</p>
+              <p className="text-[var(--text-faint)] text-xs mt-1.5">Staff will change this on first login.</p>
             </div>
             <div>
-              <label className="block text-[#888] text-xs font-medium mb-2">Days Off (optional)</label>
+              <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">Days Off (optional)</label>
               <DayPicker selected={newOffDays} onChange={setNewOffDays} />
-              <p className="text-[#444] text-xs mt-1.5">Select which days this staff member doesn&apos;t work.</p>
+              <p className="text-[var(--text-faint)] text-xs mt-1.5">Select which days this staff member doesn&apos;t work.</p>
             </div>
             {addError && <p className="text-red-400 text-sm">{addError}</p>}
             <button type="submit" disabled={addLoading || newPIN.length !== 4}
-              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
               {addLoading ? 'Creating…' : 'Create Account'}
             </button>
           </form>
@@ -306,12 +306,12 @@ export default function TeamPage() {
       {resetTarget && (
         <Modal title={`Reset PIN — ${resetTarget.name}`}
           onClose={() => { setResetTarget(null); setResetPIN(''); setResetError('') }}>
-          <p className="text-[#888] text-sm mb-5">
+          <p className="text-[var(--text-muted)] text-sm mb-5">
             Set a temporary PIN for {resetTarget.name.split(' ')[0]}. They will be prompted to change it on next login.
           </p>
           <form onSubmit={handleResetPIN} className="space-y-4">
             <div>
-              <label className="block text-[#888] text-xs font-medium mb-1.5">New PIN</label>
+              <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">New PIN</label>
               <input type="password" value={resetPIN}
                 onChange={e => setResetPIN(e.target.value.replace(/\D/g,'').slice(0,4))}
                 placeholder="••••" inputMode="numeric" maxLength={4} required
@@ -319,7 +319,7 @@ export default function TeamPage() {
             </div>
             {resetError && <p className="text-red-400 text-sm">{resetError}</p>}
             <button type="submit" disabled={resetLoading || resetPIN.length !== 4}
-              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
               {resetLoading ? 'Saving…' : 'Save New PIN'}
             </button>
           </form>
@@ -330,7 +330,7 @@ export default function TeamPage() {
       {servicesTarget && (
         <Modal title={`Categories — ${servicesTarget.name}`}
           onClose={() => setServicesTarget(null)}>
-          <p className="text-[#888] text-sm mb-4">
+          <p className="text-[var(--text-muted)] text-sm mb-4">
             Pick the service categories {servicesTarget.name.split(' ')[0]} can perform.
             All services inside the selected categories will be available.
           </p>
@@ -342,21 +342,21 @@ export default function TeamPage() {
                 return (
                   <button key={cat} type="button" onClick={() => toggleCategory(cat)}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                      on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                      on ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]' : 'bg-[var(--elevated)] border-[var(--border-strong)] text-[var(--text)] hover:border-[var(--text-faint)]'
                     }`}>
                     <div className="flex items-center gap-3">
                       <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                        on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                        on ? 'bg-[var(--text)] border-gray-950' : 'border-[#444]'
                       }`}>
                         {on && (
-                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <svg className="w-2.5 h-2.5 text-[var(--text)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
                         )}
                       </div>
                       <span className="text-sm font-medium">{cat}</span>
                     </div>
-                    <span className={`text-xs ${on ? 'text-gray-600' : 'text-[#555]'}`}>
+                    <span className={`text-xs ${on ? 'text-gray-600' : 'text-[var(--text-dim)]'}`}>
                       {count} service{count === 1 ? '' : 's'}
                     </span>
                   </button>
@@ -365,7 +365,7 @@ export default function TeamPage() {
             </div>
             {editError && <p className="text-red-400 text-sm mb-3">{editError}</p>}
             <button type="submit" disabled={editLoading}
-              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
               {editLoading ? 'Saving…' : `Save Categories (${editCategories.length} selected)`}
             </button>
           </form>
@@ -375,14 +375,14 @@ export default function TeamPage() {
       {daysTarget && (
         <Modal title={`Days Off — ${daysTarget.name}`}
           onClose={() => setDaysTarget(null)}>
-          <p className="text-[#888] text-sm mb-4">
+          <p className="text-[var(--text-muted)] text-sm mb-4">
             Select which days {daysTarget.name.split(' ')[0]} doesn&apos;t work. They won&apos;t appear in attendance on these days.
           </p>
           <form onSubmit={handleSaveOffDays} className="space-y-4">
             <DayPicker selected={daysOff} onChange={setDaysOff} />
             {daysError && <p className="text-red-400 text-sm">{daysError}</p>}
             <button type="submit" disabled={daysLoading}
-              className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
+              className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
               {daysLoading ? 'Saving…' : `Save Days Off${daysOff.length > 0 ? ` (${daysOff.length} day${daysOff.length > 1 ? 's' : ''})` : ''}`}
             </button>
           </form>
@@ -395,12 +395,12 @@ export default function TeamPage() {
 /* ── Service tags strip ─────────────────────────────────────── */
 function CategoryTags({ categories }: { categories: string[] }) {
   if (!categories || categories.length === 0) {
-    return <span className="text-[#444] text-xs italic">No categories set</span>
+    return <span className="text-[var(--text-faint)] text-xs italic">No categories set</span>
   }
   return (
     <div className="flex flex-wrap gap-1">
       {categories.map(c => (
-        <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
+        <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--border)] border border-[var(--border-strong)] text-[var(--text-muted)]">
           {c}
         </span>
       ))}
@@ -424,11 +424,11 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
     <tr>
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
+          <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
+            <span className="text-[var(--text)] text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
           </div>
           <div>
-            <span className="text-white font-medium">{member.name}</span>
+            <span className="text-[var(--text)] font-medium">{member.name}</span>
             {member.sunday_grace && (
               <span className="ml-2 text-[10px] font-medium text-[#6366f1] bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full px-1.5 py-0.5">
                 Sun. Grace
@@ -443,26 +443,26 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
       <td className="px-5 py-4">
         <OffDayTags offDays={member.off_days ?? []} />
       </td>
-      <td className="px-5 py-4 text-[#888]">{member.phone}</td>
+      <td className="px-5 py-4 text-[var(--text-muted)]">{member.phone}</td>
       <td className="px-5 py-4">
         <div className="flex items-center justify-end gap-2">
           <button onClick={() => onEditServices(member)}
-            className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
             Services
           </button>
           <button onClick={() => onEditDays(member)}
-            className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
             Days Off
           </button>
           <button onClick={() => onReset(member)}
-            className="text-[#666] text-xs hover:text-white transition-colors border border-[#2a2a2a] hover:border-[#3a3a3a] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
             Reset PIN
           </button>
           <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
             className={`text-xs transition-colors border rounded-lg px-3 py-1.5 disabled:opacity-50 ${
               member.sunday_grace
                 ? 'text-[#6366f1] border-[#6366f1]/30 hover:border-[#6366f1]/60'
-                : 'text-[#666] border-[#2a2a2a] hover:text-white hover:border-[#3a3a3a]'
+                : 'text-[var(--text-muted)] border-[var(--border-strong)] hover:text-[var(--text)] hover:border-[var(--text-faint)]'
             }`}>
             Sun. Grace
           </button>
@@ -486,15 +486,15 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
   onEditDays: (m: StaffMember) => void
 }) {
   return (
-    <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl px-4 py-3.5">
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3.5">
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
+          <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
+            <span className="text-[var(--text)] text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
           </div>
           <div className="min-w-0">
-            <p className="text-white text-sm font-medium truncate">{member.name}</p>
-            <p className="text-[#555] text-xs">{member.phone}</p>
+            <p className="text-[var(--text)] text-sm font-medium truncate">{member.name}</p>
+            <p className="text-[var(--text-dim)] text-xs">{member.phone}</p>
           </div>
         </div>
         <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
@@ -507,22 +507,22 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
       </div>
       <div className="flex items-center gap-2 pl-11 flex-wrap">
         <button onClick={() => onEditServices(member)}
-          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
+          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
           Services
         </button>
         <button onClick={() => onEditDays(member)}
-          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
+          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
           Days Off
         </button>
         <button onClick={() => onReset(member)}
-          className="text-[#555] text-xs border border-[#2a2a2a] rounded-lg px-2.5 py-1.5 hover:text-white transition-colors">
+          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
           Reset PIN
         </button>
         <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
           className={`text-xs border rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50 ${
             member.sunday_grace
               ? 'text-[#6366f1] border-[#6366f1]/30'
-              : 'text-[#555] border-[#2a2a2a] hover:text-white'
+              : 'text-[var(--text-dim)] border-[var(--border-strong)] hover:text-[var(--text)]'
           }`}>
           {member.sunday_grace ? 'Sun. Grace ✓' : 'Sun. Grace'}
         </button>
@@ -546,8 +546,8 @@ function DayPicker({ selected, onChange }: { selected: number[]; onChange: (days
           <button key={i} type="button" onClick={() => toggle(i)}
             className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
               on
-                ? 'bg-white border-white text-gray-950'
-                : 'bg-[#1a1a1a] border-[#2a2a2a] text-[#666] hover:text-white hover:border-[#3a3a3a]'
+                ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]'
+                : 'bg-[var(--elevated)] border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text)] hover:border-[var(--text-faint)]'
             }`}>
             {label}
           </button>
@@ -559,11 +559,11 @@ function DayPicker({ selected, onChange }: { selected: number[]; onChange: (days
 
 /* ── Days-off tag strip ─────────────────────────────────────── */
 function OffDayTags({ offDays }: { offDays: number[] }) {
-  if (offDays.length === 0) return <span className="text-[#444] text-xs italic">No days off set</span>
+  if (offDays.length === 0) return <span className="text-[var(--text-faint)] text-xs italic">No days off set</span>
   return (
     <div className="flex flex-wrap gap-1">
       {offDays.sort((a, b) => a - b).map(d => (
-        <span key={d} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
+        <span key={d} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--border)] border border-[var(--border-strong)] text-[var(--text-muted)]">
           {DAY_LABELS[d]}
         </span>
       ))}
@@ -575,8 +575,8 @@ function OffDayTags({ offDays }: { offDays: number[] }) {
 function Toggle({ active, loading, onChange }: { active: boolean; loading: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange} disabled={loading}
-      className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${active ? 'bg-white' : 'bg-[#2a2a2a]'}`}>
-      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-gray-950 transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${active ? 'bg-[var(--text)]' : 'bg-[var(--border-strong)]'}`}>
+      <span className={`absolute top-0.5 w-4 h-4 rounded-full ${active ? 'bg-[var(--bg)]' : 'bg-[var(--text)]'} transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </button>
   )
 }
@@ -585,10 +585,10 @@ function Toggle({ active, loading, onChange }: { active: boolean; loading: boole
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-[#141414] border border-[#2a2a2a] rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-[var(--card)] border border-[var(--border-strong)] rounded-2xl w-full max-w-md p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-white font-semibold">{title}</h2>
-          <button onClick={onClose} className="text-[#555] hover:text-white transition-colors">
+          <h2 className="text-[var(--text)] font-semibold">{title}</h2>
+          <button onClick={onClose} className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>

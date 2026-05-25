@@ -28,7 +28,7 @@ type FilterTab = 'today' | 'upcoming' | 'all'
 
 const STATUS_STYLES: Record<string, string> = {
   confirmed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-  completed: 'bg-[#1e1e1e] text-[#888] border-[#2a2a2a]',
+  completed: 'bg-[var(--border)] text-[var(--text-muted)] border-[var(--border-strong)]',
   pending:   'bg-amber-500/10 text-amber-400 border-amber-500/20',
   cancelled: 'bg-red-500/10 text-red-400 border-red-500/20',
   no_show:   'bg-red-500/10 text-red-400 border-red-500/20',
@@ -205,12 +205,12 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">Appointments</h1>
-          <p className="text-[#555] text-sm mt-0.5">View and manage all bookings</p>
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Appointments</h1>
+          <p className="text-[var(--text-dim)] text-sm mt-0.5">View and manage all bookings</p>
         </div>
         <button
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-2 bg-white text-gray-950 font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all w-fit"
+          className="inline-flex items-center gap-2 bg-[var(--text)] text-[var(--bg)] font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all w-fit"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -220,11 +220,11 @@ export default function AppointmentsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-[#141414] border border-[#1e1e1e] rounded-xl p-1 mb-6 w-fit">
+      <div className="flex gap-1 bg-[var(--card)] border border-[var(--border)] rounded-xl p-1 mb-6 w-fit">
         {(['today', 'upcoming', 'all'] as FilterTab[]).map(f => (
           <button key={f} onClick={() => setFilter(f)}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
-              filter === f ? 'bg-white text-gray-950' : 'text-[#666] hover:text-white'
+              filter === f ? 'bg-[var(--text)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}>
             {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'All'}
           </button>
@@ -234,15 +234,15 @@ export default function AppointmentsPage() {
       {/* List */}
       {loading ? (
         <div className="space-y-2">
-          {[0,1,2,3].map(i => <div key={i} className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-20 animate-pulse" />)}
+          {[0,1,2,3].map(i => <div key={i} className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-20 animate-pulse" />)}
         </div>
       ) : appts.length === 0 ? (
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-2xl px-4 py-16 text-center">
-          <p className="text-[#555] text-sm">No appointments {filter === 'today' ? 'today' : filter === 'upcoming' ? 'coming up' : 'found'}.</p>
-          <p className="text-[#333] text-sm mt-1">Tap &quot;New Appointment&quot; to create one.</p>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl px-4 py-16 text-center">
+          <p className="text-[var(--text-dim)] text-sm">No appointments {filter === 'today' ? 'today' : filter === 'upcoming' ? 'coming up' : 'found'}.</p>
+          <p className="text-[var(--text-faint)] text-sm mt-1">Tap &quot;New Appointment&quot; to create one.</p>
         </div>
       ) : (
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
           {appts.map(a => {
             const { date, time } = fmtDateTime(a.scheduled_at)
             const svcNames = a.appointment_services.map(s => s.services?.name ?? '').filter(Boolean).join(', ') || '—'
@@ -251,11 +251,11 @@ export default function AppointmentsPage() {
               <div key={a.id} className="px-4 py-4 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-white text-sm font-semibold">{a.clients?.name ?? '—'}</p>
-                    {a.clients?.phone && <><span className="text-[#444] text-xs">·</span><p className="text-[#555] text-xs">{a.clients.phone}</p></>}
+                    <p className="text-[var(--text)] text-sm font-semibold">{a.clients?.name ?? '—'}</p>
+                    {a.clients?.phone && <><span className="text-[var(--text-faint)] text-xs">·</span><p className="text-[var(--text-dim)] text-xs">{a.clients.phone}</p></>}
                   </div>
-                  <p className="text-[#888] text-xs mt-1">{svcNames}</p>
-                  <p className="text-[#555] text-xs mt-0.5">
+                  <p className="text-[var(--text-muted)] text-xs mt-1">{svcNames}</p>
+                  <p className="text-[var(--text-dim)] text-xs mt-0.5">
                     {date} · {time}{a.users?.name ? ` · ${a.users.name}` : ''}
                   </p>
                 </div>
@@ -271,11 +271,11 @@ export default function AppointmentsPage() {
                       {a.status.replace('_', ' ')} <span className="opacity-60">▾</span>
                     </button>
                     {statusMenu === a.id && (
-                      <div className="absolute right-0 top-full mt-1 bg-[#1a1a1a] border border-[#2a2a2a] rounded-xl overflow-hidden z-10 min-w-[140px] shadow-xl">
+                      <div className="absolute right-0 top-full mt-1 bg-[var(--elevated)] border border-[var(--border-strong)] rounded-xl overflow-hidden z-10 min-w-[140px] shadow-xl">
                         {STATUS_OPTIONS.map(opt => (
                           <button key={opt.value} onClick={() => updateStatus(a.id, opt.value)}
-                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[#222] ${
-                              a.status === opt.value ? 'text-white font-semibold' : 'text-[#888]'
+                            className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-[var(--border-strong)] ${
+                              a.status === opt.value ? 'text-[var(--text)] font-semibold' : 'text-[var(--text-muted)]'
                             }`}>
                             {opt.label}
                           </button>
@@ -295,7 +295,7 @@ export default function AppointmentsPage() {
                         setCheckInError('')
                         setCheckInSuccess(false)
                       }}
-                    className="flex-shrink-0 flex items-center gap-1.5 bg-white text-gray-950 font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-gray-100 active:scale-[0.98] transition-all">
+                    className="flex-shrink-0 flex items-center gap-1.5 bg-[var(--text)] text-[var(--bg)] font-semibold px-3 py-1.5 rounded-lg text-xs hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all">
                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" />
                     </svg>
@@ -314,16 +314,16 @@ export default function AppointmentsPage() {
       {checkInAppt && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
           onClick={() => { if (!checkInLoading) setCheckInAppt(null) }}>
-          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col"
+          <div className="bg-[var(--surface)] border border-[var(--border-strong)] rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}>
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#1e1e1e] flex-shrink-0">
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border)] flex-shrink-0">
               <div>
-                <h2 className="text-white font-semibold text-sm">Client Arrived</h2>
-                <p className="text-[#555] text-xs mt-0.5">{checkInAppt.clients?.name}</p>
+                <h2 className="text-[var(--text)] font-semibold text-sm">Client Arrived</h2>
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">{checkInAppt.clients?.name}</p>
               </div>
-              <button onClick={() => setCheckInAppt(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[#555] hover:text-white hover:bg-[#1e1e1e] transition-all">
+              <button onClick={() => setCheckInAppt(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--border)] transition-all">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -338,7 +338,7 @@ export default function AppointmentsPage() {
                   </svg>
                 </div>
                 <p className="text-emerald-400 font-semibold">Checked in successfully.</p>
-                <p className="text-[#555] text-xs mt-1">Visit recorded and commission tracked.</p>
+                <p className="text-[var(--text-dim)] text-xs mt-1">Visit recorded and commission tracked.</p>
               </div>
             ) : (
               <form onSubmit={submitCheckIn} className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
@@ -346,9 +346,9 @@ export default function AppointmentsPage() {
                 {/* Services */}
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <label className="text-[#888] text-xs font-medium">Services</label>
+                    <label className="text-[var(--text-muted)] text-xs font-medium">Services</label>
                     {checkInServiceIds.length > 0 && (
-                      <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
+                      <span className="text-[var(--accent)] text-xs font-semibold tabular-nums">
                         {fmtNaira(services.filter(s => checkInServiceIds.includes(s.id)).reduce((sum, s) => sum + s.price_ngn, 0))}
                       </span>
                     )}
@@ -363,7 +363,7 @@ export default function AppointmentsPage() {
 
                 {/* Staff — dropdown */}
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Staff Member</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Staff Member</label>
                   <select
                     value={checkInStaffId}
                     onChange={e => setCheckInStaffId(e.target.value)}
@@ -378,7 +378,7 @@ export default function AppointmentsPage() {
 
                 {/* Payment method */}
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Payment Method</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Payment Method</label>
                   <div className="grid grid-cols-3 gap-2">
                     {([
                       { value: 'cash',     label: 'Cash' },
@@ -389,8 +389,8 @@ export default function AppointmentsPage() {
                         onClick={() => setCheckInPayment(opt.value)}
                         className={`py-2 rounded-lg border text-xs font-semibold transition-all ${
                           checkInPayment === opt.value
-                            ? 'bg-white border-white text-gray-950'
-                            : 'bg-[#141414] border-[#2a2a2a] text-[#888] hover:border-[#3a3a3a] hover:text-white'
+                            ? 'bg-[var(--text)] border-[var(--text)] text-[var(--bg)]'
+                            : 'bg-[var(--card)] border-[var(--border-strong)] text-[var(--text-muted)] hover:border-[var(--text-faint)] hover:text-[var(--text)]'
                         }`}>
                         {opt.label}
                       </button>
@@ -400,11 +400,11 @@ export default function AppointmentsPage() {
 
                 {/* Tip */}
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">
-                    Tip <span className="text-[#555] font-normal">(optional)</span>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                    Tip <span className="text-[var(--text-dim)] font-normal">(optional)</span>
                   </label>
                   <div className="relative max-w-[160px]">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#555] text-sm">₦</span>
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm">₦</span>
                     <input
                       type="text" inputMode="numeric"
                       value={checkInTip}
@@ -422,7 +422,7 @@ export default function AppointmentsPage() {
                 )}
 
                 <button type="submit" disabled={checkInLoading || !checkInStaffId || checkInServiceIds.length === 0}
-                  className="w-full bg-white text-gray-950 font-semibold py-2.5 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
+                  className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
                   {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
                 </button>
               </form>
@@ -435,11 +435,11 @@ export default function AppointmentsPage() {
       {showNew && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center p-4"
           onClick={() => setShowNew(false)}>
-          <div className="bg-[#0f0f0f] border border-[#2a2a2a] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
+          <div className="bg-[var(--surface)] border border-[var(--border-strong)] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[#1e1e1e]">
-              <h2 className="text-white font-semibold">New Appointment</h2>
-              <button onClick={() => setShowNew(false)} className="text-[#555] hover:text-white transition-colors">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[var(--border)]">
+              <h2 className="text-[var(--text)] font-semibold">New Appointment</h2>
+              <button onClick={() => setShowNew(false)} className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -448,12 +448,12 @@ export default function AppointmentsPage() {
             <form onSubmit={submitNew} className="px-6 py-5 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Client Name</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Client Name</label>
                   <input value={clientName} onChange={e => setClientName(e.target.value)}
                     placeholder="Full name" required className="input" />
                 </div>
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Phone Number</label>
                   <input value={clientPhone} onChange={e => setClientPhone(e.target.value.replace(/\D/g, ''))}
                     placeholder="08012345678" inputMode="numeric" required className="input" />
                 </div>
@@ -461,12 +461,12 @@ export default function AppointmentsPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Date</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Date</label>
                   <input type="date" min={todayStr} value={apptDate}
                     onChange={e => setApptDate(e.target.value)} required className="input" />
                 </div>
                 <div>
-                  <label className="block text-[#888] text-xs font-medium mb-1.5">Time</label>
+                  <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Time</label>
                   <select value={timeValue}
                     onChange={e => {
                       const opt = TIME_SLOTS.find(t => t.value === e.target.value)
@@ -481,7 +481,7 @@ export default function AppointmentsPage() {
               </div>
 
               <div>
-                <label className="block text-[#888] text-xs font-medium mb-2">Services</label>
+                <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">Services</label>
                 <ServicePicker
                   services={services}
                   selectedIds={selectedSvcs}
@@ -498,7 +498,7 @@ export default function AppointmentsPage() {
               )}
 
               <button type="submit" disabled={newLoading}
-                className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm hover:bg-gray-100 active:scale-[0.98] transition-all disabled:opacity-40">
+                className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
                 {newLoading ? 'Creating…' : 'Create Appointment'}
               </button>
             </form>

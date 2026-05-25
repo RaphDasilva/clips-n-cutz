@@ -85,15 +85,15 @@ export default function StaffHistory() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">My Earnings</h1>
-          <p className="text-[#555] text-sm mt-0.5">Your cut from every service you performed</p>
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">My Earnings</h1>
+          <p className="text-[var(--text-dim)] text-sm mt-0.5">Your cut from every service you performed</p>
         </div>
         {/* Period tabs */}
-        <div className="flex bg-[#141414] border border-[#1e1e1e] rounded-xl p-1 gap-1">
+        <div className="flex bg-[var(--card)] border border-[var(--border)] rounded-xl p-1 gap-1">
           {PERIODS.map((p, i) => (
             <button key={p.label} onClick={() => changePeriod(i)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                period === i ? 'bg-white text-gray-950' : 'text-[#888] hover:text-white'
+                period === i ? 'bg-[var(--text)] text-[var(--bg)]' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}>
               {p.label}
             </button>
@@ -104,41 +104,41 @@ export default function StaffHistory() {
       {/* Summary cards */}
       {loading ? (
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-24 animate-pulse" />
-          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-24 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-24 animate-pulse" />
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-24 animate-pulse" />
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Total Earnings</p>
-              <p className="text-[#C49A3C] text-3xl font-bold tracking-tight tabular-nums">
+            <div className="bg-[var(--card)] border border-[var(--accent)]/30 rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Total Earnings</p>
+              <p className="text-[var(--accent)] text-3xl font-bold tracking-tight tabular-nums">
                 {fmtNaira(data?.totalEarnings ?? 0)}
               </p>
-              <p className="text-[#555] text-xs mt-1">{PERIODS[period].label.toLowerCase()}</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1">{PERIODS[period].label.toLowerCase()}</p>
             </div>
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Services Done</p>
-              <p className="text-white text-3xl font-bold tracking-tight">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Services Done</p>
+              <p className="text-[var(--text)] text-3xl font-bold tracking-tight">
                 {data?.totalServices ?? 0}
               </p>
-              <p className="text-[#555] text-xs mt-1.5">{PERIODS[period].label.toLowerCase()}</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1.5">{PERIODS[period].label.toLowerCase()}</p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4 mb-8">
-            <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission</p>
-              <p className="text-white text-2xl font-bold tabular-nums">
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Commission</p>
+              <p className="text-[var(--text)] text-2xl font-bold tabular-nums">
                 {fmtNaira(data?.totalCommission ?? 0)}
               </p>
-              <p className="text-[#555] text-xs mt-1">30% of services</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1">30% of services</p>
             </div>
-            <div className="bg-[#141414] border border-[#C49A3C]/20 rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Tips</p>
-              <p className={`text-2xl font-bold tabular-nums ${(data?.totalTips ?? 0) > 0 ? 'text-[#C49A3C]' : 'text-[#333]'}`}>
+            <div className="bg-[var(--card)] border border-[var(--accent)]/20 rounded-xl p-5">
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-2">Tips</p>
+              <p className={`text-2xl font-bold tabular-nums ${(data?.totalTips ?? 0) > 0 ? 'text-[var(--accent)]' : 'text-[var(--text-faint)]'}`}>
                 {fmtNaira(data?.totalTips ?? 0)}
               </p>
-              <p className="text-[#555] text-xs mt-1">100% yours</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1">100% yours</p>
             </div>
           </div>
         </>
@@ -149,14 +149,14 @@ export default function StaffHistory() {
         <div className="space-y-4">
           {[0, 1, 2].map(i => (
             <div key={i}>
-              <div className="h-3 w-20 bg-[#1e1e1e] rounded mb-2 animate-pulse" />
-              <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-28 animate-pulse" />
+              <div className="h-3 w-20 bg-[var(--border)] rounded mb-2 animate-pulse" />
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl h-28 animate-pulse" />
             </div>
           ))}
         </div>
       ) : !data || data.grouped.length === 0 ? (
-        <div className="bg-[#141414] border border-[#1e1e1e] rounded-2xl px-4 py-16 text-center">
-          <p className="text-[#444] text-sm">No services recorded for this period.</p>
+        <div className="bg-[var(--card)] border border-[var(--border)] rounded-2xl px-4 py-16 text-center">
+          <p className="text-[var(--text-faint)] text-sm">No services recorded for this period.</p>
         </div>
       ) : (
         <div className="space-y-6">
@@ -164,34 +164,34 @@ export default function StaffHistory() {
             <section key={day.date}>
               {/* Day header */}
               <div className="flex items-center justify-between mb-3">
-                <span className="text-[#666] text-xs font-semibold uppercase tracking-wider">
+                <span className="text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider">
                   {fmtDate(day.date)}
                 </span>
                 <div className="flex items-center gap-2">
                   {(day.tip ?? 0) > 0 && (
-                    <span className="text-[#C49A3C]/70 text-xs tabular-nums">
+                    <span className="text-[var(--accent)]/70 text-xs tabular-nums">
                       +{fmtNaira(day.tip)} tip
                     </span>
                   )}
-                  <span className="text-[#C49A3C] text-xs font-semibold tabular-nums">
+                  <span className="text-[var(--accent)] text-xs font-semibold tabular-nums">
                     {fmtNaira(day.dayEarnings)}
                   </span>
                 </div>
               </div>
 
               {/* Service rows */}
-              <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+              <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
                 {day.entries.map((e, i) => (
                   <div key={i} className="flex items-center justify-between px-4 py-3.5">
                     <div>
-                      <p className="text-white text-sm font-medium">{e.serviceName}</p>
-                      <p className="text-[#555] text-xs mt-0.5">{e.clientName}</p>
+                      <p className="text-[var(--text)] text-sm font-medium">{e.serviceName}</p>
+                      <p className="text-[var(--text-dim)] text-xs mt-0.5">{e.clientName}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[#C49A3C] text-sm font-semibold tabular-nums">
+                      <p className="text-[var(--accent)] text-sm font-semibold tabular-nums">
                         {fmtNaira(e.earnings)}
                       </p>
-                      <p className="text-[#444] text-xs tabular-nums">
+                      <p className="text-[var(--text-faint)] text-xs tabular-nums">
                         of {fmtNaira(e.price)}
                       </p>
                     </div>
