@@ -65,6 +65,11 @@ export default function ManagerHome() {
   const [tipsData, setTipsData] = useState<TipsResp | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Delete-visit confirmation
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; amount: number } | null>(null)
+  const [deleting, setDeleting]         = useState(false)
+  const [deleteError, setDeleteError]   = useState('')
+
   const load = useCallback(async () => {
     const session = getSession()
     if (!session) { router.replace('/login'); return }
@@ -86,6 +91,25 @@ export default function ManagerHome() {
   })
 
   const totalRevenue = data?.visits.reduce((s, v) => s + v.total_ngn, 0) ?? 0
+
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    setDeleting(true); setDeleteError('')
+    try {
+      const res = await fetch(`/api/manager/visits/${deleteTarget.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setDeleteError(j.error ?? 'Failed to remove visit.')
+        return
+      }
+      setDeleteTarget(null)
+      load()
+    } catch {
+      setDeleteError('Connection error.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
@@ -175,14 +199,23 @@ export default function ManagerHome() {
           ) : (
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
               {data!.visits.slice(0, 6).map((v) => (
-                <div key={v.id} className="flex items-center justify-between px-4 py-3.5">
-                  <div>
-                    <p className="text-[var(--text)] text-sm font-medium">{v.clients?.name ?? '—'}</p>
+                <div key={v.id} className="flex items-center justify-between px-4 py-3.5 group">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[var(--text)] text-sm font-medium truncate">{v.clients?.name ?? '—'}</p>
                     <p className="text-[var(--text-dim)] text-xs mt-0.5">
                       {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
                     </p>
                   </div>
-                  <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                    <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
+                    <button onClick={() => setDeleteTarget({ id: v.id, name: v.clients?.name ?? 'this visit', amount: v.total_ngn })}
+                      title="Delete this visit (mistake)"
+                      className="opacity-60 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-dim)] hover:text-red-400 hover:bg-red-500/10 transition-all">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -218,6 +251,43 @@ export default function ManagerHome() {
           </div>
         )}
       </section>
+
+      {/* Delete-visit confirmation */}
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
+          onClick={() => !deleting && setDeleteTarget(null)}>
+          <div className="bg-[var(--surface)] border border-[var(--border-strong)] rounded-2xl max-w-sm w-full p-6"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-start gap-3 mb-4">
+              <div className="w-9 h-9 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.732 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-[var(--text)] font-semibold">Remove visit?</h2>
+                <p className="text-[var(--text-dim)] text-xs mt-1">
+                  {deleteTarget.name} &middot; ₦{deleteTarget.amount.toLocaleString('en-NG')}
+                </p>
+              </div>
+            </div>
+            <p className="text-[var(--text-muted)] text-sm mb-5">
+              This permanently deletes the visit. Commission and tips will be removed from staff totals. Use this only to clean up mistakes.
+            </p>
+            {deleteError && <p className="text-red-400 text-xs mb-3">{deleteError}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)} disabled={deleting}
+                className="flex-1 bg-[var(--elevated)] border border-[var(--border-strong)] text-[var(--text)] font-medium py-2.5 rounded-xl text-sm hover:bg-[var(--card)] transition-all">
+                Cancel
+              </button>
+              <button onClick={confirmDelete} disabled={deleting}
+                className="flex-1 bg-red-500/10 border border-red-500/30 text-red-400 font-semibold py-2.5 rounded-xl text-sm hover:bg-red-500/20 disabled:opacity-40 transition-all">
+                {deleting ? 'Removing…' : 'Remove visit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
