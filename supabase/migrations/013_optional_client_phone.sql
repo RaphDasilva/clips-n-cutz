@@ -14,7 +14,10 @@
 
 ALTER TABLE clients ALTER COLUMN phone DROP NOT NULL;
 
-DROP INDEX IF EXISTS clients_phone_key;
+-- The full UNIQUE on phone is enforced by a constraint, not a
+-- plain index — drop the constraint so we can install a partial
+-- unique index that only fires on non-NULL values.
+ALTER TABLE clients DROP CONSTRAINT IF EXISTS clients_phone_key;
 
 CREATE UNIQUE INDEX IF NOT EXISTS clients_phone_unique_not_null
   ON clients(phone) WHERE phone IS NOT NULL;
