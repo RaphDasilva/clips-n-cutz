@@ -395,12 +395,19 @@ export default function TeamPage() {
 /* ── Service tags strip ─────────────────────────────────────── */
 function CategoryTags({ categories }: { categories: string[] }) {
   if (!categories || categories.length === 0) {
-    return <span className="text-[var(--text-faint)] text-xs italic">No categories set</span>
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+        No categories
+      </span>
+    )
   }
   return (
     <div className="flex flex-wrap gap-1">
       {categories.map(c => (
-        <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--border)] border border-[var(--border-strong)] text-[var(--text-muted)]">
+        <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[var(--elevated)] border border-[var(--border-strong)] text-[var(--text-muted)]">
           {c}
         </span>
       ))}
@@ -447,25 +454,26 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
       <td className="px-5 py-4">
         <div className="flex items-center justify-end gap-2">
           <button onClick={() => onEditServices(member)}
-            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs font-medium hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all rounded-md px-2.5 py-1.5">
             Services
           </button>
           <button onClick={() => onEditDays(member)}
-            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs font-medium hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all rounded-md px-2.5 py-1.5">
             Days Off
           </button>
           <button onClick={() => onReset(member)}
-            className="text-[var(--text-muted)] text-xs hover:text-[var(--text)] transition-colors border border-[var(--border-strong)] hover:border-[var(--text-faint)] rounded-lg px-3 py-1.5">
+            className="text-[var(--text-muted)] text-xs font-medium hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all rounded-md px-2.5 py-1.5">
             Reset PIN
           </button>
           <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
-            className={`text-xs transition-colors border rounded-lg px-3 py-1.5 disabled:opacity-50 ${
+            className={`text-xs font-medium rounded-md px-2.5 py-1.5 transition-all disabled:opacity-50 ${
               member.sunday_grace
-                ? 'text-[#6366f1] border-[#6366f1]/30 hover:border-[#6366f1]/60'
-                : 'text-[var(--text-muted)] border-[var(--border-strong)] hover:text-[var(--text)] hover:border-[var(--text-faint)]'
+                ? 'text-[#6366f1] bg-[#6366f1]/10 hover:bg-[#6366f1]/15'
+                : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)]'
             }`}>
-            Sun. Grace
+            Sun. Grace{member.sunday_grace ? ' ✓' : ''}
           </button>
+          <div className="w-px h-5 bg-[var(--border)] mx-1" />
           <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
         </div>
       </td>
@@ -505,26 +513,26 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
       <div className="mb-3 pl-11">
         <OffDayTags offDays={member.off_days ?? []} />
       </div>
-      <div className="flex items-center gap-2 pl-11 flex-wrap">
+      <div className="flex items-center gap-1 pl-11 flex-wrap -ml-1">
         <button onClick={() => onEditServices(member)}
-          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
+          className="text-[var(--text-muted)] text-xs font-medium rounded-md px-2.5 py-1.5 hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all">
           Services
         </button>
         <button onClick={() => onEditDays(member)}
-          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
+          className="text-[var(--text-muted)] text-xs font-medium rounded-md px-2.5 py-1.5 hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all">
           Days Off
         </button>
         <button onClick={() => onReset(member)}
-          className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-lg px-2.5 py-1.5 hover:text-[var(--text)] transition-colors">
+          className="text-[var(--text-muted)] text-xs font-medium rounded-md px-2.5 py-1.5 hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-all">
           Reset PIN
         </button>
         <button onClick={() => onToggleSunday(member)} disabled={togglingSunday}
-          className={`text-xs border rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-50 ${
+          className={`text-xs font-medium rounded-md px-2.5 py-1.5 transition-all disabled:opacity-50 ${
             member.sunday_grace
-              ? 'text-[#6366f1] border-[#6366f1]/30'
-              : 'text-[var(--text-dim)] border-[var(--border-strong)] hover:text-[var(--text)]'
+              ? 'text-[#6366f1] bg-[#6366f1]/10'
+              : 'text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)]'
           }`}>
-          {member.sunday_grace ? 'Sun. Grace ✓' : 'Sun. Grace'}
+          Sun. Grace{member.sunday_grace ? ' ✓' : ''}
         </button>
       </div>
     </div>
@@ -575,8 +583,13 @@ function OffDayTags({ offDays }: { offDays: number[] }) {
 function Toggle({ active, loading, onChange }: { active: boolean; loading: boolean; onChange: () => void }) {
   return (
     <button onClick={onChange} disabled={loading}
-      className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${active ? 'bg-[var(--text)]' : 'bg-[var(--border-strong)]'}`}>
-      <span className={`absolute top-0.5 w-4 h-4 rounded-full ${active ? 'bg-[var(--bg)]' : 'bg-[var(--text)]'} transition-transform ${active ? 'translate-x-5' : 'translate-x-0.5'}`} />
+      aria-label={active ? 'Set inactive' : 'Set active'}
+      className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 ${
+        active ? 'bg-[var(--accent)]' : 'bg-[var(--border-strong)]'
+      }`}>
+      <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+        active ? 'translate-x-5' : 'translate-x-0.5'
+      }`} />
     </button>
   )
 }
