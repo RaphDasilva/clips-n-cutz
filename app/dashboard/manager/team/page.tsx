@@ -2,16 +2,19 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import type { User, Service } from '@/types/database'
-import { groupServicesByCategory } from '@/lib/services'
 
-type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
+type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[]; categories: string[] }
 
 export default function TeamPage() {
   const [staff, setStaff]             = useState<StaffMember[]>([])
   const [services, setServices]       = useState<Service[]>([])
   const [loading, setLoading]         = useState(true)
 
-  const serviceGroups = useMemo(() => groupServicesByCategory(services), [services])
+  const allCategories = useMemo(() => {
+    const set = new Set<string>()
+    for (const s of services) if (s.category) set.add(s.category)
+    return Array.from(set)
+  }, [services])
   const [showAdd, setShowAdd]         = useState(false)
   const [resetTarget, setResetTarget] = useState<StaffMember | null>(null)
   const [servicesTarget, setServicesTarget] = useState<StaffMember | null>(null)
@@ -30,10 +33,10 @@ export default function TeamPage() {
   const [resetError, setResetError]   = useState('')
   const [resetLoading, setResetLoading] = useState(false)
 
-  // Edit services
-  const [editIds, setEditIds]         = useState<string[]>([])
-  const [editLoading, setEditLoading] = useState(false)
-  const [editError, setEditError]     = useState('')
+  // Edit categories (replaces previous per-service edit)
+  const [editCategories, setEditCategories] = useState<string[]>([])
+  const [editLoading, setEditLoading]       = useState(false)
+  const [editError, setEditError]           = useState('')
 
   // Edit off-days
   const [daysTarget, setDaysTarget]   = useState<StaffMember | null>(null)
@@ -126,23 +129,34 @@ export default function TeamPage() {
 
   function openEditServices(m: StaffMember) {
     setServicesTarget(m)
-    setEditIds([...m.serviceIds])
+    setEditCategories([...(m.categories ?? [])])
     setEditError('')
   }
 
-  function toggleService(sid: string) {
-    setEditIds(p => p.includes(sid) ? p.filter(x => x !== sid) : [...p, sid])
+  function toggleCategory(c: string) {
+    setEditCategories(p => p.includes(c) ? p.filter(x => x !== c) : [...p, c])
   }
 
   async function handleSaveServices(e: React.FormEvent) {
     e.preventDefault(); if (!servicesTarget) return; setEditError(''); setEditLoading(true)
     const res = await fetch(`/api/manager/staff/${servicesTarget.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'set-services', serviceIds: editIds }),
+      body: JSON.stringify({ action: 'set-categories', categories: editCategories }),
     })
     const data = await res.json()
     if (!res.ok) { setEditError(data.error ?? 'Failed.'); setEditLoading(false); return }
-    setStaff(p => p.map(s => s.id === servicesTarget.id ? { ...s, serviceIds: editIds } : s))
+    // Recompute serviceIds from selected categories so walk-in filter
+    // updates without a refetch.
+    const idsByCategory = new Map<string, string[]>()
+    for (const s of services) {
+      if (!s.category) continue
+      const arr = idsByCategory.get(s.category) ?? []
+      arr.push(s.id); idsByCategory.set(s.category, arr)
+    }
+    const nextServiceIds = editCategories.flatMap(c => idsByCategory.get(c) ?? [])
+    setStaff(p => p.map(s => s.id === servicesTarget.id
+      ? { ...s, categories: editCategories, serviceIds: nextServiceIds }
+      : s))
     setServicesTarget(null); setEditLoading(false)
   }
 
@@ -312,51 +326,47 @@ export default function TeamPage() {
         </Modal>
       )}
 
-      {/* Edit Services Modal */}
+      {/* Edit Categories Modal */}
       {servicesTarget && (
-        <Modal title={`Services — ${servicesTarget.name}`}
+        <Modal title={`Categories — ${servicesTarget.name}`}
           onClose={() => setServicesTarget(null)}>
           <p className="text-[#888] text-sm mb-4">
-            Select all services {servicesTarget.name.split(' ')[0]} can perform.
+            Pick the service categories {servicesTarget.name.split(' ')[0]} can perform.
+            All services inside the selected categories will be available.
           </p>
           <form onSubmit={handleSaveServices}>
-            <div className="space-y-4 mb-5 max-h-[500px] overflow-y-auto pr-1">
-              {serviceGroups.map(group => (
-                <div key={group.category}>
-                  <p className="text-[#666] text-[10px] font-bold uppercase tracking-wider mb-2">
-                    {group.category}
-                  </p>
-                  <div className="space-y-2">
-                    {group.services.map(sv => {
-                      const on = editIds.includes(sv.id)
-                      return (
-                        <button key={sv.id} type="button" onClick={() => toggleService(sv.id)}
-                          className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                            on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
-                          }`}>
-                          <div className="flex items-center gap-3">
-                            <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                              on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
-                            }`}>
-                              {on && (
-                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                              )}
-                            </div>
-                            <span className="text-sm font-medium">{sv.name}</span>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-2 mb-5 max-h-[500px] overflow-y-auto pr-1">
+              {allCategories.map(cat => {
+                const on = editCategories.includes(cat)
+                const count = services.filter(s => s.category === cat).length
+                return (
+                  <button key={cat} type="button" onClick={() => toggleCategory(cat)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                      on ? 'bg-white border-white text-gray-950' : 'bg-[#1a1a1a] border-[#2a2a2a] text-white hover:border-[#3a3a3a]'
+                    }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
+                        on ? 'bg-gray-950 border-gray-950' : 'border-[#444]'
+                      }`}>
+                        {on && (
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-medium">{cat}</span>
+                    </div>
+                    <span className={`text-xs ${on ? 'text-gray-600' : 'text-[#555]'}`}>
+                      {count} service{count === 1 ? '' : 's'}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
             {editError && <p className="text-red-400 text-sm mb-3">{editError}</p>}
             <button type="submit" disabled={editLoading}
               className="w-full bg-white text-gray-950 font-semibold py-3 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 transition-all">
-              {editLoading ? 'Saving…' : `Save Services (${editIds.length} selected)`}
+              {editLoading ? 'Saving…' : `Save Categories (${editCategories.length} selected)`}
             </button>
           </form>
         </Modal>
@@ -383,16 +393,15 @@ export default function TeamPage() {
 }
 
 /* ── Service tags strip ─────────────────────────────────────── */
-function ServiceTags({ serviceIds, services }: { serviceIds: string[]; services: Service[] }) {
-  const names = services.filter(s => serviceIds.includes(s.id)).map(s => s.name)
-  if (names.length === 0) {
-    return <span className="text-[#444] text-xs italic">No services set</span>
+function CategoryTags({ categories }: { categories: string[] }) {
+  if (!categories || categories.length === 0) {
+    return <span className="text-[#444] text-xs italic">No categories set</span>
   }
   return (
     <div className="flex flex-wrap gap-1">
-      {names.map(n => (
-        <span key={n} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
-          {n}
+      {categories.map(c => (
+        <span key={c} className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] text-[#888]">
+          {c}
         </span>
       ))}
     </div>
@@ -429,7 +438,7 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
         </div>
       </td>
       <td className="px-5 py-4">
-        <ServiceTags serviceIds={member.serviceIds} services={services} />
+        <CategoryTags categories={member.categories ?? []} />
       </td>
       <td className="px-5 py-4">
         <OffDayTags offDays={member.off_days ?? []} />
@@ -491,7 +500,7 @@ function StaffCard({ member, services, onToggle, onReset, onEditServices, toggli
         <Toggle active={member.is_active} loading={toggling} onChange={() => onToggle(member)} />
       </div>
       <div className="mb-2 pl-11">
-        <ServiceTags serviceIds={member.serviceIds} services={services} />
+        <CategoryTags categories={member.categories ?? []} />
       </div>
       <div className="mb-3 pl-11">
         <OffDayTags offDays={member.off_days ?? []} />

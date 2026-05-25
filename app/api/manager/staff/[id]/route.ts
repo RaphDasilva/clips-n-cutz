@@ -62,28 +62,30 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true })
   }
 
-  // action: "set-services" — replace staff member's service list
-  if (action === 'set-services') {
-    const serviceIds: string[] = Array.isArray(body.serviceIds) ? body.serviceIds : []
+  // action: "set-categories" — replace staff member's allowed service categories
+  if (action === 'set-categories') {
+    const categories: string[] = Array.isArray(body.categories)
+      ? (body.categories as unknown[]).filter((c): c is string => typeof c === 'string' && c.trim().length > 0)
+      : []
 
     const { error: delError } = await supabase
-      .from('staff_services')
+      .from('staff_categories')
       .delete()
       .eq('staff_id', id)
 
     if (delError) {
-      return NextResponse.json({ error: 'Failed to update services.' }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to update categories.' }, { status: 500 })
     }
 
-    if (serviceIds.length > 0) {
-      const rows = serviceIds.map(service_id => ({ staff_id: id, service_id }))
-      const { error: insError } = await supabase.from('staff_services').insert(rows)
+    if (categories.length > 0) {
+      const rows = categories.map(category => ({ staff_id: id, category }))
+      const { error: insError } = await supabase.from('staff_categories').insert(rows)
       if (insError) {
-        return NextResponse.json({ error: 'Failed to save services.' }, { status: 500 })
+        return NextResponse.json({ error: 'Failed to save categories.' }, { status: 500 })
       }
     }
 
-    return NextResponse.json({ success: true, serviceIds })
+    return NextResponse.json({ success: true, categories })
   }
 
   // action: "toggle-sunday-grace" — flip the Sunday 1pm grace for a staff member

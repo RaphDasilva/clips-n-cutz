@@ -6,23 +6,42 @@ import type { User } from '@/types/database'
 export async function GET() {
   const supabase = createClient()
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at, staff_services(service_id)')
-    .eq('role', 'staff')
-    .order('name') as {
-      data: (Omit<User, 'pin_hash'> & { staff_services: { service_id: string }[] })[] | null
-      error: { message: string } | null
-    }
+  const [staffRes, servicesRes] = await Promise.all([
+    supabase
+      .from('users')
+      .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at, staff_categories(category)')
+      .eq('role', 'staff')
+      .order('name') as unknown as Promise<{
+        data: (Omit<User, 'pin_hash'> & { staff_categories: { category: string }[] })[] | null
+        error: { message: string } | null
+      }>,
+    supabase
+      .from('services')
+      .select('id, category')
+      .eq('is_active', true) as unknown as Promise<{
+        data: { id: string; category: string | null }[] | null
+        error: { message: string } | null
+      }>,
+  ])
 
-  if (error) {
+  if (staffRes.error || servicesRes.error) {
     return NextResponse.json({ error: 'Failed to load staff.' }, { status: 500 })
   }
 
-  const staff = (data ?? []).map(({ staff_services, ...rest }) => ({
-    ...rest,
-    serviceIds: staff_services.map(r => r.service_id),
-  }))
+  const services = servicesRes.data ?? []
+  const idsByCategory = new Map<string, string[]>()
+  for (const s of services) {
+    if (!s.category) continue
+    const arr = idsByCategory.get(s.category) ?? []
+    arr.push(s.id)
+    idsByCategory.set(s.category, arr)
+  }
+
+  const staff = (staffRes.data ?? []).map(({ staff_categories, ...rest }) => {
+    const categories = staff_categories.map(r => r.category)
+    const serviceIds = categories.flatMap(c => idsByCategory.get(c) ?? [])
+    return { ...rest, categories, serviceIds }
+  })
 
   return NextResponse.json({ staff })
 }
