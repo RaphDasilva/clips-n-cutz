@@ -2,34 +2,32 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Service, Client, Visit } from '@/types/database'
 
+interface Line { serviceId: string; staffId: string }
+
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const clientName: string   = (body.clientName  ?? '').trim()
-  const clientPhone: string  = (body.clientPhone ?? '').trim()
-  const serviceIds: string[] = Array.isArray(body.serviceIds) ? body.serviceIds : []
-  const staffByService: Record<string, string> = body.staffByService ?? {}
-  const tipByStaff:     Record<string, string | number> = body.tipByStaff ?? {}
+  const clientName: string  = (body.clientName  ?? '').trim()
+  const clientPhone: string = (body.clientPhone ?? '').trim()
+  const rawLines            = Array.isArray(body.lines) ? body.lines : []
+  const lines: Line[]       = rawLines
+    .map((l: { serviceId?: unknown; staffId?: unknown }) => ({
+      serviceId: typeof l.serviceId === 'string' ? l.serviceId : '',
+      staffId:   typeof l.staffId   === 'string' ? l.staffId   : '',
+    }))
+    .filter((l: Line) => l.serviceId && l.staffId)
+  const tipByStaff:    Record<string, string | number> = body.tipByStaff ?? {}
   const paymentMethod: string = ['cash', 'transfer', 'pos'].includes(body.paymentMethod)
     ? body.paymentMethod
     : 'cash'
 
-  if (!clientName || serviceIds.length === 0) {
+  if (!clientName || lines.length === 0) {
     return NextResponse.json(
-      { error: 'Name and at least one service are required.' },
+      { error: 'Name and at least one service with a staff member are required.' },
       { status: 400 }
     )
   }
 
-  // Every selected service must be assigned to a staff
-  const unassigned = serviceIds.find(sid => !staffByService[sid])
-  if (unassigned) {
-    return NextResponse.json(
-      { error: 'Every service must be assigned to a staff member.' },
-      { status: 400 }
-    )
-  }
-
-  // Normalise tips: per-staff, integer, never negative
+  // Normalise tips
   const tipsByStaff = new Map<string, number>()
   for (const [staffId, raw] of Object.entries(tipByStaff)) {
     const n = Math.max(0, parseInt(String(raw), 10) || 0)
@@ -38,11 +36,12 @@ export async function POST(req: NextRequest) {
 
   const supabase = createClient()
 
-  // 1. Fetch service prices
+  // 1. Fetch service prices (unique IDs only)
+  const uniqueServiceIds = Array.from(new Set(lines.map(l => l.serviceId)))
   const { data: services, error: servicesError } = await supabase
     .from('services')
     .select('*')
-    .in('id', serviceIds) as { data: Service[] | null; error: { message: string } | null }
+    .in('id', uniqueServiceIds) as { data: Service[] | null; error: { message: string } | null }
 
   if (servicesError || !services || services.length === 0) {
     return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
@@ -77,16 +76,13 @@ export async function POST(req: NextRequest) {
     client = newClient
   }
 
-  // 3. Totals
-  const totalNgn   = services.reduce((sum, s) => sum + s.price_ngn, 0)
+  // 3. Totals — sum the prices for every line (duplicates count)
+  const serviceById = new Map(services.map(s => [s.id, s]))
+  const totalNgn    = lines.reduce((sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0), 0)
   const totalTipNgn = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
 
-  // 4. Primary staff for the visit row = staff assigned to the
-  //    first selected service. The visits.staff_id column is
-  //    referenced by appointments and exposed in some reports
-  //    as the "lead" — picking the first service's staff is
-  //    consistent with the picker's natural order.
-  const primaryStaffId = staffByService[serviceIds[0]]
+  // 4. Primary staff = staff on the first line (the "lead").
+  const primaryStaffId = lines[0].staffId
 
   // 5. Create the visit
   const { data: visit, error: visitError } = await supabase
@@ -106,22 +102,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to create visit record.' }, { status: 500 })
   }
 
-  // 6. One visit_service row per service. Tip per staff is
-  //    placed entirely on that staff's first service line for
-  //    this visit; subsequent lines for the same staff carry 0.
+  // 6. One visit_service row per LINE. Per-staff tips land on
+  //    that staff's first line in the visit; subsequent lines
+  //    for the same staff carry 0.
   const tipsPlaced = new Set<string>()
-  const serviceById = new Map(services.map(s => [s.id, s]))
-  const visitServices = serviceIds.map(sid => {
-    const s        = serviceById.get(sid)!
-    const staffId  = staffByService[sid]
-    const tip      = !tipsPlaced.has(staffId) && tipsByStaff.has(staffId)
-      ? tipsByStaff.get(staffId)!
+  const visitServices = lines.map(line => {
+    const s   = serviceById.get(line.serviceId)!
+    const tip = !tipsPlaced.has(line.staffId) && tipsByStaff.has(line.staffId)
+      ? tipsByStaff.get(line.staffId)!
       : 0
-    if (tip > 0) tipsPlaced.add(staffId)
+    if (tip > 0) tipsPlaced.add(line.staffId)
     return {
       visit_id:       visit.id,
-      service_id:     s.id,
-      staff_id:       staffId,
+      service_id:     line.serviceId,
+      staff_id:       line.staffId,
       price_ngn:      s.price_ngn,
       commission_ngn: Math.round(s.price_ngn * 0.3),
       tip_ngn:        tip,
@@ -152,6 +146,6 @@ export async function POST(req: NextRequest) {
     clientName:   client.name,
     totalNgn,
     tipNgn:       totalTipNgn,
-    serviceCount: services.length,
+    serviceCount: lines.length,
   })
 }

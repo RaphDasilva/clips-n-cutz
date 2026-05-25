@@ -89,15 +89,14 @@ export default function AppointmentsPage() {
   const [newError, setNewError]     = useState('')
 
   // Check-in modal
-  const [checkInAppt, setCheckInAppt]               = useState<ApptRow | null>(null)
+  const [checkInAppt, setCheckInAppt]                 = useState<ApptRow | null>(null)
   const [checkInDefaultStaff, setCheckInDefaultStaff] = useState('')
-  const [checkInServiceIds, setCheckInServiceIds]   = useState<string[]>([])
-  const [checkInStaffByService, setCheckInStaffByService] = useState<Record<string, string>>({})
-  const [checkInTipByStaff, setCheckInTipByStaff]   = useState<Record<string, string>>({})
-  const [checkInPayment, setCheckInPayment]         = useState<'cash' | 'transfer' | 'pos'>('cash')
-  const [checkInLoading, setCheckInLoading]         = useState(false)
-  const [checkInError, setCheckInError]             = useState('')
-  const [checkInSuccess, setCheckInSuccess]         = useState(false)
+  const [checkInLines, setCheckInLines]               = useState<CheckInLine[]>([])
+  const [checkInTipByStaff, setCheckInTipByStaff]     = useState<Record<string, string>>({})
+  const [checkInPayment, setCheckInPayment]           = useState<'cash' | 'transfer' | 'pos'>('cash')
+  const [checkInLoading, setCheckInLoading]           = useState(false)
+  const [checkInError, setCheckInError]               = useState('')
+  const [checkInSuccess, setCheckInSuccess]           = useState(false)
 
   useEffect(() => {
     const s = getSession()
@@ -139,19 +138,18 @@ export default function AppointmentsPage() {
   async function submitCheckIn(e: React.FormEvent) {
     e.preventDefault()
     setCheckInError('')
-    if (checkInServiceIds.length === 0) { setCheckInError('Pick at least one service.'); return }
-    const unassigned = checkInServiceIds.find(id => !checkInStaffByService[id])
-    if (unassigned) { setCheckInError('Every service needs a staff member assigned.'); return }
+    if (checkInLines.length === 0) { setCheckInError('Pick at least one service.'); return }
+    const unassigned = checkInLines.find(l => !l.staffId)
+    if (unassigned) { setCheckInError('Every line needs a staff member.'); return }
     setCheckInLoading(true)
     try {
       const res = await fetch(`/api/manager/appointments/${checkInAppt!.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          serviceIds:     checkInServiceIds,
-          staffByService: checkInStaffByService,
-          tipByStaff:     checkInTipByStaff,
-          paymentMethod:  checkInPayment,
+          lines:         checkInLines.map(({ serviceId, staffId }) => ({ serviceId, staffId })),
+          tipByStaff:    checkInTipByStaff,
+          paymentMethod: checkInPayment,
         }),
       })
       const data = await res.json()
@@ -160,9 +158,8 @@ export default function AppointmentsPage() {
       setAppts(prev => prev.map(a => a.id === checkInAppt!.id ? { ...a, status: 'completed' } : a))
       setTimeout(() => {
         setCheckInAppt(null); setCheckInSuccess(false)
-        setCheckInDefaultStaff(''); setCheckInServiceIds([])
-        setCheckInStaffByService({}); setCheckInTipByStaff({})
-        setCheckInPayment('cash')
+        setCheckInDefaultStaff(''); setCheckInLines([])
+        setCheckInTipByStaff({}); setCheckInPayment('cash')
       }, 1500)
     } catch {
       setCheckInError('Connection error. Try again.')
@@ -301,8 +298,11 @@ export default function AppointmentsPage() {
                     onClick={() => {
                         setCheckInAppt(a)
                         setCheckInDefaultStaff('')
-                        setCheckInServiceIds(a.appointment_services.map(s => s.service_id))
-                        setCheckInStaffByService({})
+                        setCheckInLines(a.appointment_services.map(s => ({
+                          key:       Math.random().toString(36).slice(2) + Date.now().toString(36),
+                          serviceId: s.service_id,
+                          staffId:   '',
+                        })))
                         setCheckInTipByStaff({})
                         setCheckInPayment('cash')
                         setCheckInError('')
@@ -357,10 +357,8 @@ export default function AppointmentsPage() {
               <CheckInForm
                 services={services}
                 staff={staff}
-                checkInServiceIds={checkInServiceIds}
-                setCheckInServiceIds={setCheckInServiceIds}
-                checkInStaffByService={checkInStaffByService}
-                setCheckInStaffByService={setCheckInStaffByService}
+                checkInLines={checkInLines}
+                setCheckInLines={setCheckInLines}
                 checkInTipByStaff={checkInTipByStaff}
                 setCheckInTipByStaff={setCheckInTipByStaff}
                 checkInDefaultStaff={checkInDefaultStaff}
@@ -454,13 +452,13 @@ export default function AppointmentsPage() {
   )
 }
 
+interface CheckInLine { key: string; serviceId: string; staffId: string }
+
 interface CheckInFormProps {
   services:               ServiceOption[]
   staff:                  StaffOption[]
-  checkInServiceIds:      string[]
-  setCheckInServiceIds:   (v: string[]) => void
-  checkInStaffByService:  Record<string, string>
-  setCheckInStaffByService: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  checkInLines:           CheckInLine[]
+  setCheckInLines:        React.Dispatch<React.SetStateAction<CheckInLine[]>>
   checkInTipByStaff:      Record<string, string>
   setCheckInTipByStaff:   React.Dispatch<React.SetStateAction<Record<string, string>>>
   checkInDefaultStaff:    string
@@ -472,11 +470,14 @@ interface CheckInFormProps {
   onSubmit:               (e: React.FormEvent) => void
 }
 
+function makeKey() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
 function CheckInForm(props: CheckInFormProps) {
   const {
     services, staff,
-    checkInServiceIds, setCheckInServiceIds,
-    checkInStaffByService, setCheckInStaffByService,
+    checkInLines, setCheckInLines,
     checkInTipByStaff, setCheckInTipByStaff,
     checkInDefaultStaff, setCheckInDefaultStaff,
     checkInPayment, setCheckInPayment,
@@ -486,49 +487,65 @@ function CheckInForm(props: CheckInFormProps) {
   const serviceById = new Map(services.map(s => [s.id, s]))
   const staffById   = new Map(staff.map(s => [s.id, s]))
 
+  const selectedIds = Array.from(new Set(checkInLines.map(l => l.serviceId)))
+
   function handlePickerChange(nextIds: string[]) {
-    setCheckInServiceIds(nextIds)
-    setCheckInStaffByService(prev => {
-      const next: Record<string, string> = {}
-      for (const id of nextIds) next[id] = prev[id] ?? checkInDefaultStaff
-      return next
+    const currentSet = new Set(selectedIds)
+    const nextSet    = new Set(nextIds)
+    const kept       = checkInLines.filter(l => nextSet.has(l.serviceId))
+    const added: CheckInLine[] = nextIds
+      .filter(id => !currentSet.has(id))
+      .map(serviceId => ({ key: makeKey(), serviceId, staffId: checkInDefaultStaff }))
+    setCheckInLines([...kept, ...added])
+  }
+
+  function duplicateLine(key: string) {
+    setCheckInLines(prev => {
+      const idx = prev.findIndex(l => l.key === key)
+      if (idx < 0) return prev
+      const src = prev[idx]
+      const dup: CheckInLine = { key: makeKey(), serviceId: src.serviceId, staffId: src.staffId }
+      return [...prev.slice(0, idx + 1), dup, ...prev.slice(idx + 1)]
     })
   }
 
-  // When the default staff changes, populate any service rows that
-  // haven't been assigned yet.
+  function removeLine(key: string) {
+    setCheckInLines(prev => prev.filter(l => l.key !== key))
+  }
+
+  function setLineStaff(key: string, staffId: string) {
+    setCheckInLines(prev => prev.map(l => l.key === key ? { ...l, staffId } : l))
+  }
+
+  // Fill any line missing a staff with the new default
   useEffect(() => {
     if (!checkInDefaultStaff) return
-    setCheckInStaffByService(prev => {
-      const next = { ...prev }
+    setCheckInLines(prev => {
       let changed = false
-      for (const id of checkInServiceIds) {
-        if (!next[id]) { next[id] = checkInDefaultStaff; changed = true }
-      }
+      const next = prev.map(l => {
+        if (!l.staffId) { changed = true; return { ...l, staffId: checkInDefaultStaff } }
+        return l
+      })
       return changed ? next : prev
     })
-  }, [checkInDefaultStaff, checkInServiceIds, setCheckInStaffByService])
+  }, [checkInDefaultStaff, setCheckInLines])
 
-  // Prune tip entries when their staff is no longer involved.
+  // Prune tip entries when their staff is no longer involved
   useEffect(() => {
-    const involved = new Set(
-      checkInServiceIds.map(id => checkInStaffByService[id]).filter(Boolean)
-    )
+    const involved = new Set(checkInLines.map(l => l.staffId).filter(Boolean))
     setCheckInTipByStaff(prev => {
       const next: Record<string, string> = {}
       for (const sid of involved) if (prev[sid] !== undefined) next[sid] = prev[sid]
       return Object.keys(next).length === Object.keys(prev).length ? prev : next
     })
-  }, [checkInServiceIds, checkInStaffByService, setCheckInTipByStaff])
+  }, [checkInLines, setCheckInTipByStaff])
 
-  const involvedStaffIds = Array.from(new Set(
-    checkInServiceIds.map(id => checkInStaffByService[id]).filter(Boolean)
-  ))
+  const involvedStaffIds = Array.from(new Set(checkInLines.map(l => l.staffId).filter(Boolean)))
 
-  const total = checkInServiceIds
-    .map(id => serviceById.get(id))
-    .filter((s): s is ServiceOption => Boolean(s))
-    .reduce((sum, s) => sum + s.price_ngn, 0)
+  const total = checkInLines.reduce(
+    (sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0),
+    0
+  )
 
   const totalTips = Object.values(checkInTipByStaff)
     .reduce((s, v) => s + (parseInt(v, 10) || 0), 0)
@@ -536,21 +553,19 @@ function CheckInForm(props: CheckInFormProps) {
   return (
     <form onSubmit={onSubmit} className="overflow-y-auto flex-1 px-5 py-4 space-y-4">
 
-      {/* Default staff */}
       <div>
         <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Default Staff</label>
         <select
           value={checkInDefaultStaff}
           onChange={e => setCheckInDefaultStaff(e.target.value)}
           className="input">
-          <option value="">No default — assign each service</option>
+          <option value="">No default — assign each line</option>
           {staff.map(s => (
             <option key={s.id} value={s.id}>{s.name}</option>
           ))}
         </select>
       </div>
 
-      {/* Services */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <label className="text-[var(--text-muted)] text-xs font-medium">Services</label>
@@ -562,45 +577,59 @@ function CheckInForm(props: CheckInFormProps) {
         </div>
         <ServicePicker
           services={services}
-          selectedIds={checkInServiceIds}
+          selectedIds={selectedIds}
           onChange={handlePickerChange}
           placeholder="+ Select services"
         />
       </div>
 
-      {/* Per-service staff */}
-      {checkInServiceIds.length > 0 && (
+      {checkInLines.length > 0 && (
         <div>
           <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">Who did what</label>
           <div className="space-y-2">
-            {checkInServiceIds.map(sid => {
-              const sv = serviceById.get(sid)
+            {checkInLines.map(line => {
+              const sv = serviceById.get(line.serviceId)
               if (!sv) return null
-              const assigned = checkInStaffByService[sid] ?? ''
               return (
-                <div key={sid} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
+                <div key={line.key} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
                     <p className="text-[var(--text-dim)] text-[11px] tabular-nums">₦{sv.price_ngn.toLocaleString('en-NG')}</p>
                   </div>
-                  <select value={assigned}
-                    onChange={e => setCheckInStaffByService(prev => ({ ...prev, [sid]: e.target.value }))}
+                  <select value={line.staffId}
+                    onChange={e => setLineStaff(line.key, e.target.value)}
                     className={`bg-[var(--card)] border rounded-md px-2 py-1.5 text-xs font-medium focus:outline-none focus:border-[var(--accent)] ${
-                      assigned ? 'border-[var(--border-strong)] text-[var(--text)]' : 'border-amber-500/40 text-amber-500'
+                      line.staffId ? 'border-[var(--border-strong)] text-[var(--text)]' : 'border-amber-500/40 text-amber-500'
                     }`}>
                     <option value="">Pick…</option>
                     {staff.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
+                  <button type="button" onClick={() => duplicateLine(line.key)}
+                    title="Add another of this service"
+                    className="w-7 h-7 rounded-md text-[var(--text-muted)] hover:text-[var(--accent)] hover:bg-[var(--accent)]/10 flex items-center justify-center transition-all">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                  </button>
+                  <button type="button" onClick={() => removeLine(line.key)}
+                    title="Remove this line"
+                    className="w-7 h-7 rounded-md text-[var(--text-muted)] hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-all">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               )
             })}
           </div>
+          <p className="text-[var(--text-dim)] text-[10px] mt-2">
+            Tap <span className="text-[var(--accent)]">+</span> to add another of the same service.
+          </p>
         </div>
       )}
 
-      {/* Payment method */}
       <div>
         <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Payment Method</label>
         <div className="grid grid-cols-3 gap-2">
@@ -622,7 +651,6 @@ function CheckInForm(props: CheckInFormProps) {
         </div>
       </div>
 
-      {/* Per-staff tips */}
       {involvedStaffIds.length > 0 && (
         <div>
           <label className="block text-[var(--text-muted)] text-xs font-medium mb-2">
@@ -661,7 +689,7 @@ function CheckInForm(props: CheckInFormProps) {
         </div>
       )}
 
-      <button type="submit" disabled={checkInLoading || checkInServiceIds.length === 0}
+      <button type="submit" disabled={checkInLoading || checkInLines.length === 0}
         className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
         {checkInLoading ? 'Checking in…' : 'Confirm Check-In'}
       </button>

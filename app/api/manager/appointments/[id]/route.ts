@@ -22,26 +22,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ success: true })
 }
 
+interface Line { serviceId: string; staffId: string }
+
 // Called when the client arrives — assigns staff and creates the visit record
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const body          = await req.json()
-  const serviceIds    = (Array.isArray(body.serviceIds) ? body.serviceIds : []) as string[]
-  const staffByService: Record<string, string> = body.staffByService ?? {}
-  const tipByStaff:     Record<string, string | number> = body.tipByStaff ?? {}
+  const body   = await req.json()
+  const rawLines = Array.isArray(body.lines) ? body.lines : []
+  const lines: Line[] = rawLines
+    .map((l: { serviceId?: unknown; staffId?: unknown }) => ({
+      serviceId: typeof l.serviceId === 'string' ? l.serviceId : '',
+      staffId:   typeof l.staffId   === 'string' ? l.staffId   : '',
+    }))
+    .filter((l: Line) => l.serviceId && l.staffId)
+  const tipByStaff: Record<string, string | number> = body.tipByStaff ?? {}
   const paymentMethod = ['cash', 'transfer', 'pos'].includes(body.paymentMethod)
     ? (body.paymentMethod as string)
     : 'cash'
 
-  if (serviceIds.length === 0) {
-    return NextResponse.json({ error: 'Please select at least one service.' }, { status: 400 })
-  }
-  const unassigned = serviceIds.find(sid => !staffByService[sid])
-  if (unassigned) {
-    return NextResponse.json(
-      { error: 'Every service must be assigned to a staff member.' },
-      { status: 400 }
-    )
+  if (lines.length === 0) {
+    return NextResponse.json({ error: 'Please pick at least one service and assign staff.' }, { status: 400 })
   }
 
   // Normalise tips
@@ -63,14 +63,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (apptErr || !appt) return NextResponse.json({ error: 'Appointment not found.' }, { status: 404 })
   if (appt.status === 'completed') return NextResponse.json({ error: 'This appointment has already been checked in.' }, { status: 400 })
 
+  const uniqueServiceIds = Array.from(new Set(lines.map(l => l.serviceId)))
   const { data: services, error: svErr } = await supabase
-    .from('services').select('id, name, price_ngn').in('id', serviceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
+    .from('services').select('id, name, price_ngn').in('id', uniqueServiceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
   if (svErr || !services?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
 
-  const totalNgn    = services.reduce((sum, s) => sum + s.price_ngn, 0)
-  const totalTipNgn = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
-  const visitDate   = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
-  const primaryStaffId = staffByService[serviceIds[0]]
+  const serviceById  = new Map(services.map(s => [s.id, s]))
+  const totalNgn     = lines.reduce((sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0), 0)
+  const totalTipNgn  = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
+  const visitDate    = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+  const primaryStaffId = lines[0].staffId
 
   const { data: visit, error: visitErr } = await supabase
     .from('visits')
@@ -88,22 +90,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   if (visitErr || !visit) return NextResponse.json({ error: 'Failed to create visit record.' }, { status: 500 })
 
-  // Per-line writes — each service gets its own staff_id and an
-  // optional tip drop (whole staff tip lands on first line for
-  // that staff).
   const tipsPlaced = new Set<string>()
-  const serviceById = new Map(services.map(s => [s.id, s]))
-  const vsRows = serviceIds.map(sid => {
-    const s       = serviceById.get(sid)!
-    const staffId = staffByService[sid]
-    const tip     = !tipsPlaced.has(staffId) && tipsByStaff.has(staffId)
-      ? tipsByStaff.get(staffId)!
+  const vsRows = lines.map(line => {
+    const s   = serviceById.get(line.serviceId)!
+    const tip = !tipsPlaced.has(line.staffId) && tipsByStaff.has(line.staffId)
+      ? tipsByStaff.get(line.staffId)!
       : 0
-    if (tip > 0) tipsPlaced.add(staffId)
+    if (tip > 0) tipsPlaced.add(line.staffId)
     return {
       visit_id:       visit.id,
-      service_id:     s.id,
-      staff_id:       staffId,
+      service_id:     line.serviceId,
+      staff_id:       line.staffId,
       price_ngn:      s.price_ngn,
       commission_ngn: Math.round(s.price_ngn * 0.3),
       tip_ngn:        tip,
