@@ -434,10 +434,10 @@ function StaffRow({ member, services, onToggle, onReset, onEditServices, togglin
           <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
             <span className="text-[var(--text)] text-xs font-semibold">{member.name.charAt(0).toUpperCase()}</span>
           </div>
-          <div>
-            <span className="text-[var(--text)] font-medium">{member.name}</span>
+          <div className="min-w-0">
+            <p className="text-[var(--text)] font-medium leading-tight">{member.name}</p>
             {member.sunday_grace && (
-              <span className="ml-2 text-[10px] font-medium text-[#6366f1] bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full px-1.5 py-0.5">
+              <span className="inline-block mt-1 text-[10px] font-medium text-[#6366f1] bg-[#6366f1]/10 border border-[#6366f1]/20 rounded-full px-1.5 py-0.5 leading-none">
                 Sun. Grace
               </span>
             )}
