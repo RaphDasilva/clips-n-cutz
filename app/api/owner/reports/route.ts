@@ -4,9 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 interface VisitRow {
   id: string
   total_ngn: number
+  tip_ngn: number
   visit_date: string
   payment_method: string
-  clients: { name: string; phone: string } | null
+  staff_id: string | null
+  clients: { name: string; phone: string | null } | null
   users: { name: string } | null
 }
 
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   let visitsQuery = supabase
     .from('visits')
-    .select('id, total_ngn, visit_date, payment_method, clients(name, phone), users!staff_id(name)')
+    .select('id, total_ngn, tip_ngn, visit_date, payment_method, staff_id, clients(name, phone), users!staff_id(name)')
     .gte('visit_date', from)
     .lte('visit_date', to)
     .order('visit_date', { ascending: false })
@@ -56,6 +58,8 @@ export async function GET(req: NextRequest) {
   // Totals
   const totalRevenue    = visits.reduce((s, v) => s + v.total_ngn, 0)
   const totalCommission = vsRows.reduce((s, r) => s + r.commission_ngn, 0)
+  const totalTips       = visits.reduce((s, v) => s + (v.tip_ngn ?? 0), 0)
+  const totalPayout     = totalCommission + totalTips
 
   // Payment method breakdown
   const byPayment = { cash: 0, transfer: 0, pos: 0 }
@@ -76,25 +80,33 @@ export async function GET(req: NextRequest) {
     .map(([name, v]) => ({ name, ...v }))
     .sort((a, b) => b.revenue - a.revenue)
 
-  // Revenue by staff
-  const staffMap = new Map<string, { services: number; revenue: number; commission: number }>()
+  // Revenue by staff (commission from visit_services, tips from visits)
+  const staffMap = new Map<string, { services: number; revenue: number; commission: number; tips: number }>()
   for (const r of vsRows) {
     const name = r.users?.name ?? 'Unknown'
-    const cur  = staffMap.get(name) ?? { services: 0, revenue: 0, commission: 0 }
+    const cur  = staffMap.get(name) ?? { services: 0, revenue: 0, commission: 0, tips: 0 }
     staffMap.set(name, {
       services:   cur.services + 1,
       revenue:    cur.revenue + r.price_ngn,
       commission: cur.commission + r.commission_ngn,
+      tips:       cur.tips,
     })
   }
+  for (const v of visits) {
+    const name = v.users?.name ?? 'Unknown'
+    const cur  = staffMap.get(name) ?? { services: 0, revenue: 0, commission: 0, tips: 0 }
+    staffMap.set(name, { ...cur, tips: cur.tips + (v.tip_ngn ?? 0) })
+  }
   const byStaff = [...staffMap.entries()]
-    .map(([name, v]) => ({ name, ...v }))
+    .map(([name, v]) => ({ name, ...v, totalPayout: v.commission + v.tips }))
     .sort((a, b) => b.revenue - a.revenue)
 
   return NextResponse.json({
     summary: {
       totalRevenue,
       totalCommission,
+      totalTips,
+      totalPayout,
       totalVisits:   visits.length,
       totalServices: vsRows.length,
       ownerProfit:   totalRevenue - totalCommission,

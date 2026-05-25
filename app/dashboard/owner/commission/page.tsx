@@ -8,12 +8,16 @@ interface StaffCommission {
   servicesCount: number
   totalValue: number
   totalCommission: number
+  tips: number
+  totalPayout: number
 }
 
 interface CommissionData {
   breakdown: StaffCommission[]
   totalRevenue: number
   totalCommission: number
+  totalTips: number
+  totalPayout: number
   totalServices: number
 }
 
@@ -58,7 +62,7 @@ export default function CommissionPage() {
 
   useEffect(() => { load(period) }, [load, period])
 
-  const maxCommission = data?.breakdown[0]?.totalCommission ?? 1
+  const maxPayout = data?.breakdown[0]?.totalPayout ?? 1
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
@@ -84,20 +88,22 @@ export default function CommissionPage() {
 
       {/* Summary strip */}
       {!loading && data && (
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Total Revenue</p>
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Service Revenue</p>
             <p className="text-white text-xl font-bold tabular-nums">{fmtNaira(data.totalRevenue)}</p>
           </div>
           <div className="bg-[#141414] border border-amber-500/20 rounded-xl p-4">
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission Owed</p>
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Commission (30%)</p>
             <p className="text-amber-400 text-xl font-bold tabular-nums">{fmtNaira(data.totalCommission)}</p>
           </div>
+          <div className="bg-[#141414] border border-emerald-500/20 rounded-xl p-4">
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Tips Collected</p>
+            <p className="text-emerald-400 text-xl font-bold tabular-nums">{fmtNaira(data.totalTips)}</p>
+          </div>
           <div className="bg-[#141414] border border-[#C49A3C]/30 rounded-xl p-4">
-            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Your Earnings</p>
-            <p className="text-[#C49A3C] text-xl font-bold tabular-nums">
-              {fmtNaira(data.totalRevenue - data.totalCommission)}
-            </p>
+            <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">Total Staff Payout</p>
+            <p className="text-[#C49A3C] text-xl font-bold tabular-nums">{fmtNaira(data.totalPayout)}</p>
           </div>
         </div>
       )}
@@ -123,13 +129,14 @@ export default function CommissionPage() {
                   <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Staff Member</th>
                   <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Services</th>
                   <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Revenue Generated</th>
-                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Commission (30%)</th>
-                  <th className="text-left text-[#555] text-xs font-medium px-5 py-3">Share</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Commission</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Tips</th>
+                  <th className="text-right text-[#555] text-xs font-medium px-5 py-3">Total Payout</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1e1e1e]">
                 {data.breakdown.map((s) => {
-                  const barPct = Math.round((s.totalCommission / maxCommission) * 100)
+                  const barPct = Math.round((s.totalPayout / maxPayout) * 100)
                   return (
                     <tr key={s.staffId} className="hover:bg-[#1a1a1a] transition-colors">
                       <td className="px-5 py-4">
@@ -147,13 +154,18 @@ export default function CommissionPage() {
                       <td className="px-5 py-4 text-right">
                         <span className="text-amber-400 font-semibold tabular-nums">{fmtNaira(s.totalCommission)}</span>
                       </td>
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2 min-w-[100px]">
-                          <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
-                            <div className="bg-amber-400 h-1.5 rounded-full transition-all"
+                      <td className="px-5 py-4 text-right">
+                        <span className={`tabular-nums ${s.tips > 0 ? 'text-emerald-400 font-semibold' : 'text-[#444]'}`}>
+                          {s.tips > 0 ? fmtNaira(s.tips) : '—'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2 min-w-[140px]">
+                          <div className="flex-1 max-w-[60px] bg-[#1e1e1e] rounded-full h-1.5">
+                            <div className="bg-[#C49A3C] h-1.5 rounded-full transition-all"
                               style={{ width: `${barPct}%` }} />
                           </div>
-                          <span className="text-[#555] text-xs w-8 text-right">{barPct}%</span>
+                          <span className="text-[#C49A3C] font-bold tabular-nums">{fmtNaira(s.totalPayout)}</span>
                         </div>
                       </td>
                     </tr>
@@ -170,7 +182,12 @@ export default function CommissionPage() {
                   <td className="px-5 py-3 text-right text-amber-400 text-xs font-semibold tabular-nums">
                     {fmtNaira(data.totalCommission)}
                   </td>
-                  <td className="px-5 py-3" />
+                  <td className="px-5 py-3 text-right text-emerald-400 text-xs font-semibold tabular-nums">
+                    {fmtNaira(data.totalTips)}
+                  </td>
+                  <td className="px-5 py-3 text-right text-[#C49A3C] text-xs font-bold tabular-nums">
+                    {fmtNaira(data.totalPayout)}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -179,7 +196,7 @@ export default function CommissionPage() {
           {/* Mobile cards */}
           <div className="lg:hidden space-y-3">
             {data.breakdown.map((s) => {
-              const barPct = Math.round((s.totalCommission / maxCommission) * 100)
+              const barPct = Math.round((s.totalPayout / maxPayout) * 100)
               return (
                 <div key={s.staffId} className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-4">
                   <div className="flex items-center justify-between mb-3">
@@ -193,15 +210,27 @@ export default function CommissionPage() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-amber-400 text-sm font-bold tabular-nums">{fmtNaira(s.totalCommission)}</p>
-                      <p className="text-[#555] text-xs">commission</p>
+                      <p className="text-[#C49A3C] text-sm font-bold tabular-nums">{fmtNaira(s.totalPayout)}</p>
+                      <p className="text-[#555] text-xs">total payout</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
-                      <div className="bg-amber-400 h-1.5 rounded-full" style={{ width: `${barPct}%` }} />
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <p className="text-[#555]">Commission</p>
+                      <p className="text-amber-400 font-semibold tabular-nums">{fmtNaira(s.totalCommission)}</p>
                     </div>
-                    <span className="text-[#555] text-xs">{fmtNaira(s.totalValue)} total</span>
+                    <div>
+                      <p className="text-[#555]">Tips</p>
+                      <p className={`tabular-nums ${s.tips > 0 ? 'text-emerald-400 font-semibold' : 'text-[#444]'}`}>
+                        {s.tips > 0 ? fmtNaira(s.tips) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex-1 bg-[#1e1e1e] rounded-full h-1.5">
+                      <div className="bg-[#C49A3C] h-1.5 rounded-full" style={{ width: `${barPct}%` }} />
+                    </div>
+                    <span className="text-[#555] text-xs">{fmtNaira(s.totalValue)} revenue</span>
                   </div>
                 </div>
               )

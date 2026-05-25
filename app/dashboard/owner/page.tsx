@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import RevenueChart from '@/components/RevenueChart'
 
 interface PaymentBreakdown { cash: number; transfer: number; pos: number }
-interface PeriodStats { revenue: number; visits: number; byPayment: PaymentBreakdown }
+interface PeriodStats { revenue: number; tips: number; visits: number; byPayment: PaymentBreakdown }
 interface Summary {
   today: PeriodStats
   yesterday: PeriodStats
@@ -101,8 +101,8 @@ export default function OwnerHome() {
       {/* Today vs Yesterday */}
       <section className="mb-8">
         <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">Today</h2>
-        {loading ? <SkeletonGrid n={2} /> : (
-          <div className="grid grid-cols-2 gap-4">
+        {loading ? <SkeletonGrid n={3} /> : (
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
               label="Revenue"
               value={fmtNaira(data!.today.revenue)}
@@ -113,6 +113,11 @@ export default function OwnerHome() {
               label="Visits"
               value={String(data!.today.visits)}
               sub={`Yesterday: ${data!.yesterday.visits}`}
+            />
+            <StatCard
+              label="Tips collected"
+              value={fmtNaira(data!.today.tips)}
+              sub={`Yesterday: ${fmtNaira(data!.yesterday.tips)}`}
             />
           </div>
         )}
@@ -159,9 +164,11 @@ export default function OwnerHome() {
               <p className="text-[#555] text-xs mt-1.5">All services this month</p>
             </div>
             <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl p-5">
-              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Staff Commission <span className="text-[#444] normal-case">(30%)</span></p>
-              <p className="text-amber-400 text-2xl font-bold tabular-nums">{fmtNairaFull(commissionOwed)}</p>
-              <p className="text-[#555] text-xs mt-1.5">Owed to all staff</p>
+              <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-3">Staff Payout</p>
+              <p className="text-amber-400 text-2xl font-bold tabular-nums">{fmtNairaFull(commissionOwed + data!.month.tips)}</p>
+              <p className="text-[#555] text-xs mt-1.5">
+                Commission {fmtNairaFull(commissionOwed)} + Tips {fmtNairaFull(data!.month.tips)}
+              </p>
               <Link href="/dashboard/owner/commission"
                 className="text-[#555] text-xs mt-3 inline-flex items-center gap-1 hover:text-white transition-colors">
                 See breakdown →

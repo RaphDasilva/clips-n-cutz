@@ -5,16 +5,18 @@ import { useState } from 'react'
 interface Summary {
   totalRevenue: number
   totalCommission: number
+  totalTips: number
+  totalPayout: number
   totalVisits: number
   totalServices: number
   ownerProfit: number
 }
 
 interface ServiceBreakdown { name: string; count: number; revenue: number }
-interface StaffBreakdown   { name: string; services: number; revenue: number; commission: number }
+interface StaffBreakdown   { name: string; services: number; revenue: number; commission: number; tips: number; totalPayout: number }
 interface VisitRow {
-  id: string; visit_date: string; total_ngn: number; payment_method: string
-  clients: { name: string; phone: string } | null
+  id: string; visit_date: string; total_ngn: number; tip_ngn: number; payment_method: string
+  clients: { name: string; phone: string | null } | null
   users:   { name: string } | null
 }
 
@@ -139,12 +141,13 @@ export default function ReportsPage() {
             <h2 className="text-[#555] text-xs font-semibold uppercase tracking-wider mb-4">
               Summary · {fmtDate(from)} – {fmtDate(to)}
             </h2>
-            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-              <SummaryCard label="Total Revenue"    value={fmtNaira(data.summary.totalRevenue)}    />
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <SummaryCard label="Service Revenue"  value={fmtNaira(data.summary.totalRevenue)}    />
               <SummaryCard label="Your Earnings"    value={fmtNaira(data.summary.ownerProfit)}     accent="gold" />
-              <SummaryCard label="Commission Owed"  value={fmtNaira(data.summary.totalCommission)} accent="amber" />
-              <SummaryCard label="Visits"           value={String(data.summary.totalVisits)}       />
-              <SummaryCard label="Services Done"    value={String(data.summary.totalServices)}     />
+              <SummaryCard label="Commission"       value={fmtNaira(data.summary.totalCommission)} accent="amber" />
+              <SummaryCard label="Tips Collected"   value={fmtNaira(data.summary.totalTips)}       accent="emerald" />
+              <SummaryCard label="Total Staff Payout" value={fmtNaira(data.summary.totalPayout)}   accent="gold" />
+              <SummaryCard label={`Visits · ${data.summary.totalServices} services`} value={String(data.summary.totalVisits)} />
             </div>
           </section>
 
@@ -222,7 +225,10 @@ export default function ReportsPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-white text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
-                        <p className="text-amber-400 text-xs tabular-nums">{fmtNaira(s.commission)}</p>
+                        <p className="text-[10px] text-[#666] tabular-nums">
+                          <span className="text-amber-400">{fmtNaira(s.commission)}</span>
+                          {s.tips > 0 && <> + <span className="text-emerald-400">{fmtNaira(s.tips)}</span> tip</>}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -310,17 +316,19 @@ export default function ReportsPage() {
   )
 }
 
-function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: 'gold' | 'amber' }) {
+function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: 'gold' | 'amber' | 'emerald' }) {
   return (
     <div className={`bg-[#141414] rounded-xl p-4 border ${
-      accent === 'gold'  ? 'border-[#C49A3C]/30' :
-      accent === 'amber' ? 'border-amber-500/20'  :
+      accent === 'gold'    ? 'border-[#C49A3C]/30'     :
+      accent === 'amber'   ? 'border-amber-500/20'    :
+      accent === 'emerald' ? 'border-emerald-500/20'  :
       'border-[#1e1e1e]'
     }`}>
       <p className="text-[#666] text-xs font-medium uppercase tracking-wider mb-2">{label}</p>
       <p className={`text-lg font-bold tabular-nums ${
-        accent === 'gold'  ? 'text-[#C49A3C]' :
-        accent === 'amber' ? 'text-amber-400'  :
+        accent === 'gold'    ? 'text-[#C49A3C]'   :
+        accent === 'amber'   ? 'text-amber-400'   :
+        accent === 'emerald' ? 'text-emerald-400' :
         'text-white'
       }`}>{value}</p>
     </div>

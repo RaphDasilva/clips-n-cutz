@@ -55,18 +55,27 @@ function StatCard({ label, value, sub }: { label: string; value: string | number
   )
 }
 
+interface TipsRow { staffId: string; staffName: string; tips: number }
+interface TipsResp { breakdown: TipsRow[]; totalTips: number }
+
 export default function ManagerHome() {
   const router = useRouter()
   const [userName, setUserName] = useState('')
   const [data, setData] = useState<TodayData | null>(null)
+  const [tipsData, setTipsData] = useState<TipsResp | null>(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     const session = getSession()
     if (!session) { router.replace('/login'); return }
     setUserName(session.name.split(' ')[0])
-    const res = await fetch('/api/manager/today')
-    if (res.ok) setData(await res.json())
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+    const [todayRes, tipsRes] = await Promise.all([
+      fetch('/api/manager/today'),
+      fetch(`/api/manager/tips?from=${todayStr}&to=${todayStr}`),
+    ])
+    if (todayRes.ok) setData(await todayRes.json())
+    if (tipsRes.ok) setTipsData(await tipsRes.json())
     setLoading(false)
   }, [router])
 
@@ -180,6 +189,35 @@ export default function ManagerHome() {
           )}
         </section>
       </div>
+
+      {/* Tips today */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-white text-sm font-semibold">Tips Today</h2>
+          <span className="text-emerald-400 text-xs font-semibold tabular-nums">
+            {tipsData ? fmtNaira(tipsData.totalTips) : ''}
+          </span>
+        </div>
+        {loading ? (
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl h-16 animate-pulse" />
+        ) : !tipsData || tipsData.breakdown.length === 0 ? (
+          <Empty text="No tips recorded yet today." />
+        ) : (
+          <div className="bg-[#141414] border border-[#1e1e1e] rounded-xl overflow-hidden divide-y divide-[#1e1e1e]">
+            {tipsData.breakdown.map(t => (
+              <div key={t.staffId} className="flex items-center justify-between px-4 py-3.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-7 h-7 rounded-full bg-[#1e1e1e] border border-[#2a2a2a] flex items-center justify-center">
+                    <span className="text-white text-xs font-semibold">{t.staffName.charAt(0).toUpperCase()}</span>
+                  </div>
+                  <p className="text-white text-sm font-medium">{t.staffName}</p>
+                </div>
+                <p className="text-emerald-400 text-sm font-semibold tabular-nums">{fmtNaira(t.tips)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }
