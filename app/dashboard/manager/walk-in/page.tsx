@@ -163,11 +163,12 @@ export default function WalkInPage() {
                       className="input" />
                   </div>
                   <div>
-                    <label className="block text-[#888] text-xs font-medium mb-1.5">Phone Number</label>
+                    <label className="block text-[#888] text-xs font-medium mb-1.5">
+                      Phone Number <span className="text-[#555] font-normal">(optional)</span>
+                    </label>
                     <input type="tel" value={clientPhone}
                       onChange={e => setClientPhone(e.target.value)}
-                      placeholder="08012345678"
-                      required
+                      placeholder="08012345678 — leave blank if not given"
                       className="input" />
                   </div>
                 </div>
@@ -256,7 +257,7 @@ export default function WalkInPage() {
           )}
 
           <button type="submit"
-            disabled={submitting || selectedIds.length === 0 || !staffId || !clientName || !clientPhone}
+            disabled={submitting || selectedIds.length === 0 || !staffId || !clientName}
             className="w-full bg-white text-gray-950 font-bold py-3.5 rounded-xl text-sm disabled:opacity-40 hover:bg-gray-100 active:scale-[0.98] transition-all">
             {submitting ? 'Saving…' : selectedTotal > 0 ? `Log Visit · ${fmtNaira(selectedTotal)}` : 'Log Visit'}
           </button>

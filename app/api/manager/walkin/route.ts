@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
     ? body.paymentMethod
     : 'cash'
 
-  if (!clientName || !clientPhone || !staffId || serviceIds.length === 0) {
+  if (!clientName || !staffId || serviceIds.length === 0) {
     return NextResponse.json(
-      { error: 'Name, phone, staff, and at least one service are required.' },
+      { error: 'Name, staff, and at least one service are required.' },
       { status: 400 }
     )
   }
@@ -32,21 +32,35 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
   }
 
-  // 2. Upsert client — if phone exists, return existing; otherwise create new
-  const { data: existingClient } = await supabase
-    .from('clients')
-    .select('*')
-    .eq('phone', clientPhone)
-    .single() as { data: Client | null; error: unknown }
-
+  // 2. Upsert client by phone when provided; otherwise create a new
+  //    anonymous client row (phone column allows multiple NULLs).
   let client: Client
 
-  if (existingClient) {
-    client = existingClient
+  if (clientPhone) {
+    const { data: existingClient } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('phone', clientPhone)
+      .single() as { data: Client | null; error: unknown }
+
+    if (existingClient) {
+      client = existingClient
+    } else {
+      const { data: newClient, error: clientError } = await supabase
+        .from('clients')
+        .insert({ name: clientName, phone: clientPhone })
+        .select()
+        .single() as { data: Client | null; error: { message: string } | null }
+
+      if (clientError || !newClient) {
+        return NextResponse.json({ error: 'Failed to create client record.' }, { status: 500 })
+      }
+      client = newClient
+    }
   } else {
     const { data: newClient, error: clientError } = await supabase
       .from('clients')
-      .insert({ name: clientName, phone: clientPhone })
+      .insert({ name: clientName, phone: null })
       .select()
       .single() as { data: Client | null; error: { message: string } | null }
 
@@ -92,15 +106,18 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to save services for visit.' }, { status: 500 })
   }
 
-  // 6. Schedule a follow-up WhatsApp message 7 days from now
-  const followUpDate = new Date()
-  followUpDate.setDate(followUpDate.getDate() + 7)
+  // 6. Schedule a follow-up WhatsApp message 7 days from now —
+  //    only when we have a phone number to message.
+  if (clientPhone) {
+    const followUpDate = new Date()
+    followUpDate.setDate(followUpDate.getDate() + 7)
 
-  await supabase.from('follow_ups').insert({
-    client_id: client.id,
-    visit_id: visit.id,
-    scheduled_for: followUpDate.toISOString(),
-  })
+    await supabase.from('follow_ups').insert({
+      client_id: client.id,
+      visit_id: visit.id,
+      scheduled_for: followUpDate.toISOString(),
+    })
+  }
 
   return NextResponse.json({
     success: true,

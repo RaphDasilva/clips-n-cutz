@@ -88,7 +88,7 @@ export default function ClientsPage() {
                         <span className="text-white font-medium">{c.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[#888]">{c.phone}</td>
+                    <td className="px-5 py-4 text-[#888]">{c.phone ?? <span className="text-[#444]">—</span>}</td>
                     <td className="px-5 py-4 text-[#555] max-w-xs truncate">{c.notes ?? '—'}</td>
                     <td className="px-5 py-4 text-[#555]">{fmtDate(c.created_at)}</td>
                   </tr>
@@ -108,7 +108,7 @@ export default function ClientsPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="text-white text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-[#555] text-xs">{c.phone}</p>
+                      <p className="text-[#555] text-xs">{c.phone ?? '—'}</p>
                     </div>
                   </div>
                   <p className="text-[#444] text-xs flex-shrink-0 ml-3">{fmtDate(c.created_at)}</p>
