@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isWithinPenaltyGrace } from '@/lib/attendance'
 
 // Runs at 3pm Lagos time (2pm UTC) every day via Vercel Cron.
 // Any active staff member with no attendance record for today is marked absent (₦5,000).
@@ -44,12 +45,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ marked: 0, date: today })
   }
 
+  const penalty = isWithinPenaltyGrace(today) ? 0 : 5000
+
   const rows = toMark.map(s => ({
     staff_id:     s.id,
     date:         today,
     checked_in_at: null,
     status:       'absent',
-    penalty_ngn:  5000,
+    penalty_ngn:  penalty,
   }))
 
   const { error } = await supabase

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isWithinPenaltyGrace } from '@/lib/attendance'
 
 // Penalty rules:
 // Mon-Sat: opens 9am, grace until 9:30am
@@ -114,8 +115,9 @@ export async function POST(req: NextRequest) {
   if (action === 'confirm') {
     const sundayGrace = Boolean(body.sundayGrace)
     const checkedInAt = lagosTimeNow()
-    const penalty     = calcPenalty(checkedInAt, date, sundayGrace)
-    const status      = calcStatus(checkedInAt, penalty)
+    const computed    = calcPenalty(checkedInAt, date, sundayGrace)
+    const penalty     = isWithinPenaltyGrace(date) ? 0 : computed
+    const status      = calcStatus(checkedInAt, computed)
 
     const { error: attError } = await supabase
       .from('attendance')
@@ -150,8 +152,9 @@ export async function POST(req: NextRequest) {
   // ── Manual entry: manager types time directly ──
   const checkedInAt = (body.checkedInAt ?? null) as string | null
   const sundayGrace = Boolean(body.sundayGrace)
-  const penalty     = calcPenalty(checkedInAt, date, sundayGrace)
-  const status      = calcStatus(checkedInAt, penalty)
+  const computed    = calcPenalty(checkedInAt, date, sundayGrace)
+  const penalty     = isWithinPenaltyGrace(date) ? 0 : computed
+  const status      = calcStatus(checkedInAt, computed)
 
   const { error } = await supabase
     .from('attendance')
