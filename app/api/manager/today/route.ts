@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
   const [visitsResult, appointmentsResult, attResult, pendingResult] = await Promise.all([
     supabase
       .from('visits')
-      .select('id, total_ngn, tip_ngn, created_at, payment_method, clients(name), users(name)')
+      .select('id, total_ngn, tip_ngn, created_at, payment_method, clients(name), users(name), visit_services(services(name))')
       .eq('visit_date', date)
       .order('created_at', { ascending: false }),
 
