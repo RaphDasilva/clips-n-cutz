@@ -8,7 +8,9 @@ import { useRouter } from 'next/navigation'
 interface TodayVisit {
   id: string
   total_ngn: number
+  tip_ngn: number
   created_at: string
+  payment_method: string
   clients: { name: string } | null
   users: { name: string } | null
 }
@@ -268,7 +270,7 @@ export default function ManagerHome() {
           </section>
         )}
 
-        {/* Walk-ins (today: latest 6 with delete; past: full list, read-only) */}
+        {/* Walk-ins — today: latest 6 with delete; past: compact recap table */}
         <section className={isToday ? '' : 'lg:col-span-2'}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-[var(--text)] text-sm font-semibold">{isToday ? 'Recent Walk-ins' : 'Walk-ins on this day'}</h2>
@@ -280,9 +282,9 @@ export default function ManagerHome() {
             </div>
           ) : data?.visits.length === 0 ? (
             <Empty text={isToday ? 'No walk-ins logged today yet.' : 'No walk-ins recorded on this day.'} />
-          ) : (
+          ) : isToday ? (
             <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
-              {(isToday ? data!.visits.slice(0, 6) : data!.visits).map((v) => (
+              {data!.visits.slice(0, 6).map((v) => (
                 <div key={v.id} className="flex items-center justify-between px-4 py-3.5 group">
                   <div className="min-w-0 flex-1">
                     <p className="text-[var(--text)] text-sm font-medium truncate">{v.clients?.name ?? '—'}</p>
@@ -292,7 +294,6 @@ export default function ManagerHome() {
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                     <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
-                    {isToday && (
                     <button onClick={() => setDeleteTarget({ id: v.id, name: v.clients?.name ?? 'this visit', amount: v.total_ngn })}
                       title="Delete this visit (mistake)"
                       className="opacity-60 group-hover:opacity-100 lg:opacity-0 lg:group-hover:opacity-100 w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-dim)] hover:text-red-400 hover:bg-red-500/10 transition-all">
@@ -300,11 +301,12 @@ export default function ManagerHome() {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                       </svg>
                     </button>
-                    )}
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <PastDayWalkInTable visits={data!.visits} totalRevenue={totalRevenue} />
           )}
         </section>
       </div>
@@ -374,6 +376,78 @@ export default function ManagerHome() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+const PAYMENT_PILL: Record<string, string> = {
+  cash:     'bg-emerald-500/10 text-emerald-400',
+  transfer: 'bg-sky-500/10 text-sky-400',
+  pos:      'bg-violet-500/10 text-violet-400',
+}
+
+function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; totalRevenue: number }) {
+  return (
+    <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+      {/* Desktop table */}
+      <div className="hidden sm:block">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[var(--border)] bg-[var(--elevated)]/40">
+              <th className="text-left  text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider px-4 py-2.5">Time</th>
+              <th className="text-left  text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider px-4 py-2.5">Client</th>
+              <th className="text-left  text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider px-4 py-2.5">Staff</th>
+              <th className="text-left  text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider px-4 py-2.5">Payment</th>
+              <th className="text-right text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider px-4 py-2.5">Total</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {visits.map(v => (
+              <tr key={v.id} className="hover:bg-[var(--elevated)]/50 transition-colors">
+                <td className="px-4 py-2.5 text-[var(--text-muted)] text-xs tabular-nums">{fmt12h(v.created_at)}</td>
+                <td className="px-4 py-2.5 text-[var(--text)] font-medium truncate max-w-[160px]">{v.clients?.name ?? '—'}</td>
+                <td className="px-4 py-2.5 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
+                <td className="px-4 py-2.5">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
+                    {v.payment_method}
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-right text-[var(--text)] font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-[var(--border-strong)] bg-[var(--elevated)]/40">
+              <td colSpan={4} className="px-4 py-2.5 text-[var(--text-dim)] text-xs font-medium">{visits.length} walk-in{visits.length === 1 ? '' : 's'}</td>
+              <td className="px-4 py-2.5 text-right text-[var(--text)] font-bold tabular-nums">{fmtNaira(totalRevenue)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Mobile compact rows */}
+      <div className="sm:hidden divide-y divide-[var(--border)]">
+        {visits.map(v => (
+          <div key={v.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[var(--text)] text-sm font-medium truncate leading-tight">{v.clients?.name ?? '—'}</p>
+              <p className="text-[var(--text-dim)] text-[11px] mt-0.5 truncate">
+                {fmt12h(v.created_at)} · {v.users?.name ?? '—'}
+              </p>
+            </div>
+            <div className="flex flex-col items-end flex-shrink-0">
+              <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
+              <span className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5 ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
+                {v.payment_method}
+              </span>
+            </div>
+          </div>
+        ))}
+        <div className="flex items-center justify-between px-4 py-3 bg-[var(--elevated)]/40">
+          <span className="text-[var(--text-dim)] text-xs font-medium">{visits.length} walk-in{visits.length === 1 ? '' : 's'}</span>
+          <span className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(totalRevenue)}</span>
+        </div>
+      </div>
     </div>
   )
 }
