@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
@@ -30,6 +30,14 @@ interface AttendanceSummary {
   absentStaff: string[]
 }
 
+interface PendingCheckin {
+  staff_id:     string
+  name:         string
+  sunday_grace: boolean
+  off_days:     number[]
+  requested_at: string
+}
+
 interface TodayData {
   date: string
   isToday: boolean
@@ -38,6 +46,7 @@ interface TodayData {
   visits: TodayVisit[]
   appointments: TodayAppointment[]
   attendance: AttendanceSummary
+  pendingCheckins: PendingCheckin[]
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -87,6 +96,31 @@ function fmtDateHeader(dateStr: string) {
   })
 }
 
+// Two-tone notification chime via Web Audio API — no file needed.
+// Browsers may block before the user interacts; we silently swallow.
+function playAlert() {
+  if (typeof window === 'undefined') return
+  try {
+    const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const tones: [number, number][] = [[880, 0], [660, 0.18], [880, 0.36]]
+    for (const [freq, offset] of tones) {
+      const osc  = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.value = freq
+      gain.gain.setValueAtTime(0.45, ctx.currentTime + offset)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.25)
+      osc.start(ctx.currentTime + offset)
+      osc.stop(ctx.currentTime + offset + 0.25)
+    }
+    // Close context after the chime ends so we don't leak audio nodes.
+    setTimeout(() => ctx.close(), 1000)
+  } catch {/* ignore */}
+}
+
 export default function ManagerHome() {
   const router = useRouter()
   const [userName, setUserName]     = useState('')
@@ -100,26 +134,79 @@ export default function ManagerHome() {
   const [deleting, setDeleting]         = useState(false)
   const [deleteError, setDeleteError]   = useState('')
 
-  const load = useCallback(async (dateStr: string) => {
+  // Pending check-in actions
+  const [resolvingStaffId, setResolvingStaffId] = useState<string | null>(null)
+  const prevPendingCountRef                     = useRef<number>(0)
+  const audioUnlockedRef                        = useRef<boolean>(false)
+
+  // Tap anywhere on the page once to unlock audio (autoplay policy)
+  useEffect(() => {
+    if (audioUnlockedRef.current) return
+    const unlock = () => {
+      audioUnlockedRef.current = true
+      window.removeEventListener('click', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+    window.addEventListener('click', unlock, { once: true })
+    window.addEventListener('touchstart', unlock, { once: true })
+    return () => {
+      window.removeEventListener('click', unlock)
+      window.removeEventListener('touchstart', unlock)
+    }
+  }, [])
+
+  const load = useCallback(async (dateStr: string, silent = false) => {
     const session = getSession()
     if (!session) { router.replace('/login'); return }
     setUserName(session.name.split(' ')[0])
-    setLoading(true)
+    if (!silent) setLoading(true)
     const [todayRes, tipsRes] = await Promise.all([
       fetch(`/api/manager/today?date=${dateStr}`),
       fetch(`/api/manager/tips?from=${dateStr}&to=${dateStr}`),
     ])
-    if (todayRes.ok) setData(await todayRes.json())
+    if (todayRes.ok) {
+      const next = await todayRes.json() as TodayData
+      const pendingCount = next.pendingCheckins?.length ?? 0
+      if (next.isToday && pendingCount > prevPendingCountRef.current && audioUnlockedRef.current) {
+        playAlert()
+      }
+      prevPendingCountRef.current = pendingCount
+      setData(next)
+    }
     if (tipsRes.ok) setTipsData(await tipsRes.json())
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [router])
 
-  useEffect(() => { load(selectedDate) }, [load, selectedDate])
+  useEffect(() => {
+    prevPendingCountRef.current = 0
+    load(selectedDate)
+  }, [load, selectedDate])
+
+  // Auto-poll for new check-in requests every 15s (today only)
+  useEffect(() => {
+    if (selectedDate !== lagosToday()) return
+    const id = setInterval(() => load(selectedDate, true), 15_000)
+    return () => clearInterval(id)
+  }, [load, selectedDate])
 
   const todayStr  = lagosToday()
   const isToday   = selectedDate === todayStr
   const isFuture  = selectedDate > todayStr
   const totalRevenue = data?.visits.reduce((s, v) => s + v.total_ngn, 0) ?? 0
+
+  async function resolveCheckin(staffId: string, action: 'confirm' | 'dismiss', sundayGrace = false) {
+    setResolvingStaffId(staffId)
+    try {
+      await fetch('/api/manager/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, staffId, date: selectedDate, sundayGrace }),
+      })
+      await load(selectedDate, true)
+    } finally {
+      setResolvingStaffId(null)
+    }
+  }
 
   async function confirmDelete() {
     if (!deleteTarget) return
@@ -191,6 +278,49 @@ export default function ManagerHome() {
           </svg>
         </button>
       </div>
+
+      {/* Pending check-ins — always visible at top, today only */}
+      {isToday && data && data.pendingCheckins.length > 0 && (
+        <section className="mb-8">
+          <div className="bg-amber-500/5 border-2 border-amber-500/40 rounded-2xl overflow-hidden shadow-lg shadow-amber-500/10 animate-pulse-soft">
+            <div className="px-5 py-3 border-b border-amber-500/30 flex items-center gap-2.5">
+              <div className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+              </div>
+              <h2 className="text-amber-500 text-sm font-bold">
+                {data.pendingCheckins.length} staff waiting to check in
+              </h2>
+            </div>
+            <div className="divide-y divide-amber-500/20">
+              {data.pendingCheckins.map(p => (
+                <div key={p.staff_id} className="flex items-center justify-between gap-3 px-5 py-3.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[var(--text)] font-semibold truncate">{p.name}</p>
+                    <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                      Requested at {fmt12h(p.requested_at)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => resolveCheckin(p.staff_id, 'dismiss', p.sunday_grace)}
+                      disabled={resolvingStaffId === p.staff_id}
+                      className="text-[var(--text-muted)] text-xs font-medium px-3 py-2 rounded-lg hover:bg-[var(--elevated)] transition-all disabled:opacity-40">
+                      Dismiss
+                    </button>
+                    <button
+                      onClick={() => resolveCheckin(p.staff_id, 'confirm', p.sunday_grace)}
+                      disabled={resolvingStaffId === p.staff_id}
+                      className="bg-emerald-500 text-white font-semibold px-4 py-2 rounded-lg text-xs hover:bg-emerald-600 active:scale-[0.98] transition-all disabled:opacity-40">
+                      {resolvingStaffId === p.staff_id ? '…' : 'Confirm'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Stats */}
       {loading ? (

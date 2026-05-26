@@ -83,3 +83,10 @@ html, body {
 }
 .input::placeholder { color: var(--text-faint); }
 .input:focus { outline: none; border-color: var(--accent); }
+
+/* Soft pulse for attention-grabbing cards (e.g. pending check-ins) */
+@keyframes cnc-pulse-soft {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.30); }
+  50%      { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+.animate-pulse-soft { animation: cnc-pulse-soft 2s ease-in-out infinite; }
