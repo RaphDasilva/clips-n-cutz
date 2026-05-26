@@ -414,42 +414,49 @@ export default function ManagerHome() {
           ) : data?.visits.length === 0 ? (
             <Empty text={isToday ? 'No walk-ins logged today yet.' : 'No walk-ins recorded on this day.'} />
           ) : isToday ? (
-            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden divide-y divide-[var(--border)]">
-              {data!.visits.slice(0, 6).map((v) => {
-                const serviceNames = (v.visit_services ?? [])
-                  .map(s => s.services?.name)
-                  .filter(Boolean) as string[]
-                return (
-                  <div key={v.id} className="flex items-start justify-between gap-3 px-4 py-3.5 group">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[var(--text)] text-sm font-medium truncate">{v.clients?.name ?? '—'}</p>
-                      <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                        {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
-                      </p>
-                      {serviceNames.length > 0 && (
-                        <p className="text-[var(--text-muted)] text-[11px] mt-1 line-clamp-2">
-                          {serviceNames.join(' · ')}
+            <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
+              <div className="divide-y divide-[var(--border)] max-h-[420px] overflow-y-auto">
+                {data!.visits.map((v) => {
+                  const serviceNames = (v.visit_services ?? [])
+                    .map(s => s.services?.name)
+                    .filter(Boolean) as string[]
+                  return (
+                    <div key={v.id} className="flex items-center gap-3 px-4 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[var(--text)] text-sm font-semibold truncate leading-tight">{v.clients?.name ?? '—'}</p>
+                        <p className="text-[var(--text-dim)] text-[11px] mt-0.5">
+                          {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
                         </p>
-                      )}
-                    </div>
-                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(v.total_ngn)}</p>
-                        <button onClick={() => setDeleteTarget({ id: v.id, name: v.clients?.name ?? 'this visit', amount: v.total_ngn })}
-                          title="Delete this visit (mistake)"
-                          className="w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-dim)] hover:text-red-400 hover:bg-red-500/10 transition-all">
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                          </svg>
-                        </button>
+                        {serviceNames.length > 0 && (
+                          <p className="text-[var(--text-muted)] text-[11px] mt-1 line-clamp-1">
+                            {serviceNames.join(', ')}
+                          </p>
+                        )}
                       </div>
-                      <span className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
-                        {v.payment_method}
-                      </span>
+                      <div className="flex flex-col items-end flex-shrink-0 gap-1">
+                        <p className="text-[var(--text)] text-sm font-bold tabular-nums leading-none">{fmtNaira(v.total_ngn)}</p>
+                        <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-[2px] rounded ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
+                          {v.payment_method}
+                        </span>
+                      </div>
+                      <button onClick={() => setDeleteTarget({ id: v.id, name: v.clients?.name ?? 'this visit', amount: v.total_ngn })}
+                        title="Delete (mistake)"
+                        className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-faint)] hover:text-red-400 hover:bg-red-500/10 transition-all">
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
+              {data!.visits.length > 6 && (
+                <div className="px-4 py-2 border-t border-[var(--border)] bg-[var(--elevated)]/30">
+                  <p className="text-[var(--text-dim)] text-[10px] text-center font-medium uppercase tracking-wider">
+                    {data!.visits.length} walk-ins · scroll for more
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <PastDayWalkInTable visits={data!.visits} totalRevenue={totalRevenue} />
