@@ -174,8 +174,77 @@ export async function GET(req: NextRequest) {
     sid ? remindersSent++ : remindersFailed++
   }
 
+  // ── Task 3: 30-day client re-engagement ──────────────────────────────────
+  // Find clients with a phone whose last visit was exactly 30+ days
+  // ago and who haven't yet received a re-engagement message for
+  // this dormancy stretch (i.e. no client_reengagements row newer
+  // than their last visit).
+  const REENGAGE_DAYS = 30
+  const threshold = new Date(todayLagos + 'T12:00:00')
+  threshold.setDate(threshold.getDate() - REENGAGE_DAYS)
+  const thresholdStr = threshold.toLocaleDateString('en-CA')
+
+  const { data: candidates } = await supabase
+    .from('clients')
+    .select('id, name, phone, visits(visit_date)')
+    .not('phone', 'is', null)
+    .limit(500) as unknown as {
+      data: { id: string; name: string; phone: string; visits: { visit_date: string }[] }[] | null
+    }
+
+  let reengageSent = 0, reengageFailed = 0
+
+  for (const c of (candidates ?? [])) {
+    if (!c.phone || !c.visits || c.visits.length === 0) continue
+    const lastDate = c.visits.map(v => v.visit_date).sort().slice(-1)[0]
+    if (!lastDate || lastDate > thresholdStr) continue
+
+    // Has a re-engagement been sent AFTER this last visit?
+    const { data: prior } = await supabase
+      .from('client_reengagements')
+      .select('id, sent_at')
+      .eq('client_id', c.id)
+      .gte('sent_at', lastDate + 'T00:00:00')
+      .limit(1)
+      .maybeSingle() as { data: { id: string } | null }
+    if (prior) continue
+
+    const firstName = c.name.split(' ')[0]
+    const msg = [
+      `Hi ${firstName}! ✂️`,
+      ``,
+      `It's been a while since your last visit to *Clips N'Cutz*. We'd love to see you back.`,
+      ``,
+      `Book your next appointment here 👇`,
+      bookingLink,
+      ``,
+      `_Clips N'Cutz Unisex Salon, Lagos_`,
+    ].join('\n')
+
+    const sid = await sendMessage(c.phone, msg)
+
+    await supabase.from('client_reengagements').insert({
+      client_id:     c.id,
+      last_visit_at: lastDate,
+      status:        sid ? 'sent' : 'failed',
+      twilio_sid:    sid ?? undefined,
+    })
+
+    await supabase.from('whatsapp_messages').insert({
+      to_phone:     c.phone,
+      message_type: 'followup_7day',     // closest existing enum value; re-uses the slot
+      body:         msg,
+      twilio_sid:   sid ?? undefined,
+      status:       sid ? 'sent' : 'failed',
+      sent_at:      new Date().toISOString(),
+    })
+
+    sid ? reengageSent++ : reengageFailed++
+  }
+
   return NextResponse.json({
-    followUps:  { sent: followUpsSent,  failed: followUpsFailed  },
-    reminders:  { sent: remindersSent,  failed: remindersFailed  },
+    followUps:    { sent: followUpsSent,  failed: followUpsFailed  },
+    reminders:    { sent: remindersSent,  failed: remindersFailed  },
+    reengagement: { sent: reengageSent,   failed: reengageFailed   },
   })
 }

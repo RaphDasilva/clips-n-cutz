@@ -87,19 +87,25 @@ export default function OwnerHome() {
   const [loading, setLoading]           = useState(true)
   const [unackDeletions, setUnackDeletions] = useState<DeletionEntry[]>([])
   const [acking, setAcking]             = useState<string | null>(null)
+  const [lapsedCount, setLapsedCount]   = useState(0)
 
   const load = useCallback(async () => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setName(s.name.split(' ')[0])
-    const [summaryRes, delRes] = await Promise.all([
+    const [summaryRes, delRes, lapsedRes] = await Promise.all([
       fetch('/api/owner/summary'),
       fetch('/api/owner/deletions?unack=true&limit=10'),
+      fetch('/api/owner/lapsed-clients'),
     ])
     if (summaryRes.ok) setData(await summaryRes.json())
     if (delRes.ok) {
       const j = await delRes.json() as { deletions: DeletionEntry[] }
       setUnackDeletions(j.deletions ?? [])
+    }
+    if (lapsedRes.ok) {
+      const j = await lapsedRes.json() as { lapsed: { id: string }[] }
+      setLapsedCount(j.lapsed?.length ?? 0)
     }
     setLoading(false)
   }, [router])
@@ -139,6 +145,33 @@ export default function OwnerHome() {
         </h1>
         <p className="text-[var(--text-dim)] text-sm mt-1">Financial overview — read only</p>
       </div>
+
+      {/* Lapsed clients quick stat */}
+      {lapsedCount > 0 && (
+        <Link href="/dashboard/owner/lapsed"
+          className="block mb-6 bg-[var(--card)] border border-[var(--accent)]/30 rounded-2xl px-5 py-4 hover:bg-[var(--elevated)] transition-all group">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[var(--text)] font-semibold">
+                  {lapsedCount} client{lapsedCount === 1 ? '' : 's'} haven&rsquo;t visited in 30+ days
+                </p>
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                  A re-engagement message goes out automatically every morning. Tap to see the list.
+                </p>
+              </div>
+            </div>
+            <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </Link>
+      )}
 
       {/* Deletion audit banner */}
       {unackDeletions.length > 0 && (
