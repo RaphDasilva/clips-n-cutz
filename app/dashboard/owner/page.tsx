@@ -61,22 +61,64 @@ function StatCard({
   return href ? <Link href={href} className="block">{inner}</Link> : inner
 }
 
+interface DeletionEntry {
+  id:             string
+  client_name:    string | null
+  staff_name:     string | null
+  total_ngn:      number
+  service_names:  string[]
+  reason:         string | null
+  reason_note:    string | null
+  deleted_at:     string
+  users:          { name: string } | null
+}
+
+const REASON_LABEL: Record<string, string> = {
+  duplicate:    'Duplicate entry',
+  wrong_client: 'Wrong client',
+  wrong_amount: 'Wrong amount',
+  other:        'Other',
+}
+
 export default function OwnerHome() {
   const router = useRouter()
-  const [name, setName]       = useState('')
-  const [data, setData]       = useState<Summary | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [name, setName]                 = useState('')
+  const [data, setData]                 = useState<Summary | null>(null)
+  const [loading, setLoading]           = useState(true)
+  const [unackDeletions, setUnackDeletions] = useState<DeletionEntry[]>([])
+  const [acking, setAcking]             = useState<string | null>(null)
 
   const load = useCallback(async () => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setName(s.name.split(' ')[0])
-    const res = await fetch('/api/owner/summary')
-    if (res.ok) setData(await res.json())
+    const [summaryRes, delRes] = await Promise.all([
+      fetch('/api/owner/summary'),
+      fetch('/api/owner/deletions?unack=true&limit=10'),
+    ])
+    if (summaryRes.ok) setData(await summaryRes.json())
+    if (delRes.ok) {
+      const j = await delRes.json() as { deletions: DeletionEntry[] }
+      setUnackDeletions(j.deletions ?? [])
+    }
     setLoading(false)
   }, [router])
 
   useEffect(() => { load() }, [load])
+
+  async function acknowledgeDeletion(id: string) {
+    setAcking(id)
+    try {
+      await fetch(`/api/owner/deletions/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ acknowledged: true }),
+      })
+      setUnackDeletions(prev => prev.filter(d => d.id !== id))
+    } finally {
+      setAcking(null)
+    }
+  }
 
   const today = new Date().toLocaleDateString('en-NG', {
     weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Lagos',
@@ -97,6 +139,62 @@ export default function OwnerHome() {
         </h1>
         <p className="text-[var(--text-dim)] text-sm mt-1">Financial overview — read only</p>
       </div>
+
+      {/* Deletion audit banner */}
+      {unackDeletions.length > 0 && (
+        <section className="mb-8">
+          <div className="bg-amber-500/5 border-2 border-amber-500/40 rounded-2xl overflow-hidden">
+            <div className="px-5 py-3 border-b border-amber-500/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.732 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <h2 className="text-amber-500 text-sm font-bold">
+                  Manager removed {unackDeletions.length} visit{unackDeletions.length === 1 ? '' : 's'}
+                </h2>
+              </div>
+              <Link href="/dashboard/owner/deletions" className="text-amber-500 text-xs font-semibold hover:underline">
+                See all →
+              </Link>
+            </div>
+            <div className="divide-y divide-amber-500/20">
+              {unackDeletions.slice(0, 5).map(d => (
+                <div key={d.id} className="px-5 py-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[var(--text)] text-sm font-medium truncate">
+                      {d.client_name ?? 'Unknown client'}
+                      <span className="text-[var(--text-muted)] font-normal"> &middot; {fmtNairaFull(d.total_ngn)}</span>
+                    </p>
+                    <p className="text-[var(--text-dim)] text-[11px] mt-0.5">
+                      {d.users?.name ?? 'Manager'} &middot; {new Date(d.deleted_at).toLocaleString('en-NG', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' })}
+                      {' · '}{REASON_LABEL[d.reason ?? ''] ?? 'No reason'}
+                    </p>
+                    {d.reason_note && (
+                      <p className="text-[var(--text-muted)] text-[11px] mt-1 italic">&ldquo;{d.reason_note}&rdquo;</p>
+                    )}
+                    {d.service_names.length > 0 && (
+                      <p className="text-[var(--text-muted)] text-[11px] mt-1">
+                        {d.service_names.join(', ')} · by {d.staff_name ?? '—'}
+                      </p>
+                    )}
+                  </div>
+                  <button onClick={() => acknowledgeDeletion(d.id)} disabled={acking === d.id}
+                    className="flex-shrink-0 text-amber-500 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-amber-500/10 transition-all disabled:opacity-40">
+                    {acking === d.id ? '…' : 'Dismiss'}
+                  </button>
+                </div>
+              ))}
+            </div>
+            {unackDeletions.length > 5 && (
+              <div className="px-5 py-2 text-center border-t border-amber-500/20">
+                <Link href="/dashboard/owner/deletions" className="text-amber-500 text-xs font-medium hover:underline">
+                  {unackDeletions.length - 5} more
+                </Link>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Today vs Yesterday */}
       <section className="mb-8">

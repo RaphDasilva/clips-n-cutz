@@ -134,6 +134,8 @@ export default function ManagerHome() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; amount: number } | null>(null)
   const [deleting, setDeleting]         = useState(false)
   const [deleteError, setDeleteError]   = useState('')
+  const [deleteReason, setDeleteReason] = useState<'duplicate' | 'wrong_client' | 'wrong_amount' | 'other'>('duplicate')
+  const [deleteNote, setDeleteNote]     = useState('')
 
   // Pending check-in actions
   const [resolvingStaffId, setResolvingStaffId] = useState<string | null>(null)
@@ -213,13 +215,19 @@ export default function ManagerHome() {
     if (!deleteTarget) return
     setDeleting(true); setDeleteError('')
     try {
-      const res = await fetch(`/api/manager/visits/${deleteTarget.id}`, { method: 'DELETE' })
+      const res = await fetch(`/api/manager/visits/${deleteTarget.id}`, {
+        method:  'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ reason: deleteReason, reasonNote: deleteNote }),
+      })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))
         setDeleteError(j.error ?? 'Failed to remove visit.')
         return
       }
       setDeleteTarget(null)
+      setDeleteReason('duplicate')
+      setDeleteNote('')
       load(selectedDate)
     } catch {
       setDeleteError('Connection error.')
@@ -512,9 +520,38 @@ export default function ManagerHome() {
                 </p>
               </div>
             </div>
-            <p className="text-[var(--text-muted)] text-sm mb-5">
-              This permanently deletes the visit. Commission and tips will be removed from staff totals. Use this only to clean up mistakes.
+            <p className="text-[var(--text-muted)] text-sm mb-4">
+              This permanently deletes the visit. Commission and tips are removed from staff totals. The owner will see this in the audit log.
             </p>
+            <div className="mb-3">
+              <label className="block text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mb-2">Reason</label>
+              <div className="grid grid-cols-2 gap-1.5">
+                {([
+                  { value: 'duplicate',     label: 'Duplicate' },
+                  { value: 'wrong_client',  label: 'Wrong client' },
+                  { value: 'wrong_amount',  label: 'Wrong amount' },
+                  { value: 'other',         label: 'Other' },
+                ] as const).map(opt => (
+                  <button key={opt.value} type="button"
+                    onClick={() => setDeleteReason(opt.value)}
+                    className={`text-xs font-medium px-3 py-2 rounded-lg border transition-all ${
+                      deleteReason === opt.value
+                        ? 'bg-[var(--text)] text-[var(--bg)] border-[var(--text)]'
+                        : 'bg-[var(--elevated)] border-[var(--border-strong)] text-[var(--text-muted)] hover:text-[var(--text)]'
+                    }`}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-4">
+              <label className="block text-[var(--text-muted)] text-[10px] font-bold uppercase tracking-wider mb-2">Note <span className="normal-case font-normal text-[var(--text-faint)]">(optional)</span></label>
+              <input type="text"
+                value={deleteNote}
+                onChange={e => setDeleteNote(e.target.value)}
+                placeholder="e.g. recorded twice by mistake"
+                className="input" />
+            </div>
             {deleteError && <p className="text-red-400 text-xs mb-3">{deleteError}</p>}
             <div className="flex gap-2">
               <button onClick={() => setDeleteTarget(null)} disabled={deleting}
