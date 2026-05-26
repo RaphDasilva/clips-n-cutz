@@ -8,8 +8,35 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY     = 'cnc_pwa_dismissed_at'
+const SESSION_KEY     = 'cnc_pwa_session_dismissed'
 const DISMISS_DAYS    = 14   // re-show after this many days
 const SHOW_DELAY_MS   = 4000 // give the page a moment before nagging
+
+// Returns true if we should NOT show the prompt right now.
+function shouldSkip(): boolean {
+  if (typeof window === 'undefined') return true
+
+  // Already installed?
+  const standalone = window.matchMedia('(display-mode: standalone)').matches
+    || (window.navigator as unknown as { standalone?: boolean }).standalone === true
+  if (standalone) return true
+
+  // Dismissed earlier in this tab (defends against remounts even if storage fails)?
+  try {
+    if (window.sessionStorage.getItem(SESSION_KEY) === '1') return true
+  } catch {/* ignore */}
+
+  // Dismissed within the past DISMISS_DAYS?
+  try {
+    const v = window.localStorage.getItem(DISMISS_KEY)
+    if (v) {
+      const ageDays = (Date.now() - Number(v)) / 86400000
+      if (ageDays < DISMISS_DAYS) return true
+    }
+  } catch {/* ignore */}
+
+  return false
+}
 
 // Small floating "Add to Home Screen" prompt that surfaces:
 //  - on Chrome/Android via the beforeinstallprompt event
@@ -23,34 +50,26 @@ export function PWAInstallPrompt() {
   const [deferred, setDeferred]       = useState<BeforeInstallPromptEvent | null>(null)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    // Already installed? Hide.
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-      || (window.navigator as unknown as { standalone?: boolean }).standalone === true
-    if (standalone) return
-
-    // Recently dismissed?
-    try {
-      const v = window.localStorage.getItem(DISMISS_KEY)
-      if (v) {
-        const ageDays = (Date.now() - Number(v)) / 86400000
-        if (ageDays < DISMISS_DAYS) return
-      }
-    } catch {/* ignore */}
+    if (shouldSkip()) return
 
     const ua    = window.navigator.userAgent
     const isIOS = /iPhone|iPad|iPod/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua)
 
     if (isIOS) {
-      const id = setTimeout(() => setShowIOS(true), SHOW_DELAY_MS)
+      const id = setTimeout(() => {
+        // Re-check just before showing — storage may have changed since mount,
+        // and a remount mid-timer shouldn't override a fresh dismissal.
+        if (!shouldSkip()) setShowIOS(true)
+      }, SHOW_DELAY_MS)
       return () => clearTimeout(id)
     }
 
     function onBeforeInstall(e: Event) {
       e.preventDefault()
       setDeferred(e as BeforeInstallPromptEvent)
-      setTimeout(() => setShowAndroid(true), SHOW_DELAY_MS)
+      setTimeout(() => {
+        if (!shouldSkip()) setShowAndroid(true)
+      }, SHOW_DELAY_MS)
     }
     window.addEventListener('beforeinstallprompt', onBeforeInstall as EventListener)
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall as EventListener)
@@ -58,6 +77,9 @@ export function PWAInstallPrompt() {
 
   function dismiss() {
     try { window.localStorage.setItem(DISMISS_KEY, String(Date.now())) } catch {/* ignore */}
+    // Belt-and-braces: even if localStorage is wiped (iOS private mode, ITP),
+    // sessionStorage stops the prompt from reappearing within the same tab.
+    try { window.sessionStorage.setItem(SESSION_KEY, '1') } catch {/* ignore */}
     setShowAndroid(false)
     setShowIOS(false)
   }
@@ -72,7 +94,7 @@ export function PWAInstallPrompt() {
   if (!showAndroid && !showIOS) return null
 
   return (
-    <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:max-w-sm z-40">
+    <div className="fixed bottom-20 lg:bottom-6 left-4 right-4 lg:left-auto lg:right-6 lg:max-w-sm z-[60]">
       <div className="bg-[var(--surface)] border border-[var(--border-strong)] rounded-2xl shadow-2xl shadow-black/30 p-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-white overflow-hidden flex-shrink-0">

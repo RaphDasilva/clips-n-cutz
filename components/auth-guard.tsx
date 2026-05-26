@@ -49,7 +49,7 @@ export function AuthGuard({ allowedRoles, children }: AuthGuardProps) {
 
   if (checking || !user) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-6 h-6 border-2 border-gray-700 border-t-gray-400 rounded-full animate-spin" />
           <p className="text-gray-600 text-sm">Loading…</p>

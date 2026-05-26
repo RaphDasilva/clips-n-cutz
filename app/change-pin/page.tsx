@@ -58,7 +58,7 @@ export default function ChangePinPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-6">
+    <main className="min-h-screen bg-[var(--bg)] flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
 
         <div className="text-center mb-10">
@@ -67,7 +67,7 @@ export default function ChangePinPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 5.25a3 3 0 0 1 3 3m3 0a6 6 0 0 1-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 0 1 21.75 8.25Z" />
             </svg>
           </div>
-          <h1 className="text-white text-2xl font-bold tracking-tight">
+          <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">
             Set Your PIN
           </h1>
           <p className="text-gray-500 text-sm mt-2 leading-relaxed">
@@ -91,7 +91,7 @@ export default function ChangePinPage() {
               inputMode="numeric"
               maxLength={4}
               required
-              className="w-full bg-gray-900 text-white border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
+              className="w-full bg-gray-900 text-[var(--text)] border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
             />
           </div>
 
@@ -109,7 +109,7 @@ export default function ChangePinPage() {
               inputMode="numeric"
               maxLength={4}
               required
-              className="w-full bg-gray-900 text-white border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
+              className="w-full bg-gray-900 text-[var(--text)] border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
             />
           </div>
 
@@ -127,7 +127,7 @@ export default function ChangePinPage() {
               inputMode="numeric"
               maxLength={4}
               required
-              className="w-full bg-gray-900 text-white border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
+              className="w-full bg-gray-900 text-[var(--text)] border border-gray-800 rounded-xl px-4 py-3.5 text-base text-center tracking-[0.5em] placeholder-gray-600 focus:outline-none focus:border-gray-600 transition-colors"
             />
           </div>
 
@@ -145,7 +145,7 @@ export default function ChangePinPage() {
               newPIN.length !== 4 ||
               confirmPIN.length !== 4
             }
-            className="w-full bg-white text-gray-950 font-semibold py-3.5 rounded-xl text-base mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
+            className="w-full bg-[var(--text)] text-[var(--bg)] font-semibold py-3.5 rounded-xl text-base mt-2 disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] transition-all"
           >
             {loading ? 'Saving…' : 'Save New PIN'}
           </button>
