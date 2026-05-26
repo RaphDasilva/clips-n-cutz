@@ -130,6 +130,9 @@ export default function ManagerHome() {
   const [tipsData, setTipsData]     = useState<TipsResp | null>(null)
   const [loading, setLoading]       = useState(true)
 
+  // Close-day cash reconciliation
+  const [showCloseDay, setShowCloseDay] = useState(false)
+
   // Delete-visit confirmation
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string; amount: number } | null>(null)
   const [deleting, setDeleting]         = useState(false)
@@ -248,15 +251,24 @@ export default function ManagerHome() {
           </h1>
         </div>
         {isToday && (
-          <Link
-            href="/dashboard/manager/walk-in"
-            className="inline-flex items-center gap-2 bg-[var(--text)] text-[var(--bg)] font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all w-fit"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            New Walk-in
-          </Link>
+          <div className="flex items-center gap-2 w-fit">
+            <button onClick={() => setShowCloseDay(true)}
+              className="inline-flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border-strong)] text-[var(--text)] font-semibold px-4 py-2.5 rounded-xl text-sm hover:bg-[var(--card)] transition-all">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 12a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V12zm-12 0h.008v.008H6V12z" />
+              </svg>
+              Close Day
+            </button>
+            <Link
+              href="/dashboard/manager/walk-in"
+              className="inline-flex items-center gap-2 bg-[var(--text)] text-[var(--bg)] font-semibold px-5 py-2.5 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              Walk-in
+            </Link>
+          </div>
         )}
       </div>
 
@@ -501,6 +513,14 @@ export default function ManagerHome() {
         )}
       </section>
 
+      {/* Close Day modal */}
+      {showCloseDay && (
+        <CloseDayModal
+          date={lagosToday()}
+          onClose={() => setShowCloseDay(false)}
+        />
+      )}
+
       {/* Delete-visit confirmation */}
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4"
@@ -566,6 +586,150 @@ export default function ManagerHome() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function CloseDayModal({ date, onClose }: { date: string; onClose: () => void }) {
+  const [expected, setExpected]   = useState<number | null>(null)
+  const [visitCount, setVisitCount] = useState(0)
+  const [actual, setActual]       = useState('')
+  const [notes, setNotes]         = useState('')
+  const [existing, setExisting]   = useState<{ actual_ngn: number; notes: string | null } | null>(null)
+  const [loading, setLoading]     = useState(true)
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+  const [error, setError]         = useState('')
+
+  useEffect(() => {
+    fetch(`/api/manager/reconciliation?date=${date}`).then(r => r.json()).then(j => {
+      setExpected(j.expected ?? 0)
+      setVisitCount(j.visitCount ?? 0)
+      if (j.record) {
+        setExisting({ actual_ngn: j.record.actual_ngn, notes: j.record.notes })
+        setActual(String(j.record.actual_ngn))
+        setNotes(j.record.notes ?? '')
+      }
+      setLoading(false)
+    }).catch(() => { setError('Failed to load.'); setLoading(false) })
+  }, [date])
+
+  const actualNum  = parseInt(actual.replace(/\D/g, ''), 10) || 0
+  const variance   = expected != null ? actualNum - expected : 0
+
+  async function save() {
+    setSaving(true); setError('')
+    try {
+      const res = await fetch('/api/manager/reconciliation', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ date, actualNgn: actualNum, notes }),
+      })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error ?? 'Failed to save.'); return
+      }
+      setSaved(true)
+      setTimeout(onClose, 1200)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-end sm:items-center justify-center sm:p-4"
+      onClick={() => !saving && onClose()}>
+      <div className="bg-[var(--surface)] border border-[var(--border-strong)] w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl"
+        onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border)]">
+          <div>
+            <h2 className="text-[var(--text)] font-semibold">Close Day</h2>
+            <p className="text-[var(--text-dim)] text-xs mt-0.5">{date}</p>
+          </div>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--elevated)]">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {saved ? (
+            <div className="text-center py-6">
+              <p className="text-emerald-400 font-semibold">Day closed.</p>
+              <p className="text-[var(--text-dim)] text-xs mt-1">Variance recorded.</p>
+            </div>
+          ) : loading ? (
+            <div className="h-24 bg-[var(--elevated)] rounded-lg animate-pulse" />
+          ) : (
+            <>
+              <div className="bg-[var(--elevated)] border border-[var(--border)] rounded-xl p-4">
+                <p className="text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider mb-1">Expected cash in drawer</p>
+                <p className="text-[var(--text)] text-3xl font-bold tabular-nums">₦{(expected ?? 0).toLocaleString('en-NG')}</p>
+                <p className="text-[var(--text-dim)] text-xs mt-1">{visitCount} cash visit{visitCount === 1 ? '' : 's'} today</p>
+              </div>
+
+              <div>
+                <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Actual cash counted</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-dim)] text-sm">₦</span>
+                  <input type="text" inputMode="numeric"
+                    value={actual}
+                    onChange={e => setActual(e.target.value.replace(/\D/g, ''))}
+                    placeholder="0"
+                    className="input pl-8 text-lg font-semibold"
+                    autoFocus />
+                </div>
+              </div>
+
+              {actual && (
+                <div className={`border rounded-xl p-3 ${
+                  variance === 0 ? 'bg-emerald-500/5 border-emerald-500/30'
+                  : variance < 0 ? 'bg-red-500/5 border-red-500/30'
+                  : 'bg-amber-500/5 border-amber-500/30'
+                }`}>
+                  <p className="text-[var(--text-dim)] text-[10px] font-bold uppercase tracking-wider mb-1">Variance</p>
+                  <p className={`text-xl font-bold tabular-nums ${
+                    variance === 0 ? 'text-emerald-400'
+                    : variance < 0 ? 'text-red-400'
+                    : 'text-amber-400'
+                  }`}>
+                    {variance > 0 ? '+' : ''}₦{variance.toLocaleString('en-NG')}
+                  </p>
+                  <p className="text-[var(--text-muted)] text-xs mt-0.5">
+                    {variance === 0 ? 'Drawer matches expected.'
+                    : variance < 0 ? 'Drawer is short — investigate.'
+                    : 'Drawer is over — extra cash recorded.'}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                  Notes <span className="text-[var(--text-faint)] font-normal">(optional)</span>
+                </label>
+                <input type="text"
+                  value={notes}
+                  onChange={e => setNotes(e.target.value)}
+                  placeholder="e.g. ₦200 used for transport"
+                  className="input" />
+              </div>
+
+              {error && <p className="text-red-400 text-xs">{error}</p>}
+
+              <button onClick={save} disabled={saving || !actual}
+                className="w-full bg-[var(--text)] text-[var(--bg)] font-bold py-3 rounded-xl text-sm hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all disabled:opacity-40">
+                {saving ? 'Saving…' : existing ? 'Update' : 'Close Day'}
+              </button>
+              {existing && (
+                <p className="text-[var(--text-dim)] text-[10px] text-center">
+                  This day was already closed; saving will overwrite.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
