@@ -5,6 +5,7 @@ import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 import type { Service } from '@/types/database'
 import ServicePicker from '@/components/ServicePicker'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface ApptService {
   service_id: string
@@ -67,6 +68,7 @@ function fmtDateTime(iso: string) {
 
 export default function AppointmentsPage() {
   const router = useRouter()
+  const mask = useClientMask()
   const [ready, setReady]       = useState(false)
   const [appts, setAppts]       = useState<ApptRow[]>([])
   const [loading, setLoading]   = useState(true)
@@ -260,8 +262,8 @@ export default function AppointmentsPage() {
               <div key={a.id} className="px-4 py-4 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-[var(--text)] text-sm font-semibold">{a.clients?.name ?? '—'}</p>
-                    {a.clients?.phone && <><span className="text-[var(--text-faint)] text-xs">·</span><p className="text-[var(--text-dim)] text-xs">{a.clients.phone}</p></>}
+                    <p className="text-[var(--text)] text-sm font-semibold">{mask.name(a.clients?.name)}</p>
+                    {mask.phone(a.clients?.phone) && <><span className="text-[var(--text-faint)] text-xs">·</span><p className="text-[var(--text-dim)] text-xs">{mask.phone(a.clients?.phone)}</p></>}
                   </div>
                   <p className="text-[var(--text-muted)] text-xs mt-1">{svcNames}</p>
                   <p className="text-[var(--text-dim)] text-xs mt-0.5">
@@ -334,7 +336,7 @@ export default function AppointmentsPage() {
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border)] flex-shrink-0">
               <div>
                 <h2 className="text-[var(--text)] font-semibold text-sm">Client Arrived</h2>
-                <p className="text-[var(--text-dim)] text-xs mt-0.5">{checkInAppt.clients?.name}</p>
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">{mask.name(checkInAppt.clients?.name)}</p>
               </div>
               <button onClick={() => setCheckInAppt(null)} className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-dim)] hover:text-[var(--text)] hover:bg-[var(--border)] transition-all">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

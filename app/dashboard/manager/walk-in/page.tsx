@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Service, User } from '@/types/database'
 import ServicePicker from '@/components/ServicePicker'
+import { useClientMask } from '@/lib/demo-mode'
 
 type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
@@ -19,6 +20,7 @@ function newKey() {
 
 export default function WalkInPage() {
   const router = useRouter()
+  const mask = useClientMask()
 
   const [services, setServices] = useState<Service[]>([])
   const [staff, setStaff]       = useState<StaffMember[]>([])
@@ -187,7 +189,7 @@ export default function WalkInPage() {
           </div>
           <h2 className="text-[var(--text)] text-2xl font-bold">Visit Logged</h2>
           <p className="text-[var(--text-muted)] text-sm mt-2">
-            {success.clientName} &middot; {success.serviceCount} service{success.serviceCount !== 1 ? 's' : ''}
+            {mask.name(success.clientName)} &middot; {success.serviceCount} service{success.serviceCount !== 1 ? 's' : ''}
           </p>
           <p className="text-[var(--text)] text-3xl font-bold tracking-tight mt-4">{fmtNaira(success.totalNgn)}</p>
           {success.tipNgn > 0 && (

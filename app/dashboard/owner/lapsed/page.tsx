@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface Lapsed {
   id: string
@@ -20,6 +21,7 @@ function fmtDate(dateStr: string) {
 }
 
 export default function LapsedClientsPage() {
+  const mask = useClientMask()
   const [items, setItems]     = useState<Lapsed[]>([])
   const [loading, setLoading] = useState(true)
   const [threshold, setThreshold] = useState(30)
@@ -75,9 +77,9 @@ export default function LapsedClientsPage() {
           {items.map(c => (
             <div key={c.id} className="px-5 py-3.5 flex items-center justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <p className="text-[var(--text)] font-medium truncate">{c.name}</p>
+                <p className="text-[var(--text)] font-medium truncate">{mask.name(c.name)}</p>
                 <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                  Last visit {fmtDate(c.last_visit)}{c.phone && <> · {c.phone}</>}
+                  Last visit {fmtDate(c.last_visit)}{mask.phone(c.phone) && <> · {mask.phone(c.phone)}</>}
                 </p>
               </div>
               <div className="text-right flex-shrink-0">

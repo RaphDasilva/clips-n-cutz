@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface ServiceEntry {
   commission_ngn: number
@@ -107,6 +108,7 @@ interface NextPayoutResp {
 
 export default function StaffHome() {
   const router = useRouter()
+  const mask = useClientMask()
   const [user, setUser]             = useState<{ name: string; id: string } | null>(null)
   const [data, setData]             = useState<TodayData | null>(null)
   const [payout, setPayout]         = useState<NextPayoutResp | null>(null)
@@ -323,7 +325,7 @@ export default function StaffHome() {
             {data!.appointments.map((a) => (
               <div key={a.id} className="flex items-center justify-between px-4 py-3.5">
                 <div>
-                  <p className="text-[var(--text)] text-sm font-medium">{a.clients?.name ?? '—'}</p>
+                  <p className="text-[var(--text)] text-sm font-medium">{mask.name(a.clients?.name)}</p>
                   <p className="text-[var(--text-dim)] text-xs mt-0.5">{fmt12h(a.scheduled_at)}</p>
                 </div>
                 <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize ${
@@ -347,7 +349,7 @@ export default function StaffHome() {
                 <div>
                   <p className="text-[var(--text)] text-sm font-medium">{s.services?.name ?? '—'}</p>
                   <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                    {s.visits?.clients?.name ?? 'Unknown client'} · {fmt12h(s.created_at)}
+                    {mask.name(s.visits?.clients?.name, 'Unknown client')} · {fmt12h(s.created_at)}
                   </p>
                 </div>
                 <div className="text-right">

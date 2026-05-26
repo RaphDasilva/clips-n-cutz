@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import type { Client } from '@/types/database'
+import { useClientMask } from '@/lib/demo-mode'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-NG', {
@@ -10,6 +11,7 @@ function fmtDate(iso: string) {
 }
 
 export default function ClientsPage() {
+  const mask = useClientMask()
   const [clients, setClients] = useState<Client[]>([])
   const [search, setSearch]   = useState('')
   const [loading, setLoading] = useState(true)
@@ -83,12 +85,12 @@ export default function ClientsPage() {
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-7 h-7 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
-                          <span className="text-[var(--text)] text-xs font-semibold">{c.name.charAt(0).toUpperCase()}</span>
+                          <span className="text-[var(--text)] text-xs font-semibold">{mask.name(c.name).charAt(0).toUpperCase()}</span>
                         </div>
-                        <span className="text-[var(--text)] font-medium">{c.name}</span>
+                        <span className="text-[var(--text)] font-medium">{mask.name(c.name)}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-[var(--text-muted)]">{c.phone ?? <span className="text-[var(--text-faint)]">—</span>}</td>
+                    <td className="px-5 py-4 text-[var(--text-muted)]">{mask.phone(c.phone) ?? <span className="text-[var(--text-faint)]">—</span>}</td>
                     <td className="px-5 py-4 text-[var(--text-dim)] max-w-xs truncate">{c.notes ?? '—'}</td>
                     <td className="px-5 py-4 text-[var(--text-dim)]">{fmtDate(c.created_at)}</td>
                   </tr>
@@ -104,11 +106,11 @@ export default function ClientsPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
-                      <span className="text-[var(--text)] text-xs font-semibold">{c.name.charAt(0).toUpperCase()}</span>
+                      <span className="text-[var(--text)] text-xs font-semibold">{mask.name(c.name).charAt(0).toUpperCase()}</span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[var(--text)] text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-[var(--text-dim)] text-xs">{c.phone ?? '—'}</p>
+                      <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(c.name)}</p>
+                      <p className="text-[var(--text-dim)] text-xs">{mask.phone(c.phone) ?? '—'}</p>
                     </div>
                   </div>
                   <p className="text-[var(--text-faint)] text-xs flex-shrink-0 ml-3">{fmtDate(c.created_at)}</p>

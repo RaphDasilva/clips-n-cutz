@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
 import RevenueChart from '@/components/RevenueChart'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface PaymentBreakdown { cash: number; transfer: number; pos: number }
 interface PeriodStats { revenue: number; tips: number; visits: number; byPayment: PaymentBreakdown }
@@ -82,6 +83,7 @@ const REASON_LABEL: Record<string, string> = {
 
 export default function OwnerHome() {
   const router = useRouter()
+  const mask = useClientMask()
   const [name, setName]                 = useState('')
   const [data, setData]                 = useState<Summary | null>(null)
   const [loading, setLoading]           = useState(true)
@@ -195,7 +197,7 @@ export default function OwnerHome() {
                 <div key={d.id} className="px-5 py-3 flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-[var(--text)] text-sm font-medium truncate">
-                      {d.client_name ?? 'Unknown client'}
+                      {mask.name(d.client_name, 'Unknown client')}
                       <span className="text-[var(--text-muted)] font-normal"> &middot; {fmtNairaFull(d.total_ngn)}</span>
                     </p>
                     <p className="text-[var(--text-dim)] text-[11px] mt-0.5">

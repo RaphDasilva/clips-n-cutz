@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface TodayVisit {
   id: string
@@ -124,6 +125,7 @@ function playAlert() {
 
 export default function ManagerHome() {
   const router = useRouter()
+  const mask = useClientMask()
   const [userName, setUserName]     = useState('')
   const [selectedDate, setSelectedDate] = useState<string>(lagosToday)
   const [data, setData]             = useState<TodayData | null>(null)
@@ -408,7 +410,7 @@ export default function ManagerHome() {
                 {data!.appointments.map((a) => (
                   <div key={a.id} className="flex items-center justify-between px-4 py-3.5">
                     <div>
-                      <p className="text-[var(--text)] text-sm font-medium">{a.clients?.name ?? '—'}</p>
+                      <p className="text-[var(--text)] text-sm font-medium">{mask.name(a.clients?.name)}</p>
                       <p className="text-[var(--text-dim)] text-xs mt-0.5">{fmt12h(a.scheduled_at)}</p>
                     </div>
                     <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full border capitalize ${STATUS_STYLES[a.status] ?? STATUS_STYLES.pending}`}>
@@ -443,7 +445,7 @@ export default function ManagerHome() {
                   return (
                     <div key={v.id} className="flex items-center gap-3 px-4 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-[var(--text)] text-sm font-semibold truncate leading-tight">{v.clients?.name ?? '—'}</p>
+                        <p className="text-[var(--text)] text-sm font-semibold truncate leading-tight">{mask.name(v.clients?.name)}</p>
                         <p className="text-[var(--text-dim)] text-[11px] mt-0.5">
                           {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
                         </p>
@@ -459,7 +461,7 @@ export default function ManagerHome() {
                           {v.payment_method}
                         </span>
                       </div>
-                      <button onClick={() => setDeleteTarget({ id: v.id, name: v.clients?.name ?? 'this visit', amount: v.total_ngn })}
+                      <button onClick={() => setDeleteTarget({ id: v.id, name: mask.name(v.clients?.name, 'this visit'), amount: v.total_ngn })}
                         title="Delete (mistake)"
                         className="flex-shrink-0 w-7 h-7 rounded-md flex items-center justify-center text-[var(--text-faint)] hover:text-red-400 hover:bg-red-500/10 transition-all">
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -741,6 +743,7 @@ const PAYMENT_PILL: Record<string, string> = {
 }
 
 function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; totalRevenue: number }) {
+  const mask = useClientMask()
   return (
     <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl overflow-hidden">
       {/* Desktop table */}
@@ -759,7 +762,7 @@ function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; to
             {visits.map(v => (
               <tr key={v.id} className="hover:bg-[var(--elevated)]/50 transition-colors">
                 <td className="px-4 py-2.5 text-[var(--text-muted)] text-xs tabular-nums">{fmt12h(v.created_at)}</td>
-                <td className="px-4 py-2.5 text-[var(--text)] font-medium truncate max-w-[160px]">{v.clients?.name ?? '—'}</td>
+                <td className="px-4 py-2.5 text-[var(--text)] font-medium truncate max-w-[160px]">{mask.name(v.clients?.name)}</td>
                 <td className="px-4 py-2.5 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
                 <td className="px-4 py-2.5">
                   <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
@@ -784,7 +787,7 @@ function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; to
         {visits.map(v => (
           <div key={v.id} className="px-4 py-2.5 flex items-center justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[var(--text)] text-sm font-medium truncate leading-tight">{v.clients?.name ?? '—'}</p>
+              <p className="text-[var(--text)] text-sm font-medium truncate leading-tight">{mask.name(v.clients?.name)}</p>
               <p className="text-[var(--text-dim)] text-[11px] mt-0.5 truncate">
                 {fmt12h(v.created_at)} · {v.users?.name ?? '—'}
               </p>

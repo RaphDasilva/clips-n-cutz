@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface HistoryEntry {
   serviceName: string
@@ -53,6 +54,7 @@ const PERIODS = [
 
 export default function StaffHistory() {
   const router = useRouter()
+  const mask = useClientMask()
   const [staffId, setStaffId] = useState<string | null>(null)
   const [period, setPeriod]   = useState(1)
   const [data, setData]       = useState<HistoryData | null>(null)
@@ -185,7 +187,7 @@ export default function StaffHistory() {
                   <div key={i} className="flex items-center justify-between px-4 py-3.5">
                     <div>
                       <p className="text-[var(--text)] text-sm font-medium">{e.serviceName}</p>
-                      <p className="text-[var(--text-dim)] text-xs mt-0.5">{e.clientName}</p>
+                      <p className="text-[var(--text-dim)] text-xs mt-0.5">{mask.name(e.clientName)}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-[var(--accent)] text-sm font-semibold tabular-nums">

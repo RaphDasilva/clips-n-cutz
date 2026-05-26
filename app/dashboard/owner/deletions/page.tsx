@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface DeletionEntry {
   id:             string
@@ -37,6 +38,7 @@ function fmtDateTime(iso: string) {
 }
 
 export default function DeletionsPage() {
+  const mask = useClientMask()
   const [filter, setFilter]       = useState<'all' | 'unack'>('all')
   const [items, setItems]         = useState<DeletionEntry[]>([])
   const [loading, setLoading]     = useState(true)
@@ -111,8 +113,8 @@ export default function DeletionsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
                   <div className="min-w-0">
                     <p className="text-[var(--text)] text-base font-semibold">
-                      {d.client_name ?? 'Unknown client'}
-                      {d.client_phone && <span className="text-[var(--text-dim)] text-xs font-normal ml-2">{d.client_phone}</span>}
+                      {mask.name(d.client_name, 'Unknown client')}
+                      {mask.phone(d.client_phone) && <span className="text-[var(--text-dim)] text-xs font-normal ml-2">{mask.phone(d.client_phone)}</span>}
                     </p>
                     <p className="text-[var(--text-dim)] text-xs mt-1">
                       {d.users?.name ?? 'Manager'} removed at {fmtDateTime(d.deleted_at)}

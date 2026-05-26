@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface Summary {
   totalRevenue: number
@@ -46,6 +47,7 @@ function monthStart() {
 }
 
 export default function ReportsPage() {
+  const mask = useClientMask()
   const [from, setFrom] = useState(monthStart())
   const [to, setTo]     = useState(lagosToday())
   const [payment, setPayment] = useState<'all' | 'cash' | 'transfer' | 'pos'>('all')
@@ -268,8 +270,8 @@ export default function ReportsPage() {
                       <tr key={v.id} className="hover:bg-[var(--elevated)] transition-colors">
                         <td className="px-5 py-3 text-[var(--text-muted)]">{fmtDate(v.visit_date)}</td>
                         <td className="px-5 py-3">
-                          <p className="text-[var(--text)] font-medium">{v.clients?.name ?? '—'}</p>
-                          <p className="text-[var(--text-dim)] text-xs">{v.clients?.phone}</p>
+                          <p className="text-[var(--text)] font-medium">{mask.name(v.clients?.name)}</p>
+                          <p className="text-[var(--text-dim)] text-xs">{mask.phone(v.clients?.phone)}</p>
                         </td>
                         <td className="px-5 py-3 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
                         <td className="px-5 py-3">
@@ -292,7 +294,7 @@ export default function ReportsPage() {
                   <div key={v.id} className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-[var(--text)] text-sm font-medium">{v.clients?.name ?? '—'}</p>
+                        <p className="text-[var(--text)] text-sm font-medium">{mask.name(v.clients?.name)}</p>
                         <p className="text-[var(--text-dim)] text-xs">{v.users?.name} · {fmtDate(v.visit_date)}</p>
                       </div>
                       <p className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(v.total_ngn)}</p>
