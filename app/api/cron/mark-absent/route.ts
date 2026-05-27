@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isWithinPenaltyGrace } from '@/lib/attendance'
+import { DEMO_STAFF_PREFIX } from '@/lib/env'
 
 // Runs at 3pm Lagos time (2pm UTC) every day via Vercel Cron.
 // Any active staff member with no attendance record for today is marked absent (₦5,000).
@@ -20,7 +21,8 @@ export async function GET(req: NextRequest) {
       .from('users')
       .select('id, off_days')
       .eq('role', 'staff')
-      .eq('is_active', true) as unknown as Promise<{
+      .eq('is_active', true)
+      .not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`) as unknown as Promise<{
         data: { id: string; off_days: number[] }[] | null
         error: unknown
       }>,

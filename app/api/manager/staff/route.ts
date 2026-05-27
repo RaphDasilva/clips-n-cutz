@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { hashPIN } from '@/lib/auth'
+import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
 import type { User } from '@/types/database'
 
 export async function GET() {
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
+
+  let staffQuery = supabase
+    .from('users')
+    .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at, staff_categories(category)')
+    .eq('role', 'staff')
+  if (!showDemo) staffQuery = staffQuery.not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`)
+  staffQuery = staffQuery.order('name')
 
   const [staffRes, servicesRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select('id, name, phone, role, is_active, must_change_pin, sunday_grace, off_days, created_at, staff_categories(category)')
-      .eq('role', 'staff')
-      .order('name') as unknown as Promise<{
+    staffQuery as unknown as Promise<{
         data: (Omit<User, 'pin_hash'> & { staff_categories: { category: string }[] })[] | null
         error: { message: string } | null
       }>,

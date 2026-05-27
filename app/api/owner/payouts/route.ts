@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth-server'
 import { sendMessage } from '@/lib/messaging'
+import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
 
 interface VisitServiceRow    { staff_id: string; commission_ngn: number; visits: { visit_date: string } | null }
 interface VisitServiceTipRow { staff_id: string; tip_ngn: number; visits: { visit_date: string } | null }
@@ -46,16 +47,20 @@ function weekBoundaries(dateStr: string): { start: string; end: string } {
 // omitted, defaults to the current Lagos week.
 export async function GET(req: NextRequest) {
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
   const refDate  = req.nextUrl.searchParams.get('week') ?? lagosToday()
   const { start, end } = weekBoundaries(refDate)
 
+  let staffQuery = supabase
+    .from('users')
+    .select('id, name, is_active')
+    .eq('role', 'staff')
+    .eq('is_active', true)
+  if (!showDemo) staffQuery = staffQuery.not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`)
+  staffQuery = staffQuery.order('name')
+
   const [staffRes, vsRes, tipsRes, attRes, paidRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select('id, name, is_active')
-      .eq('role', 'staff')
-      .eq('is_active', true)
-      .order('name') as unknown as Promise<{ data: StaffRow[] | null; error: unknown }>,
+    staffQuery as unknown as Promise<{ data: StaffRow[] | null; error: unknown }>,
     supabase
       .from('visit_services')
       .select('staff_id, commission_ngn, visits!inner(visit_date)')

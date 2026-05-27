@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isLocalRequest, isDemoStaffName } from '@/lib/env'
 
 interface TipRow {
   staff_id: string
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
 
   const { data, error } = await supabase
     .from('visit_services')
@@ -38,6 +40,7 @@ export async function GET(req: NextRequest) {
   for (const row of data) {
     const id = row.staff_id
     if (!id) continue
+    if (!showDemo && isDemoStaffName(row.users?.name)) continue
     if (!map.has(id)) {
       map.set(id, { staffId: id, staffName: row.users?.name ?? 'Unknown', tips: 0 })
     }

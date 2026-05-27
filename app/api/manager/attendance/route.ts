@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { isWithinPenaltyGrace } from '@/lib/attendance'
+import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
 
 // Penalty rules:
 // Mon-Sat: opens 9am, grace until 9:30am
@@ -43,14 +44,18 @@ export async function GET(req: NextRequest) {
     ?? new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
 
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
+
+  let staffQuery = supabase
+    .from('users')
+    .select('id, name, sunday_grace, off_days')
+    .eq('role', 'staff')
+    .eq('is_active', true)
+  if (!showDemo) staffQuery = staffQuery.not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`)
+  staffQuery = staffQuery.order('name')
 
   const [staffRes, attRes, pendingRes] = await Promise.all([
-    supabase
-      .from('users')
-      .select('id, name, sunday_grace, off_days')
-      .eq('role', 'staff')
-      .eq('is_active', true)
-      .order('name') as unknown as Promise<{
+    staffQuery as unknown as Promise<{
         data: { id: string; name: string; sunday_grace: boolean; off_days: number[] }[] | null
         error: unknown
       }>,
@@ -88,13 +93,15 @@ export async function GET(req: NextRequest) {
     record:       attMap.get(s.id) ?? null,
   }))
 
-  const pending = (pendingRes.data ?? []).map(r => ({
-    staff_id:     r.staff_id,
-    name:         r.users?.name ?? '',
-    sunday_grace: r.users?.sunday_grace ?? false,
-    off_days:     r.users?.off_days     ?? [],
-    requested_at: r.requested_at,
-  }))
+  const pending = (pendingRes.data ?? [])
+    .filter(r => showDemo || !(r.users?.name ?? '').toUpperCase().startsWith(DEMO_STAFF_PREFIX))
+    .map(r => ({
+      staff_id:     r.staff_id,
+      name:         r.users?.name ?? '',
+      sunday_grace: r.users?.sunday_grace ?? false,
+      off_days:     r.users?.off_days     ?? [],
+      requested_at: r.requested_at,
+    }))
 
   return NextResponse.json({ date, staff: result, pending })
 }

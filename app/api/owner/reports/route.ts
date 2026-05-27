@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isLocalRequest, isDemoStaffName } from '@/lib/env'
 
 interface VisitRow {
   id: string
@@ -31,6 +32,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
 
   let visitsQuery = supabase
     .from('visits')
@@ -53,8 +55,10 @@ export async function GET(req: NextRequest) {
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: ServiceRow[] | null; error: unknown }>,
   ])
 
-  const visits      = visitsRes.data      ?? []
-  const vsRows      = servicesRes.data    ?? []
+  const allVisits = visitsRes.data   ?? []
+  const allVsRows = servicesRes.data ?? []
+  const visits = showDemo ? allVisits : allVisits.filter(v => !isDemoStaffName(v.users?.name))
+  const vsRows = showDemo ? allVsRows : allVsRows.filter(r => !isDemoStaffName(r.users?.name))
 
   // Totals
   const totalRevenue    = visits.reduce((s, v) => s + v.total_ngn, 0)

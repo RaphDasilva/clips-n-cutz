@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isLocalRequest, isDemoStaffName } from '@/lib/env'
 
 interface AttendanceRow { status: 'on_time' | 'late' | 'absent'; users: { name: string } | null }
 interface PendingRow    { staff_id: string; requested_at: string; users: { name: string; sunday_grace: boolean; off_days: number[] } | null }
+interface VisitRow      { id: string; users: { name: string } | null; [k: string]: unknown }
 
 export async function GET(req: NextRequest) {
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
   const date     = req.nextUrl.searchParams.get('date') ?? todayStr
   const isToday  = date === todayStr
@@ -43,7 +46,8 @@ export async function GET(req: NextRequest) {
       : Promise.resolve({ data: [] as PendingRow[], error: null }),
   ])
 
-  const att = attResult.data ?? []
+  // Filter out demo staff (name starts with TEST) when not on localhost.
+  const att = (attResult.data ?? []).filter(r => showDemo || !isDemoStaffName(r.users?.name))
   const attendance = {
     onTime: att.filter(r => r.status === 'on_time').length,
     late:   att.filter(r => r.status === 'late').length,
@@ -52,20 +56,25 @@ export async function GET(req: NextRequest) {
     absentStaff: att.filter(r => r.status === 'absent').map(r => r.users?.name ?? 'Unknown'),
   }
 
-  const pending = (pendingResult.data ?? []).map(r => ({
-    staff_id:     r.staff_id,
-    name:         r.users?.name         ?? 'Unknown',
-    sunday_grace: r.users?.sunday_grace ?? false,
-    off_days:     r.users?.off_days     ?? [],
-    requested_at: r.requested_at,
-  }))
+  const pending = (pendingResult.data ?? [])
+    .filter(r => showDemo || !isDemoStaffName(r.users?.name))
+    .map(r => ({
+      staff_id:     r.staff_id,
+      name:         r.users?.name         ?? 'Unknown',
+      sunday_grace: r.users?.sunday_grace ?? false,
+      off_days:     r.users?.off_days     ?? [],
+      requested_at: r.requested_at,
+    }))
+
+  const rawVisits = (visitsResult.data ?? []) as unknown as VisitRow[]
+  const visits = rawVisits.filter(v => showDemo || !isDemoStaffName(v.users?.name))
 
   return NextResponse.json({
     date,
     isToday,
-    visits:           visitsResult.data ?? [],
+    visits,
     appointments:     appointmentsResult.data ?? [],
-    visitCount:       visitsResult.data?.length ?? 0,
+    visitCount:       visits.length,
     appointmentCount: appointmentsResult.data?.length ?? 0,
     attendance,
     pendingCheckins:  pending,

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isLocalRequest, isDemoStaffName } from '@/lib/env'
 
 interface VSRow {
   price_ngn: number
@@ -11,6 +12,7 @@ interface VSRow {
 interface VisitTipRow {
   staff_id: string
   tip_ngn: number
+  users: { name: string } | null
 }
 
 export async function GET(req: NextRequest) {
@@ -23,6 +25,7 @@ export async function GET(req: NextRequest) {
   }
 
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
 
   const [{ data: vsRows, error: vsErr }, { data: tipRows, error: tipErr }] = await Promise.all([
     supabase
@@ -32,7 +35,7 @@ export async function GET(req: NextRequest) {
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: VSRow[] | null; error: unknown }>,
     supabase
       .from('visit_services')
-      .select('staff_id, tip_ngn')
+      .select('staff_id, tip_ngn, users!staff_id(name)')
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: VisitTipRow[] | null; error: unknown }>,
   ])
@@ -55,6 +58,7 @@ export async function GET(req: NextRequest) {
   for (const row of vsRows) {
     const id   = row.users?.id   ?? 'unknown'
     const name = row.users?.name ?? 'Unknown Staff'
+    if (!showDemo && isDemoStaffName(name)) continue
 
     if (!staffMap.has(id)) {
       staffMap.set(id, {
@@ -70,10 +74,11 @@ export async function GET(req: NextRequest) {
 
   for (const row of tipRows ?? []) {
     const id = row.staff_id
+    if (!showDemo && isDemoStaffName(row.users?.name)) continue
     if (!staffMap.has(id)) {
       // Staff received a tip but no commissioned services in range — still surface them.
       staffMap.set(id, {
-        staffId: id, staffName: 'Unknown Staff', servicesCount: 0,
+        staffId: id, staffName: row.users?.name ?? 'Unknown Staff', servicesCount: 0,
         totalValue: 0, totalCommission: 0, tips: 0, totalPayout: 0,
       })
     }
