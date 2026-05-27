@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface PayoutRow {
   staffId:         string
@@ -51,6 +52,7 @@ function addDays(dateStr: string, n: number) {
 }
 
 export default function PayoutsPage() {
+  const mask = useClientMask()
   const [weekRef, setWeekRef] = useState<string>(lagosToday())
   const [data, setData]       = useState<PayoutResp | null>(null)
   const [loading, setLoading] = useState(true)
@@ -107,7 +109,7 @@ export default function PayoutsPage() {
 
   async function unmark(row: PayoutRow) {
     if (!row.payoutId) return
-    if (!confirm(`Unmark ${row.staffName}'s payment for this week? The total will be recomputed from current data.`)) return
+    if (!confirm(`Unmark ${mask.name(row.staffName)}'s payment for this week? The total will be recomputed from current data.`)) return
     setPaying(row.staffId); setError('')
     const res = await fetch(`/api/owner/payouts/${row.payoutId}`, { method: 'DELETE' })
     setPaying(null)
@@ -191,10 +193,10 @@ export default function PayoutsPage() {
             <div key={row.staffId} className="px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
               <div className="flex items-center gap-3 sm:w-44 flex-shrink-0">
                 <div className="w-9 h-9 rounded-full bg-[var(--elevated)] border border-[var(--border-strong)] flex items-center justify-center">
-                  <span className="text-[var(--text)] text-sm font-semibold">{row.staffName.charAt(0).toUpperCase()}</span>
+                  <span className="text-[var(--text)] text-sm font-semibold">{mask.name(row.staffName).charAt(0).toUpperCase()}</span>
                 </div>
                 <div>
-                  <p className="text-[var(--text)] font-medium leading-tight">{row.staffName}</p>
+                  <p className="text-[var(--text)] font-medium leading-tight">{mask.name(row.staffName)}</p>
                   {row.status === 'paid' && (
                     <p className="text-emerald-500 text-[10px] font-medium mt-0.5">
                       Paid {row.paid_at ? new Date(row.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : ''}
@@ -241,7 +243,7 @@ export default function PayoutsPage() {
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[var(--border)]">
               <div>
-                <h2 className="text-[var(--text)] font-semibold">Pay {payTarget.staffName}</h2>
+                <h2 className="text-[var(--text)] font-semibold">Pay {mask.name(payTarget.staffName)}</h2>
                 <p className="text-[var(--text-dim)] text-xs mt-0.5">Week of {data && fmtRange(data.weekStart, data.weekEnd)}</p>
               </div>
               <button onClick={() => setPayTarget(null)}

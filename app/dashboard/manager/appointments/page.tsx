@@ -267,7 +267,7 @@ export default function AppointmentsPage() {
                   </div>
                   <p className="text-[var(--text-muted)] text-xs mt-1">{svcNames}</p>
                   <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                    {date} · {time}{a.users?.name ? ` · ${a.users.name}` : ''}
+                    {date} · {time}{a.users?.name ? ` · ${mask.name(a.users.name)}` : ''}
                   </p>
                 </div>
                 {/* Status badge — always in the middle */}

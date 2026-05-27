@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface ExpenseEntry {
   id: string
@@ -38,6 +39,7 @@ function lagosToday() {
 function monthStart() { return lagosToday().slice(0, 7) + '-01' }
 
 export default function ExpensesPage() {
+  const mask = useClientMask()
   const [items, setItems]         = useState<ExpenseEntry[]>([])
   const [byCategory, setByCategory] = useState<ByCategory[]>([])
   const [total, setTotal]         = useState(0)
@@ -166,7 +168,7 @@ export default function ExpensesPage() {
                   {r.vendor && <span className="text-[var(--text-dim)] font-normal ml-2">· {r.vendor}</span>}
                 </p>
                 <p className="text-[var(--text-dim)] text-[11px] mt-0.5">
-                  {fmtDay(r.date)}{r.users?.name && <> · {r.users.name}</>}
+                  {fmtDay(r.date)}{r.users?.name && <> · {mask.name(r.users.name)}</>}
                 </p>
                 {r.notes && <p className="text-[var(--text-muted)] text-[11px] italic mt-1">&ldquo;{r.notes}&rdquo;</p>}
               </div>

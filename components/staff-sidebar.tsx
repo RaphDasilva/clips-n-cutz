@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { clearSession } from '@/lib/auth'
 import { ThemeToggle } from './theme-toggle'
+import { useClientMask } from '@/lib/demo-mode'
 import type { SessionUser } from '@/types/database'
 
 const NAV = [
@@ -44,6 +45,8 @@ const NAV = [
 export function StaffSidebar({ user }: { user: SessionUser }) {
   const pathname = usePathname()
   const router   = useRouter()
+  const mask     = useClientMask()
+  const displayName = mask.name(user.name)
 
   return (
     <aside className="hidden lg:flex flex-col w-[240px] flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] h-full">
@@ -78,10 +81,10 @@ export function StaffSidebar({ user }: { user: SessionUser }) {
       <div className="px-4 py-4 border-t border-[var(--border)]">
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center">
-            <span className="text-[var(--text)] text-xs font-semibold">{user.name.charAt(0).toUpperCase()}</span>
+            <span className="text-[var(--text)] text-xs font-semibold">{displayName.charAt(0).toUpperCase()}</span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[var(--text)] text-sm font-medium truncate">{user.name}</p>
+            <p className="text-[var(--text)] text-sm font-medium truncate">{displayName}</p>
             <p className="text-[var(--text-dim)] text-[11px]">Staff</p>
           </div>
         </div>

@@ -173,7 +173,7 @@ export default function StaffHome() {
       <div className="mb-8">
         <p className="text-[var(--text-dim)] text-sm mb-1">{today}</p>
         <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">
-          Good {greeting()}, {firstName}
+          Good {greeting()}, {mask.name(firstName).split(' ')[0]}
         </h1>
       </div>
 

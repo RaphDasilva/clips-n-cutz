@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface StaffCommission {
   staffId: string
@@ -48,6 +49,7 @@ const PERIODS = [
 ]
 
 export default function CommissionPage() {
+  const mask = useClientMask()
   const [period, setPeriod]   = useState(2) // default: this month
   const [data, setData]       = useState<CommissionData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -142,9 +144,9 @@ export default function CommissionPage() {
                       <td className="px-5 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
-                            <span className="text-[var(--text)] text-xs font-semibold">{s.staffName.charAt(0).toUpperCase()}</span>
+                            <span className="text-[var(--text)] text-xs font-semibold">{mask.name(s.staffName).charAt(0).toUpperCase()}</span>
                           </div>
-                          <span className="text-[var(--text)] font-medium">{s.staffName}</span>
+                          <span className="text-[var(--text)] font-medium">{mask.name(s.staffName)}</span>
                         </div>
                       </td>
                       <td className="px-5 py-4 text-right text-[var(--text-muted)]">{s.servicesCount}</td>
@@ -202,10 +204,10 @@ export default function CommissionPage() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center">
-                        <span className="text-[var(--text)] text-xs font-semibold">{s.staffName.charAt(0).toUpperCase()}</span>
+                        <span className="text-[var(--text)] text-xs font-semibold">{mask.name(s.staffName).charAt(0).toUpperCase()}</span>
                       </div>
                       <div>
-                        <p className="text-[var(--text)] text-sm font-medium">{s.staffName}</p>
+                        <p className="text-[var(--text)] text-sm font-medium">{mask.name(s.staffName)}</p>
                         <p className="text-[var(--text-dim)] text-xs">{s.servicesCount} services</p>
                       </div>
                     </div>

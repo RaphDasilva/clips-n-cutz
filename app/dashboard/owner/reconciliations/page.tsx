@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface ReconEntry {
   id: string
@@ -25,6 +26,7 @@ function fmtDay(dateStr: string) {
 }
 
 export default function ReconciliationsPage() {
+  const mask = useClientMask()
   const [items, setItems]               = useState<ReconEntry[]>([])
   const [totalVariance, setTotalVariance] = useState(0)
   const [shortDays, setShortDays]       = useState(0)
@@ -94,7 +96,7 @@ export default function ReconciliationsPage() {
                 <p className="text-[var(--text)] text-sm font-semibold">{fmtDay(r.date)}</p>
                 <p className="text-[var(--text-dim)] text-xs mt-0.5">
                   Expected ₦{r.expected_ngn.toLocaleString('en-NG')} · Counted ₦{r.actual_ngn.toLocaleString('en-NG')}
-                  {r.users?.name && <> · by {r.users.name}</>}
+                  {r.users?.name && <> · by {mask.name(r.users.name)}</>}
                 </p>
                 {r.notes && <p className="text-[var(--text-muted)] text-[11px] mt-1 italic">&ldquo;{r.notes}&rdquo;</p>}
               </div>

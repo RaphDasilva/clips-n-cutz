@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { getSession } from '@/lib/auth'
 import { useRouter } from 'next/navigation'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface TeamMember {
   id: string
@@ -16,6 +17,7 @@ interface TeamMember {
 
 export default function OwnerTeamPage() {
   const router = useRouter()
+  const mask = useClientMask()
   const [team, setTeam]       = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -135,18 +137,18 @@ export default function OwnerTeamPage() {
             <div key={m.id} className="px-5 py-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-9 h-9 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
-                  <span className="text-[var(--text)] text-sm font-semibold">{m.name.charAt(0).toUpperCase()}</span>
+                  <span className="text-[var(--text)] text-sm font-semibold">{mask.name(m.name).charAt(0).toUpperCase()}</span>
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-[var(--text)] text-sm font-medium">{m.name}</p>
+                    <p className="text-[var(--text)] text-sm font-medium">{mask.name(m.name)}</p>
                     {!m.is_active && (
                       <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
                         Inactive
                       </span>
                     )}
                   </div>
-                  <p className="text-[var(--text-dim)] text-xs mt-0.5">{m.phone}</p>
+                  <p className="text-[var(--text-dim)] text-xs mt-0.5">{mask.phone(m.phone)}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -222,7 +224,7 @@ export default function OwnerTeamPage() {
           <div className="bg-[var(--surface)] border border-[var(--border-strong)] rounded-2xl w-full max-w-md"
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-[var(--border)]">
-              <h2 className="text-[var(--text)] font-semibold">Reset PIN — {resetTarget.name}</h2>
+              <h2 className="text-[var(--text)] font-semibold">Reset PIN — {mask.name(resetTarget.name)}</h2>
               <button onClick={() => setResetTarget(null)} className="text-[var(--text-dim)] hover:text-[var(--text)] transition-colors">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

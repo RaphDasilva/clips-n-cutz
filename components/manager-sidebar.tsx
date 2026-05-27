@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { clearSession, switchRole } from '@/lib/auth'
 import { ThemeToggle } from './theme-toggle'
+import { useClientMask } from '@/lib/demo-mode'
 import type { SessionUser } from '@/types/database'
 
 const NAV_ITEMS = [
@@ -96,9 +97,11 @@ const NAV_ITEMS = [
 export function ManagerSidebar({ user }: { user: SessionUser }) {
   const pathname = usePathname()
   const router = useRouter()
+  const mask = useClientMask()
   const [switching, setSwitching] = useState(false)
 
   const isImpersonating = user.actualRole === 'owner' && user.role === 'manager'
+  const displayName = mask.name(user.name)
 
   function handleLogout() {
     clearSession()
@@ -156,11 +159,11 @@ export function ManagerSidebar({ user }: { user: SessionUser }) {
         <div className="flex items-center gap-3 mb-3">
           <div className="w-8 h-8 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
             <span className="text-[var(--text)] text-xs font-semibold">
-              {user.name.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </span>
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[var(--text)] text-sm font-medium truncate">{user.name}</p>
+            <p className="text-[var(--text)] text-sm font-medium truncate">{displayName}</p>
             <p className="text-[var(--text-dim)] text-[11px] capitalize">{user.role}</p>
           </div>
         </div>

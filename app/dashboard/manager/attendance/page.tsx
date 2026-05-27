@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useClientMask } from '@/lib/demo-mode'
 
 interface StaffAttRow {
   id: string
@@ -49,6 +50,7 @@ function fmtDate(d: string) {
 }
 
 export default function AttendancePage() {
+  const mask = useClientMask()
   const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
   const [date, setDate]         = useState(todayStr)
   const [staffAtt, setStaffAtt] = useState<StaffAttRow[]>([])
@@ -169,10 +171,10 @@ export default function AttendancePage() {
               <div key={req.staff_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-amber-400 text-xs font-semibold">{req.name.charAt(0)}</span>
+                    <span className="text-amber-400 text-xs font-semibold">{mask.name(req.name).charAt(0)}</span>
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[var(--text)] text-sm font-medium">{req.name}</p>
+                    <p className="text-[var(--text)] text-sm font-medium">{mask.name(req.name)}</p>
                     <p className="text-[var(--text-muted)] text-xs">Tapped at {fmt12h(req.requested_at)}</p>
                   </div>
                 </div>
@@ -233,8 +235,8 @@ export default function AttendancePage() {
               return (
                 <div key={s.id} className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3.5 opacity-40 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Avatar name={s.name} />
-                    <p className="text-[var(--text)] text-sm font-medium">{s.name}</p>
+                    <Avatar name={mask.name(s.name)} />
+                    <p className="text-[var(--text)] text-sm font-medium">{mask.name(s.name)}</p>
                   </div>
                   <span className="text-[var(--text-dim)] text-xs border border-[var(--border-strong)] rounded-full px-3 py-1">Day off</span>
                 </div>
@@ -246,9 +248,9 @@ export default function AttendancePage() {
             return (
               <div key={s.id} className="bg-[var(--card)] border border-[var(--border)] rounded-xl px-4 py-3.5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
-                  <Avatar name={s.name} />
+                  <Avatar name={mask.name(s.name)} />
                   <div className="min-w-0">
-                    <p className="text-[var(--text)] text-sm font-medium">{s.name}</p>
+                    <p className="text-[var(--text)] text-sm font-medium">{mask.name(s.name)}</p>
                     {s.sunday_grace && (
                       <span className="text-[10px] text-[#6366f1]">Sun. Grace</span>
                     )}

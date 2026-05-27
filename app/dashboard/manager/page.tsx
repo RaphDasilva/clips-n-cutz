@@ -249,7 +249,7 @@ export default function ManagerHome() {
         <div>
           <p className="text-[var(--text-dim)] text-sm mb-1">{fmtDateHeader(selectedDate)}</p>
           <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">
-            {isToday ? <>Good {getGreeting()}{userName ? `, ${userName}` : ''}</> : 'Day Recap'}
+            {isToday ? <>Good {getGreeting()}{userName ? `, ${mask.name(userName).split(' ')[0]}` : ''}</> : 'Day Recap'}
           </h1>
         </div>
         {isToday && (
@@ -319,7 +319,7 @@ export default function ManagerHome() {
               {data.pendingCheckins.map(p => (
                 <div key={p.staff_id} className="flex items-center justify-between gap-3 px-5 py-3.5">
                   <div className="min-w-0 flex-1">
-                    <p className="text-[var(--text)] font-semibold truncate">{p.name}</p>
+                    <p className="text-[var(--text)] font-semibold truncate">{mask.name(p.name)}</p>
                     <p className="text-[var(--text-dim)] text-xs mt-0.5">
                       Requested at {fmt12h(p.requested_at)}
                     </p>
@@ -379,11 +379,11 @@ export default function ManagerHome() {
             </div>
             <div>
               <p className="text-amber-400 text-base font-bold tabular-nums">{data.attendance.late}</p>
-              <p className="text-[var(--text-dim)] truncate">Late{data.attendance.lateStaff.length ? `: ${data.attendance.lateStaff.join(', ')}` : ''}</p>
+              <p className="text-[var(--text-dim)] truncate">Late{data.attendance.lateStaff.length ? `: ${data.attendance.lateStaff.map(n => mask.name(n)).join(', ')}` : ''}</p>
             </div>
             <div>
               <p className="text-red-400 text-base font-bold tabular-nums">{data.attendance.absent}</p>
-              <p className="text-[var(--text-dim)] truncate">Absent{data.attendance.absentStaff.length ? `: ${data.attendance.absentStaff.join(', ')}` : ''}</p>
+              <p className="text-[var(--text-dim)] truncate">Absent{data.attendance.absentStaff.length ? `: ${data.attendance.absentStaff.map(n => mask.name(n)).join(', ')}` : ''}</p>
             </div>
           </div>
         </section>
@@ -447,7 +447,7 @@ export default function ManagerHome() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[var(--text)] text-sm font-semibold truncate leading-tight">{mask.name(v.clients?.name)}</p>
                         <p className="text-[var(--text-dim)] text-[11px] mt-0.5">
-                          {v.users?.name ?? '—'} · {fmt12h(v.created_at)}
+                          {mask.name(v.users?.name)} · {fmt12h(v.created_at)}
                         </p>
                         {serviceNames.length > 0 && (
                           <p className="text-[var(--text-muted)] text-[11px] mt-1 line-clamp-1">
@@ -504,9 +504,9 @@ export default function ManagerHome() {
               <div key={t.staffId} className="flex items-center justify-between px-4 py-3.5">
                 <div className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center">
-                    <span className="text-[var(--text)] text-xs font-semibold">{t.staffName.charAt(0).toUpperCase()}</span>
+                    <span className="text-[var(--text)] text-xs font-semibold">{mask.name(t.staffName).charAt(0).toUpperCase()}</span>
                   </div>
-                  <p className="text-[var(--text)] text-sm font-medium">{t.staffName}</p>
+                  <p className="text-[var(--text)] text-sm font-medium">{mask.name(t.staffName)}</p>
                 </div>
                 <p className="text-emerald-400 text-sm font-semibold tabular-nums">{fmtNaira(t.tips)}</p>
               </div>
@@ -763,7 +763,7 @@ function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; to
               <tr key={v.id} className="hover:bg-[var(--elevated)]/50 transition-colors">
                 <td className="px-4 py-2.5 text-[var(--text-muted)] text-xs tabular-nums">{fmt12h(v.created_at)}</td>
                 <td className="px-4 py-2.5 text-[var(--text)] font-medium truncate max-w-[160px]">{mask.name(v.clients?.name)}</td>
-                <td className="px-4 py-2.5 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
+                <td className="px-4 py-2.5 text-[var(--text-muted)]">{mask.name(v.users?.name)}</td>
                 <td className="px-4 py-2.5">
                   <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${PAYMENT_PILL[v.payment_method] ?? 'bg-[var(--border)] text-[var(--text-muted)]'}`}>
                     {v.payment_method}
@@ -789,7 +789,7 @@ function PastDayWalkInTable({ visits, totalRevenue }: { visits: TodayVisit[]; to
             <div className="min-w-0 flex-1">
               <p className="text-[var(--text)] text-sm font-medium truncate leading-tight">{mask.name(v.clients?.name)}</p>
               <p className="text-[var(--text-dim)] text-[11px] mt-0.5 truncate">
-                {fmt12h(v.created_at)} · {v.users?.name ?? '—'}
+                {fmt12h(v.created_at)} · {mask.name(v.users?.name)}
               </p>
             </div>
             <div className="flex flex-col items-end flex-shrink-0">

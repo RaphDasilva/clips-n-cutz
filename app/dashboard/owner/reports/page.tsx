@@ -221,9 +221,9 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-[var(--border)] border border-[var(--border-strong)] flex items-center justify-center flex-shrink-0">
-                          <span className="text-[var(--text)] text-[10px] font-semibold">{s.name.charAt(0).toUpperCase()}</span>
+                          <span className="text-[var(--text)] text-[10px] font-semibold">{mask.name(s.name).charAt(0).toUpperCase()}</span>
                         </div>
-                        <p className="text-[var(--text)] text-sm font-medium">{s.name}</p>
+                        <p className="text-[var(--text)] text-sm font-medium">{mask.name(s.name)}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[var(--text)] text-sm font-semibold tabular-nums">{fmtNaira(s.revenue)}</p>
@@ -273,7 +273,7 @@ export default function ReportsPage() {
                           <p className="text-[var(--text)] font-medium">{mask.name(v.clients?.name)}</p>
                           <p className="text-[var(--text-dim)] text-xs">{mask.phone(v.clients?.phone)}</p>
                         </td>
-                        <td className="px-5 py-3 text-[var(--text-muted)]">{v.users?.name ?? '—'}</td>
+                        <td className="px-5 py-3 text-[var(--text-muted)]">{mask.name(v.users?.name)}</td>
                         <td className="px-5 py-3">
                           <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-[var(--border-strong)] text-[var(--text-muted)]">
                             {v.payment_method === 'pos' ? 'POS' : v.payment_method.charAt(0).toUpperCase() + v.payment_method.slice(1)}
@@ -295,7 +295,7 @@ export default function ReportsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-[var(--text)] text-sm font-medium">{mask.name(v.clients?.name)}</p>
-                        <p className="text-[var(--text-dim)] text-xs">{v.users?.name} · {fmtDate(v.visit_date)}</p>
+                        <p className="text-[var(--text-dim)] text-xs">{mask.name(v.users?.name)} · {fmtDate(v.visit_date)}</p>
                       </div>
                       <p className="text-[var(--text)] text-sm font-bold tabular-nums">{fmtNaira(v.total_ngn)}</p>
                     </div>
