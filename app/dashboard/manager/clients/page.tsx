@@ -15,21 +15,45 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
   const [search, setSearch]   = useState('')
   const [loading, setLoading] = useState(true)
+  const [page, setPage]       = useState(1)
+  const [total, setTotal]     = useState(0)
+  const [pageSize, setPageSize] = useState(50)
 
-  const load = useCallback(async (q: string) => {
+  const load = useCallback(async (q: string, p: number) => {
     setLoading(true)
-    const url = q ? `/api/manager/clients?q=${encodeURIComponent(q)}` : '/api/manager/clients'
+    const url = q
+      ? `/api/manager/clients?q=${encodeURIComponent(q)}`
+      : `/api/manager/clients?page=${p}`
     const res = await fetch(url)
-    if (res.ok) setClients((await res.json()).clients ?? [])
+    if (res.ok) {
+      const j = await res.json()
+      setClients(j.clients ?? [])
+      setTotal(j.total ?? 0)
+      setPageSize(j.pageSize ?? 50)
+    }
     setLoading(false)
   }, [])
 
-  useEffect(() => { load('') }, [load])
+  useEffect(() => { load('', 1) }, [load])
 
   useEffect(() => {
-    const t = setTimeout(() => load(search), 300)
+    const t = setTimeout(() => {
+      setPage(1)
+      load(search, 1)
+    }, 300)
     return () => clearTimeout(t)
   }, [search, load])
+
+  const totalPages = search ? 1 : Math.max(1, Math.ceil(total / pageSize))
+  const firstIndex = total === 0 ? 0 : (page - 1) * pageSize + 1
+  const lastIndex  = Math.min(page * pageSize, total)
+
+  function goToPage(p: number) {
+    const next = Math.max(1, Math.min(totalPages, p))
+    setPage(next)
+    load(search, next)
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
@@ -122,9 +146,30 @@ export default function ClientsPage() {
             ))}
           </div>
 
-          <p className="text-center text-[var(--text-faint)] text-xs mt-4">
-            {clients.length} client{clients.length !== 1 ? 's' : ''} shown
-          </p>
+          {search ? (
+            <p className="text-center text-[var(--text-faint)] text-xs mt-4">
+              {clients.length} match{clients.length !== 1 ? 'es' : ''}
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-3 mt-5">
+              <p className="text-[var(--text-faint)] text-xs">
+                Showing {firstIndex}–{lastIndex} of {total}
+              </p>
+              <div className="flex items-center gap-1">
+                <button onClick={() => goToPage(page - 1)} disabled={page <= 1 || loading}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)] text-xs font-medium hover:text-[var(--text)] hover:bg-[var(--elevated)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  Previous
+                </button>
+                <span className="px-3 py-1.5 text-[var(--text-dim)] text-xs tabular-nums">
+                  Page {page} of {totalPages}
+                </span>
+                <button onClick={() => goToPage(page + 1)} disabled={page >= totalPages || loading}
+                  className="px-3 py-1.5 rounded-lg bg-[var(--card)] border border-[var(--border)] text-[var(--text-muted)] text-xs font-medium hover:text-[var(--text)] hover:bg-[var(--elevated)] disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
