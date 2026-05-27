@@ -12,10 +12,11 @@ export async function GET(req: NextRequest) {
     .from('clients')
     .select('*')
     .order('created_at', { ascending: false })
-    .limit(50)
 
   if (search) {
-    query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+    query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`).limit(200)
+  } else {
+    query = query.limit(1000)
   }
 
   const { data, error } = await query as { data: Client[] | null; error: { message: string } | null }
