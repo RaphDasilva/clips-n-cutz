@@ -11,6 +11,9 @@ import { useEffect, useState } from 'react'
 //
 // The flag lives in sessionStorage so it survives client-side
 // navigation but never leaks past the current tab.
+//
+// Gated to localhost only — production ignores ?demo=1 so the
+// salon's real users can never accidentally land on fake names.
 
 const STORAGE_KEY = 'cnc_demo_mode'
 
@@ -39,6 +42,16 @@ export function useDemoMode(): boolean {
 
   useEffect(() => {
     try {
+      const host = window.location.hostname
+      const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0'
+      if (!isLocal) {
+        // Production: clear any stale flag and stay off no matter
+        // what ?demo=… or sessionStorage say.
+        window.sessionStorage.removeItem(STORAGE_KEY)
+        setDemo(false)
+        return
+      }
+
       const url = new URL(window.location.href)
       const param = url.searchParams.get('demo')
       if (param === '1') {
