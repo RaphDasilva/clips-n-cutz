@@ -17,6 +17,7 @@ interface ServiceRow {
   price_ngn: number
   commission_ngn: number
   tip_ngn: number
+  material_cost_ngn: number
   services: { name: string } | null
   users: { name: string } | null
 }
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
 
     supabase
       .from('visit_services')
-      .select('price_ngn, commission_ngn, tip_ngn, services(name), users!staff_id(name)')
+      .select('price_ngn, commission_ngn, tip_ngn, material_cost_ngn, services(name), users!staff_id(name)')
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: ServiceRow[] | null; error: unknown }>,
   ])
@@ -65,6 +66,9 @@ export async function GET(req: NextRequest) {
   const totalCommission = vsRows.reduce((s, r) => s + r.commission_ngn, 0)
   const totalTips       = visits.reduce((s, v) => s + (v.tip_ngn ?? 0), 0)
   const totalPayout     = totalCommission + totalTips
+  // Product sales = owner-only product portions (e.g. piercing
+  // earrings). Fully the owner's — no commission was taken on these.
+  const totalProductSales = vsRows.reduce((s, r) => s + (r.material_cost_ngn ?? 0), 0)
 
   // Payment method breakdown
   const byPayment = { cash: 0, transfer: 0, pos: 0 }
@@ -109,6 +113,7 @@ export async function GET(req: NextRequest) {
       totalCommission,
       totalTips,
       totalPayout,
+      totalProductSales,
       totalVisits:   visits.length,
       totalServices: vsRows.length,
       ownerProfit:   totalRevenue - totalCommission,

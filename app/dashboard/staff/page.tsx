@@ -9,6 +9,7 @@ import { useClientMask } from '@/lib/demo-mode'
 interface ServiceEntry {
   commission_ngn: number
   price_ngn: number
+  material_cost_ngn: number
   created_at: string
   services: { name: string } | null
   visits: { visit_date: string; clients: { name: string } | null } | null
@@ -356,7 +357,14 @@ export default function StaffHome() {
                   <p className="text-[var(--accent)] text-sm font-semibold tabular-nums">
                     {fmtNaira(s.commission_ngn)}
                   </p>
-                  <p className="text-[var(--text-faint)] text-xs tabular-nums">of {fmtNaira(s.price_ngn)}</p>
+                  {s.material_cost_ngn > 0 ? (
+                    <p className="text-[var(--text-faint)] text-[11px] tabular-nums leading-tight">
+                      30% of {fmtNaira(s.price_ngn - s.material_cost_ngn)} service<br />
+                      <span className="text-[var(--text-faint)]">{fmtNaira(s.material_cost_ngn)} product → salon</span>
+                    </p>
+                  ) : (
+                    <p className="text-[var(--text-faint)] text-xs tabular-nums">of {fmtNaira(s.price_ngn)}</p>
+                  )}
                 </div>
               </div>
             ))}

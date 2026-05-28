@@ -10,6 +10,7 @@ interface HistoryEntry {
   clientName: string
   earnings: number
   price: number
+  materialCost: number
 }
 
 interface DayGroup {
@@ -193,9 +194,16 @@ export default function StaffHistory() {
                       <p className="text-[var(--accent)] text-sm font-semibold tabular-nums">
                         {fmtNaira(e.earnings)}
                       </p>
-                      <p className="text-[var(--text-faint)] text-xs tabular-nums">
-                        of {fmtNaira(e.price)}
-                      </p>
+                      {e.materialCost > 0 ? (
+                        <p className="text-[var(--text-faint)] text-[11px] tabular-nums leading-tight">
+                          30% of {fmtNaira(e.price - e.materialCost)} service<br />
+                          {fmtNaira(e.materialCost)} product → salon
+                        </p>
+                      ) : (
+                        <p className="text-[var(--text-faint)] text-xs tabular-nums">
+                          of {fmtNaira(e.price)}
+                        </p>
+                      )}
                     </div>
                   </div>
                 ))}

@@ -118,18 +118,20 @@ export async function POST(req: NextRequest) {
       ? tipsByStaff.get(line.staffId)!
       : 0
     if (tip > 0) tipsPlaced.add(line.staffId)
-    const price = priceFor(line)
+    const price    = priceFor(line)
+    const material = Math.min(s.material_cost_ngn ?? 0, price)
     return {
-      visit_id:       visit.id,
-      service_id:     line.serviceId,
-      staff_id:       line.staffId,
-      price_ngn:      price,
+      visit_id:          visit.id,
+      service_id:        line.serviceId,
+      staff_id:          line.staffId,
+      price_ngn:         price,
+      material_cost_ngn: material,
       // Commission is 30% of the service portion only — never the
       // owner-only product (e.g. piercing earrings). The product
       // cost is deducted before the 30%; any extra the manager
       // added (e.g. full-hair dye) is part of the service.
-      commission_ngn: Math.round(Math.max(0, price - (s.material_cost_ngn ?? 0)) * 0.3),
-      tip_ngn:        tip,
+      commission_ngn:    Math.round(Math.max(0, price - material) * 0.3),
+      tip_ngn:           tip,
     }
   })
 

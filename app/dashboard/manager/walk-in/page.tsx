@@ -14,6 +14,12 @@ function fmtNaira(n: number) {
   return `₦${n.toLocaleString('en-NG')}`
 }
 
+// Only dye services can have their price adjusted at checkout
+// (e.g. charging extra to dye a full head of hair).
+function isPriceEditable(name: string) {
+  return name.toLowerCase().includes('dye')
+}
+
 function newKey() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
@@ -345,16 +351,20 @@ export default function WalkInPage() {
                         <div key={line.key} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              <span className="text-[var(--text-dim)] text-[11px]">₦</span>
-                              <input type="text" inputMode="numeric"
-                                value={line.priceNgn}
-                                onChange={e => setLinePrice(line.key, e.target.value.replace(/\D/g, ''))}
-                                className="w-20 bg-[var(--card)] border border-[var(--border-strong)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text)] tabular-nums focus:outline-none focus:border-[var(--accent)]" />
-                              {parseInt(line.priceNgn, 10) !== sv.price_ngn && (
-                                <span className="text-[var(--text-faint)] text-[10px]">was {fmtNaira(sv.price_ngn)}</span>
-                              )}
-                            </div>
+                            {isPriceEditable(sv.name) ? (
+                              <div className="flex items-center gap-1 mt-0.5">
+                                <span className="text-[var(--text-dim)] text-[11px]">₦</span>
+                                <input type="text" inputMode="numeric"
+                                  value={line.priceNgn}
+                                  onChange={e => setLinePrice(line.key, e.target.value.replace(/\D/g, ''))}
+                                  className="w-20 bg-[var(--card)] border border-[var(--border-strong)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text)] tabular-nums focus:outline-none focus:border-[var(--accent)]" />
+                                {parseInt(line.priceNgn, 10) !== sv.price_ngn && (
+                                  <span className="text-[var(--text-faint)] text-[10px]">was {fmtNaira(sv.price_ngn)}</span>
+                                )}
+                              </div>
+                            ) : (
+                              <p className="text-[var(--text-dim)] text-[11px] tabular-nums mt-0.5">{fmtNaira(parseInt(line.priceNgn, 10) || sv.price_ngn)}</p>
+                            )}
                           </div>
                           <select value={line.staffId}
                             onChange={e => setLineStaff(line.key, e.target.value)}
@@ -385,8 +395,8 @@ export default function WalkInPage() {
                     })}
                   </div>
                   <p className="text-[var(--text-dim)] text-[10px] mt-2">
-                    Tap <span className="text-[var(--accent)]">+</span> to add another of the same service. Edit the ₦ amount
-                    to charge extra (e.g. dyeing full hair) — staff commission follows the new amount.
+                    Tap <span className="text-[var(--accent)]">+</span> to add another of the same service. Dye services let you
+                    edit the ₦ amount for extra hair — staff commission follows the new amount.
                   </p>
                 </div>
               )}

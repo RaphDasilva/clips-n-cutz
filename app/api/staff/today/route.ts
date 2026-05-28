@@ -5,6 +5,7 @@ interface VSRow {
   visit_id: string
   commission_ngn: number
   price_ngn: number
+  material_cost_ngn: number
   tip_ngn: number
   created_at: string
   services: { name: string } | null
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   const [servicesRes, apptsRes, attRes, checkinRes] = await Promise.all([
     supabase
       .from('visit_services')
-      .select('visit_id, commission_ngn, price_ngn, tip_ngn, created_at, services(name), visits(visit_date, clients(name))')
+      .select('visit_id, commission_ngn, price_ngn, material_cost_ngn, tip_ngn, created_at, services(name), visits(visit_date, clients(name))')
       .eq('staff_id', staffId)
       .gte('created_at', `${today}T00:00:00`)
       .lte('created_at', `${today}T23:59:59`)

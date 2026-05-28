@@ -5,6 +5,7 @@ interface VSRow {
   visit_id: string
   commission_ngn: number
   price_ngn: number
+  material_cost_ngn: number
   tip_ngn: number
   created_at: string
   services: { name: string } | null
@@ -28,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from('visit_services')
-    .select('visit_id, commission_ngn, price_ngn, tip_ngn, created_at, services(name), visits(visit_date, clients(name))')
+    .select('visit_id, commission_ngn, price_ngn, material_cost_ngn, tip_ngn, created_at, services(name), visits(visit_date, clients(name))')
     .eq('staff_id', staffId)
     .gte('created_at', `${from}T00:00:00`)
     .lte('created_at', `${to}T23:59:59`)
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
   // Group by visit date
   const byDate = new Map<string, {
     date: string
-    entries: { serviceName: string; clientName: string; earnings: number; price: number }[]
+    entries: { serviceName: string; clientName: string; earnings: number; price: number; materialCost: number }[]
     tip: number
     dayEarnings: number
   }>()
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
       byDate.set(date, { date, entries: [], tip: 0, dayEarnings: 0 })
     }
     const group = byDate.get(date)!
-    group.entries.push({ serviceName: svc, clientName: client, earnings: row.commission_ngn, price: row.price_ngn })
+    group.entries.push({ serviceName: svc, clientName: client, earnings: row.commission_ngn, price: row.price_ngn, materialCost: row.material_cost_ngn ?? 0 })
     group.dayEarnings += row.commission_ngn + tip
     group.tip         += tip
   }

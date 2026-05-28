@@ -8,6 +8,7 @@ interface Summary {
   totalCommission: number
   totalTips: number
   totalPayout: number
+  totalProductSales: number
   totalVisits: number
   totalServices: number
   ownerProfit: number
@@ -148,6 +149,9 @@ export default function ReportsPage() {
               <SummaryCard label="Your Earnings"    value={fmtNaira(data.summary.ownerProfit)}     accent="gold" />
               <SummaryCard label="Commission"       value={fmtNaira(data.summary.totalCommission)} accent="amber" />
               <SummaryCard label="Tips Collected"   value={fmtNaira(data.summary.totalTips)}       accent="emerald" />
+              {data.summary.totalProductSales > 0 && (
+                <SummaryCard label="Product Sales (yours)" value={fmtNaira(data.summary.totalProductSales)} accent="gold" />
+              )}
               <SummaryCard label="Total Staff Payout" value={fmtNaira(data.summary.totalPayout)}   accent="gold" />
               <SummaryCard label={`Visits · ${data.summary.totalServices} services`} value={String(data.summary.totalVisits)} />
             </div>
