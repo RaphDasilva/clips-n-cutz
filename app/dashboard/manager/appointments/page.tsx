@@ -149,7 +149,9 @@ export default function AppointmentsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lines:         checkInLines.map(({ serviceId, staffId }) => ({ serviceId, staffId })),
+          lines:         checkInLines.map(({ serviceId, staffId, priceNgn }) => ({
+            serviceId, staffId, priceNgn: parseInt(priceNgn, 10) || 0,
+          })),
           tipByStaff:    checkInTipByStaff,
           paymentMethod: checkInPayment,
         }),
@@ -304,6 +306,7 @@ export default function AppointmentsPage() {
                           key:       Math.random().toString(36).slice(2) + Date.now().toString(36),
                           serviceId: s.service_id,
                           staffId:   '',
+                          priceNgn:  String(s.services?.price_ngn ?? ''),
                         })))
                         setCheckInTipByStaff({})
                         setCheckInPayment('cash')
@@ -454,7 +457,7 @@ export default function AppointmentsPage() {
   )
 }
 
-interface CheckInLine { key: string; serviceId: string; staffId: string }
+interface CheckInLine { key: string; serviceId: string; staffId: string; priceNgn: string }
 
 interface CheckInFormProps {
   services:               ServiceOption[]
@@ -497,7 +500,10 @@ function CheckInForm(props: CheckInFormProps) {
     const kept       = checkInLines.filter(l => nextSet.has(l.serviceId))
     const added: CheckInLine[] = nextIds
       .filter(id => !currentSet.has(id))
-      .map(serviceId => ({ key: makeKey(), serviceId, staffId: checkInDefaultStaff }))
+      .map(serviceId => ({
+        key: makeKey(), serviceId, staffId: checkInDefaultStaff,
+        priceNgn: String(serviceById.get(serviceId)?.price_ngn ?? ''),
+      }))
     setCheckInLines([...kept, ...added])
   }
 
@@ -506,7 +512,7 @@ function CheckInForm(props: CheckInFormProps) {
       const idx = prev.findIndex(l => l.key === key)
       if (idx < 0) return prev
       const src = prev[idx]
-      const dup: CheckInLine = { key: makeKey(), serviceId: src.serviceId, staffId: src.staffId }
+      const dup: CheckInLine = { key: makeKey(), serviceId: src.serviceId, staffId: src.staffId, priceNgn: src.priceNgn }
       return [...prev.slice(0, idx + 1), dup, ...prev.slice(idx + 1)]
     })
   }
@@ -517,6 +523,10 @@ function CheckInForm(props: CheckInFormProps) {
 
   function setLineStaff(key: string, staffId: string) {
     setCheckInLines(prev => prev.map(l => l.key === key ? { ...l, staffId } : l))
+  }
+
+  function setLinePrice(key: string, priceNgn: string) {
+    setCheckInLines(prev => prev.map(l => l.key === key ? { ...l, priceNgn } : l))
   }
 
   // Fill any line missing a staff with the new default
@@ -545,7 +555,7 @@ function CheckInForm(props: CheckInFormProps) {
   const involvedStaffIds = Array.from(new Set(checkInLines.map(l => l.staffId).filter(Boolean)))
 
   const total = checkInLines.reduce(
-    (sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0),
+    (sum, l) => sum + (parseInt(l.priceNgn, 10) || 0),
     0
   )
 
@@ -596,7 +606,16 @@ function CheckInForm(props: CheckInFormProps) {
                 <div key={line.key} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
                   <div className="flex-1 min-w-0">
                     <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
-                    <p className="text-[var(--text-dim)] text-[11px] tabular-nums">₦{sv.price_ngn.toLocaleString('en-NG')}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[var(--text-dim)] text-[11px]">₦</span>
+                      <input type="text" inputMode="numeric"
+                        value={line.priceNgn}
+                        onChange={e => setLinePrice(line.key, e.target.value.replace(/\D/g, ''))}
+                        className="w-20 bg-[var(--card)] border border-[var(--border-strong)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text)] tabular-nums focus:outline-none focus:border-[var(--accent)]" />
+                      {parseInt(line.priceNgn, 10) !== sv.price_ngn && (
+                        <span className="text-[var(--text-faint)] text-[10px]">was ₦{sv.price_ngn.toLocaleString('en-NG')}</span>
+                      )}
+                    </div>
                   </div>
                   <select value={line.staffId}
                     onChange={e => setLineStaff(line.key, e.target.value)}
@@ -627,7 +646,8 @@ function CheckInForm(props: CheckInFormProps) {
             })}
           </div>
           <p className="text-[var(--text-dim)] text-[10px] mt-2">
-            Tap <span className="text-[var(--accent)]">+</span> to add another of the same service.
+            Tap <span className="text-[var(--accent)]">+</span> to add another of the same service. Edit the ₦ amount
+            to charge extra (e.g. dyeing full hair) — staff commission follows the new amount.
           </p>
         </div>
       )}

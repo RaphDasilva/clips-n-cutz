@@ -8,7 +8,7 @@ import { useClientMask } from '@/lib/demo-mode'
 
 type StaffMember = Omit<User, 'pin_hash'> & { serviceIds: string[] }
 
-interface Line { key: string; serviceId: string; staffId: string }
+interface Line { key: string; serviceId: string; staffId: string; priceNgn: string }
 
 function fmtNaira(n: number) {
   return `₦${n.toLocaleString('en-NG')}`
@@ -73,7 +73,10 @@ export default function WalkInPage() {
     // Append a single line for each newly added service
     const added: Line[] = nextIds
       .filter(id => !currentSet.has(id))
-      .map(serviceId => ({ key: newKey(), serviceId, staffId: defaultStaffId }))
+      .map(serviceId => ({
+        key: newKey(), serviceId, staffId: defaultStaffId,
+        priceNgn: String(serviceById.get(serviceId)?.price_ngn ?? ''),
+      }))
 
     setLines([...kept, ...added])
   }
@@ -83,7 +86,7 @@ export default function WalkInPage() {
       const idx = prev.findIndex(l => l.key === key)
       if (idx < 0) return prev
       const src = prev[idx]
-      const dup: Line = { key: newKey(), serviceId: src.serviceId, staffId: src.staffId }
+      const dup: Line = { key: newKey(), serviceId: src.serviceId, staffId: src.staffId, priceNgn: src.priceNgn }
       return [...prev.slice(0, idx + 1), dup, ...prev.slice(idx + 1)]
     })
   }
@@ -94,6 +97,10 @@ export default function WalkInPage() {
 
   function setLineStaff(key: string, staffId: string) {
     setLines(prev => prev.map(l => l.key === key ? { ...l, staffId } : l))
+  }
+
+  function setLinePrice(key: string, priceNgn: string) {
+    setLines(prev => prev.map(l => l.key === key ? { ...l, priceNgn } : l))
   }
 
   // Fill any line missing a staff with the new default
@@ -128,7 +135,7 @@ export default function WalkInPage() {
   }, [involvedStaffIds])
 
   const selectedTotal = lines.reduce(
-    (sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0),
+    (sum, l) => sum + (parseInt(l.priceNgn, 10) || 0),
     0
   )
 
@@ -151,7 +158,9 @@ export default function WalkInPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientName, clientPhone,
-          lines:         lines.map(({ serviceId, staffId }) => ({ serviceId, staffId })),
+          lines:         lines.map(({ serviceId, staffId, priceNgn }) => ({
+            serviceId, staffId, priceNgn: parseInt(priceNgn, 10) || 0,
+          })),
           tipByStaff,
           paymentMethod,
         }),
@@ -336,7 +345,16 @@ export default function WalkInPage() {
                         <div key={line.key} className="flex items-center gap-2 bg-[var(--elevated)] border border-[var(--border)] rounded-lg px-3 py-2">
                           <div className="flex-1 min-w-0">
                             <p className="text-[var(--text)] text-sm font-medium truncate">{sv.name}</p>
-                            <p className="text-[var(--text-dim)] text-[11px] tabular-nums">{fmtNaira(sv.price_ngn)}</p>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[var(--text-dim)] text-[11px]">₦</span>
+                              <input type="text" inputMode="numeric"
+                                value={line.priceNgn}
+                                onChange={e => setLinePrice(line.key, e.target.value.replace(/\D/g, ''))}
+                                className="w-20 bg-[var(--card)] border border-[var(--border-strong)] rounded px-1.5 py-0.5 text-[11px] text-[var(--text)] tabular-nums focus:outline-none focus:border-[var(--accent)]" />
+                              {parseInt(line.priceNgn, 10) !== sv.price_ngn && (
+                                <span className="text-[var(--text-faint)] text-[10px]">was {fmtNaira(sv.price_ngn)}</span>
+                              )}
+                            </div>
                           </div>
                           <select value={line.staffId}
                             onChange={e => setLineStaff(line.key, e.target.value)}
@@ -367,7 +385,8 @@ export default function WalkInPage() {
                     })}
                   </div>
                   <p className="text-[var(--text-dim)] text-[10px] mt-2">
-                    Tap <span className="text-[var(--accent)]">+</span> next to a line to add another of the same service.
+                    Tap <span className="text-[var(--accent)]">+</span> to add another of the same service. Edit the ₦ amount
+                    to charge extra (e.g. dyeing full hair) — staff commission follows the new amount.
                   </p>
                 </div>
               )}

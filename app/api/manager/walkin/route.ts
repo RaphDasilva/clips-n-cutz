@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import type { Service, Client, Visit } from '@/types/database'
 
-interface Line { serviceId: string; staffId: string }
+interface Line { serviceId: string; staffId: string; priceNgn: number | null }
 
 export async function POST(req: NextRequest) {
   const body = await req.json()
@@ -10,9 +10,11 @@ export async function POST(req: NextRequest) {
   const clientPhone: string = (body.clientPhone ?? '').trim()
   const rawLines            = Array.isArray(body.lines) ? body.lines : []
   const lines: Line[]       = rawLines
-    .map((l: { serviceId?: unknown; staffId?: unknown }) => ({
+    .map((l: { serviceId?: unknown; staffId?: unknown; priceNgn?: unknown }) => ({
       serviceId: typeof l.serviceId === 'string' ? l.serviceId : '',
       staffId:   typeof l.staffId   === 'string' ? l.staffId   : '',
+      priceNgn:  typeof l.priceNgn === 'number' && Number.isFinite(l.priceNgn) && l.priceNgn >= 0
+        ? Math.round(l.priceNgn) : null,
     }))
     .filter((l: Line) => l.serviceId && l.staffId)
   const tipByStaff:    Record<string, string | number> = body.tipByStaff ?? {}
@@ -76,9 +78,13 @@ export async function POST(req: NextRequest) {
     client = newClient
   }
 
-  // 3. Totals — sum the prices for every line (duplicates count)
+  // 3. Totals — sum the prices for every line (duplicates count).
+  //    A line may carry a manager-set price (e.g. extra dye for full
+  //    hair); fall back to the service's base price otherwise.
   const serviceById = new Map(services.map(s => [s.id, s]))
-  const totalNgn    = lines.reduce((sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0), 0)
+  const priceFor = (l: Line) =>
+    l.priceNgn ?? serviceById.get(l.serviceId)?.price_ngn ?? 0
+  const totalNgn    = lines.reduce((sum, l) => sum + priceFor(l), 0)
   const totalTipNgn = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
 
   // 4. Primary staff = staff on the first line (the "lead").
@@ -112,14 +118,17 @@ export async function POST(req: NextRequest) {
       ? tipsByStaff.get(line.staffId)!
       : 0
     if (tip > 0) tipsPlaced.add(line.staffId)
+    const price = priceFor(line)
     return {
       visit_id:       visit.id,
       service_id:     line.serviceId,
       staff_id:       line.staffId,
-      price_ngn:      s.price_ngn,
+      price_ngn:      price,
       // Commission is 30% of the service portion only — never the
-      // owner-only product (e.g. piercing earrings).
-      commission_ngn: Math.round((s.price_ngn - (s.material_cost_ngn ?? 0)) * 0.3),
+      // owner-only product (e.g. piercing earrings). The product
+      // cost is deducted before the 30%; any extra the manager
+      // added (e.g. full-hair dye) is part of the service.
+      commission_ngn: Math.round(Math.max(0, price - (s.material_cost_ngn ?? 0)) * 0.3),
       tip_ngn:        tip,
     }
   })

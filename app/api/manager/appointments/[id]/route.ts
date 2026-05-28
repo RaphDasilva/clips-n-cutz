@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ success: true })
 }
 
-interface Line { serviceId: string; staffId: string }
+interface Line { serviceId: string; staffId: string; priceNgn: number | null }
 
 // Called when the client arrives — assigns staff and creates the visit record
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -30,9 +30,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const body   = await req.json()
   const rawLines = Array.isArray(body.lines) ? body.lines : []
   const lines: Line[] = rawLines
-    .map((l: { serviceId?: unknown; staffId?: unknown }) => ({
+    .map((l: { serviceId?: unknown; staffId?: unknown; priceNgn?: unknown }) => ({
       serviceId: typeof l.serviceId === 'string' ? l.serviceId : '',
       staffId:   typeof l.staffId   === 'string' ? l.staffId   : '',
+      priceNgn:  typeof l.priceNgn === 'number' && Number.isFinite(l.priceNgn) && l.priceNgn >= 0
+        ? Math.round(l.priceNgn) : null,
     }))
     .filter((l: Line) => l.serviceId && l.staffId)
   const tipByStaff: Record<string, string | number> = body.tipByStaff ?? {}
@@ -69,7 +71,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (svErr || !services?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
 
   const serviceById  = new Map(services.map(s => [s.id, s]))
-  const totalNgn     = lines.reduce((sum, l) => sum + (serviceById.get(l.serviceId)?.price_ngn ?? 0), 0)
+  const priceFor = (l: Line) => l.priceNgn ?? serviceById.get(l.serviceId)?.price_ngn ?? 0
+  const totalNgn     = lines.reduce((sum, l) => sum + priceFor(l), 0)
   const totalTipNgn  = Array.from(tipsByStaff.values()).reduce((s, n) => s + n, 0)
   const visitDate    = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
   const primaryStaffId = lines[0].staffId
@@ -97,14 +100,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       ? tipsByStaff.get(line.staffId)!
       : 0
     if (tip > 0) tipsPlaced.add(line.staffId)
+    const price = priceFor(line)
     return {
       visit_id:       visit.id,
       service_id:     line.serviceId,
       staff_id:       line.staffId,
-      price_ngn:      s.price_ngn,
+      price_ngn:      price,
       // Commission is 30% of the service portion only — never the
-      // owner-only product (e.g. piercing earrings).
-      commission_ngn: Math.round((s.price_ngn - (s.material_cost_ngn ?? 0)) * 0.3),
+      // owner-only product (e.g. piercing earrings). Any extra the
+      // manager added (e.g. full-hair dye) is part of the service.
+      commission_ngn: Math.round(Math.max(0, price - (s.material_cost_ngn ?? 0)) * 0.3),
       tip_ngn:        tip,
     }
   })
