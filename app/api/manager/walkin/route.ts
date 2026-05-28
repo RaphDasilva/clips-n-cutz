@@ -117,7 +117,9 @@ export async function POST(req: NextRequest) {
       service_id:     line.serviceId,
       staff_id:       line.staffId,
       price_ngn:      s.price_ngn,
-      commission_ngn: Math.round(s.price_ngn * 0.3),
+      // Commission is 30% of the service portion only — never the
+      // owner-only product (e.g. piercing earrings).
+      commission_ngn: Math.round((s.price_ngn - (s.material_cost_ngn ?? 0)) * 0.3),
       tip_ngn:        tip,
     }
   })

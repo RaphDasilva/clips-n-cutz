@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
   const name: string     = (body.name     ?? '').trim()
   const category: string = (body.category ?? '').trim()
   const priceNgn         = Number(body.priceNgn)
+  const materialCostNgn  = Number.isFinite(Number(body.materialCostNgn)) ? Math.max(0, Number(body.materialCostNgn)) : 0
   const sortOrder        = Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : 999
 
   if (!name || !category) {
@@ -30,6 +31,9 @@ export async function POST(req: NextRequest) {
   }
   if (!Number.isFinite(priceNgn) || priceNgn < 0) {
     return NextResponse.json({ error: 'Price must be a positive number.' }, { status: 400 })
+  }
+  if (materialCostNgn > priceNgn) {
+    return NextResponse.json({ error: 'Product cost cannot be more than the total price.' }, { status: 400 })
   }
 
   const supabase = createClient()
@@ -40,6 +44,7 @@ export async function POST(req: NextRequest) {
       name,
       category,
       price_ngn: Math.round(priceNgn),
+      material_cost_ngn: Math.round(materialCostNgn),
       sort_order: sortOrder,
       is_active: true,
     })

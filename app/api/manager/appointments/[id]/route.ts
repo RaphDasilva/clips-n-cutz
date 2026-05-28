@@ -65,7 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const uniqueServiceIds = Array.from(new Set(lines.map(l => l.serviceId)))
   const { data: services, error: svErr } = await supabase
-    .from('services').select('id, name, price_ngn').in('id', uniqueServiceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn'>[] | null; error: unknown }
+    .from('services').select('id, name, price_ngn, material_cost_ngn').in('id', uniqueServiceIds) as { data: Pick<Service, 'id' | 'name' | 'price_ngn' | 'material_cost_ngn'>[] | null; error: unknown }
   if (svErr || !services?.length) return NextResponse.json({ error: 'Could not load service data.' }, { status: 500 })
 
   const serviceById  = new Map(services.map(s => [s.id, s]))
@@ -102,7 +102,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       service_id:     line.serviceId,
       staff_id:       line.staffId,
       price_ngn:      s.price_ngn,
-      commission_ngn: Math.round(s.price_ngn * 0.3),
+      // Commission is 30% of the service portion only — never the
+      // owner-only product (e.g. piercing earrings).
+      commission_ngn: Math.round((s.price_ngn - (s.material_cost_ngn ?? 0)) * 0.3),
       tip_ngn:        tip,
     }
   })

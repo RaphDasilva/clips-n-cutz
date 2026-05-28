@@ -7,16 +7,17 @@ import { groupServicesByCategory } from '@/lib/services'
 function fmtNaira(n: number) { return `₦${n.toLocaleString('en-NG')}` }
 
 interface FormState {
-  id?:        string
-  name:       string
-  category:   string
-  priceNgn:   string  // string for input handling
-  sortOrder:  string
-  isActive:   boolean
+  id?:             string
+  name:            string
+  category:        string
+  priceNgn:        string  // string for input handling
+  materialCostNgn: string  // owner-only product portion, excluded from commission
+  sortOrder:       string
+  isActive:        boolean
 }
 
 const EMPTY_FORM: FormState = {
-  name: '', category: '', priceNgn: '', sortOrder: '999', isActive: true,
+  name: '', category: '', priceNgn: '', materialCostNgn: '', sortOrder: '999', isActive: true,
 }
 
 export default function ServicesPage() {
@@ -56,12 +57,13 @@ export default function ServicesPage() {
   function openEdit(s: Service) {
     setError('')
     setModal({
-      id:        s.id,
-      name:      s.name,
-      category:  s.category,
-      priceNgn:  String(s.price_ngn),
-      sortOrder: String(s.sort_order),
-      isActive:  s.is_active,
+      id:              s.id,
+      name:            s.name,
+      category:        s.category,
+      priceNgn:        String(s.price_ngn),
+      materialCostNgn: s.material_cost_ngn ? String(s.material_cost_ngn) : '',
+      sortOrder:       String(s.sort_order),
+      isActive:        s.is_active,
     })
   }
 
@@ -72,11 +74,12 @@ export default function ServicesPage() {
     setSaving(true)
     try {
       const payload = {
-        name:      modal.name.trim(),
-        category:  modal.category.trim(),
-        priceNgn:  parseInt(modal.priceNgn, 10),
-        sortOrder: parseInt(modal.sortOrder, 10) || 999,
-        isActive:  modal.isActive,
+        name:            modal.name.trim(),
+        category:        modal.category.trim(),
+        priceNgn:        parseInt(modal.priceNgn, 10),
+        materialCostNgn: parseInt(modal.materialCostNgn, 10) || 0,
+        sortOrder:       parseInt(modal.sortOrder, 10) || 999,
+        isActive:        modal.isActive,
       }
       const url    = modal.id ? `/api/manager/services/${modal.id}` : '/api/manager/services'
       const method = modal.id ? 'PATCH' : 'POST'
@@ -251,6 +254,31 @@ export default function ServicesPage() {
                     placeholder="999"
                     className="input" />
                 </div>
+              </div>
+              <div>
+                <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                  Product cost (₦) <span className="text-[var(--text-faint)] font-normal">— optional</span>
+                </label>
+                <input type="text" inputMode="numeric"
+                  value={modal.materialCostNgn}
+                  onChange={e => setModal({ ...modal, materialCostNgn: e.target.value.replace(/\D/g, '') })}
+                  placeholder="0"
+                  className="input" />
+                <p className="text-[var(--text-dim)] text-[10px] mt-1 leading-relaxed">
+                  Part of the price that&rsquo;s a product the salon keeps fully (e.g. piercing
+                  earrings). Staff commission is taken from the rest only. Leave at 0 for normal services.
+                </p>
+                {(() => {
+                  const price = parseInt(modal.priceNgn, 10) || 0
+                  const mat   = parseInt(modal.materialCostNgn, 10) || 0
+                  if (mat <= 0 || price <= 0) return null
+                  const commissionable = Math.max(0, price - mat)
+                  return (
+                    <p className="text-[var(--text-muted)] text-[10px] mt-1.5">
+                      Staff commission base: ₦{commissionable.toLocaleString('en-NG')} (30% = ₦{Math.round(commissionable * 0.3).toLocaleString('en-NG')})
+                    </p>
+                  )
+                })()}
               </div>
               {error && <p className="text-red-400 text-xs">{error}</p>}
               <button type="submit" disabled={saving}

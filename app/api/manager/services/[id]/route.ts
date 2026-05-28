@@ -12,6 +12,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (typeof body.priceNgn === 'number' && Number.isFinite(body.priceNgn) && body.priceNgn >= 0) {
     update.price_ngn = Math.round(body.priceNgn)
   }
+  if (typeof body.materialCostNgn === 'number' && Number.isFinite(body.materialCostNgn) && body.materialCostNgn >= 0) {
+    update.material_cost_ngn = Math.round(body.materialCostNgn)
+  }
   if (typeof body.sortOrder === 'number' && Number.isFinite(body.sortOrder)) {
     update.sort_order = body.sortOrder
   }

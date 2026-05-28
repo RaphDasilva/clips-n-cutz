@@ -60,6 +60,7 @@ export interface Service {
   id: string
   name: string
   price_ngn: number
+  material_cost_ngn: number
   category: string
   sort_order: number
   is_active: boolean
