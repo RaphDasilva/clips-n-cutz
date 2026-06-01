@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isLocalRequest, isDemoStaffName } from '@/lib/env'
 
 function lagosDateStr(offsetDays = 0): string {
   const d = new Date()
@@ -19,7 +20,7 @@ function lagosMonthStart(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' }).slice(0, 7) + '-01'
 }
 
-interface VisitRow { total_ngn: number; tip_ngn: number; payment_method: string }
+interface VisitRow { total_ngn: number; tip_ngn: number; payment_method: string; users?: { name: string } | null }
 interface DatedAmount { date: string; amount: number }
 
 function totals(rows: VisitRow[]) {
@@ -43,41 +44,48 @@ function sumInRange(rows: DatedAmount[], fromDate: string, toDate: string): numb
 
 export async function GET() {
   const supabase = createClient()
+  const showDemo = await isLocalRequest()
 
   const today      = lagosDateStr()
   const yesterday  = lagosDateStr(-1)
   const weekStart  = lagosWeekStart()
   const monthStart = lagosMonthStart()
 
-  const [todayRes, yesterdayRes, weekRes, monthRes, commissionRes, expensesRes, attendanceRes, reconsRes] = await Promise.all([
-    supabase.from('visits').select('total_ngn, tip_ngn, payment_method').eq('visit_date', today),
-    supabase.from('visits').select('total_ngn, tip_ngn, payment_method').eq('visit_date', yesterday),
-    supabase.from('visits').select('total_ngn, tip_ngn, payment_method').gte('visit_date', weekStart).lte('visit_date', today),
-    supabase.from('visits').select('total_ngn, tip_ngn, payment_method').gte('visit_date', monthStart).lte('visit_date', today),
+  const visitCols = 'total_ngn, tip_ngn, payment_method, users!staff_id(name)'
 
-    // Commission joined to visits so we can filter by visit_date (the
-    // canonical day a service was rendered) instead of created_at.
-    supabase.from('visit_services').select('commission_ngn, visits!inner(visit_date)')
+  const [todayRes, yesterdayRes, weekRes, monthRes, commissionRes, expensesRes, attendanceRes, reconsRes] = await Promise.all([
+    supabase.from('visits').select(visitCols).eq('visit_date', today),
+    supabase.from('visits').select(visitCols).eq('visit_date', yesterday),
+    supabase.from('visits').select(visitCols).gte('visit_date', weekStart).lte('visit_date', today),
+    supabase.from('visits').select(visitCols).gte('visit_date', monthStart).lte('visit_date', today),
+
+    // Commission + attendance joined to users so we can hide demo staff
+    // (e.g. TEST*) from production aggregates.
+    supabase.from('visit_services').select('commission_ngn, visits!inner(visit_date), users!staff_id(name)')
       .gte('visits.visit_date', monthStart).lte('visits.visit_date', today),
 
     supabase.from('expenses').select('date, amount_ngn').gte('date', monthStart).lte('date', today),
-    supabase.from('attendance').select('date, penalty_ngn').gte('date', monthStart).lte('date', today),
+    supabase.from('attendance').select('date, penalty_ngn, users!staff_id(name)').gte('date', monthStart).lte('date', today),
     supabase.from('cash_reconciliations').select('date, variance_ngn').gte('date', monthStart).lte('date', today),
   ])
 
-  const todayData     = (todayRes.data     ?? []) as VisitRow[]
-  const yesterdayData = (yesterdayRes.data ?? []) as VisitRow[]
-  const weekData      = (weekRes.data      ?? []) as VisitRow[]
-  const monthData     = (monthRes.data     ?? []) as VisitRow[]
+  const keepVisit = (v: VisitRow) => showDemo || !isDemoStaffName(v.users?.name)
+  const todayData     = ((todayRes.data     ?? []) as unknown as VisitRow[]).filter(keepVisit)
+  const yesterdayData = ((yesterdayRes.data ?? []) as unknown as VisitRow[]).filter(keepVisit)
+  const weekData      = ((weekRes.data      ?? []) as unknown as VisitRow[]).filter(keepVisit)
+  const monthData     = ((monthRes.data     ?? []) as unknown as VisitRow[]).filter(keepVisit)
 
-  const rawCommissionRows = (commissionRes.data ?? []) as unknown as Array<{ commission_ngn: number; visits: { visit_date: string } | null }>
-  const commissionRows = rawCommissionRows.map(r => ({
-    date:   r.visits?.visit_date ?? '',
-    amount: r.commission_ngn ?? 0,
-  })).filter(r => r.date)
-  const expenseRows   = (expensesRes.data   ?? []).map((r: { date: string; amount_ngn: number })   => ({ date: r.date, amount: r.amount_ngn   ?? 0 }))
-  const penaltyRows   = (attendanceRes.data ?? []).map((r: { date: string; penalty_ngn: number }) => ({ date: r.date, amount: r.penalty_ngn  ?? 0 }))
-  const varianceRows  = (reconsRes.data     ?? []).map((r: { date: string; variance_ngn: number }) => ({ date: r.date, amount: r.variance_ngn ?? 0 }))
+  const rawCommissionRows = (commissionRes.data ?? []) as unknown as Array<{ commission_ngn: number; visits: { visit_date: string } | null; users: { name: string } | null }>
+  const commissionRows = rawCommissionRows
+    .filter(r => showDemo || !isDemoStaffName(r.users?.name))
+    .map(r => ({ date: r.visits?.visit_date ?? '', amount: r.commission_ngn ?? 0 }))
+    .filter(r => r.date)
+  const expenseRows   = (expensesRes.data ?? []).map((r: { date: string; amount_ngn: number }) => ({ date: r.date, amount: r.amount_ngn ?? 0 }))
+  const rawPenaltyRows = (attendanceRes.data ?? []) as unknown as Array<{ date: string; penalty_ngn: number; users: { name: string } | null }>
+  const penaltyRows   = rawPenaltyRows
+    .filter(r => showDemo || !isDemoStaffName(r.users?.name))
+    .map(r => ({ date: r.date, amount: r.penalty_ngn ?? 0 }))
+  const varianceRows  = (reconsRes.data ?? []).map((r: { date: string; variance_ngn: number }) => ({ date: r.date, amount: r.variance_ngn ?? 0 }))
 
   function netProfitFor(periodRevenue: number, fromDate: string, toDate: string): number {
     const commission = sumInRange(commissionRows, fromDate, toDate)

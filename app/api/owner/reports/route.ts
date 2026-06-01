@@ -63,9 +63,9 @@ export async function GET(req: NextRequest) {
 
     supabase
       .from('attendance')
-      .select('penalty_ngn')
+      .select('penalty_ngn, users!staff_id(name)')
       .gte('date', from)
-      .lte('date', to) as unknown as Promise<{ data: { penalty_ngn: number }[] | null; error: unknown }>,
+      .lte('date', to) as unknown as Promise<{ data: { penalty_ngn: number; users: { name: string } | null }[] | null; error: unknown }>,
 
     supabase
       .from('cash_reconciliations')
@@ -89,9 +89,13 @@ export async function GET(req: NextRequest) {
   const totalProductSales = vsRows.reduce((s, r) => s + (r.material_cost_ngn ?? 0), 0)
 
   // Other money flows that hit owner's pocket in the period.
-  const totalExpenses    = (expensesRes.data   ?? []).reduce((s, r) => s + (r.amount_ngn   ?? 0), 0)
-  const totalPenalty     = (attendanceRes.data ?? []).reduce((s, r) => s + (r.penalty_ngn ?? 0), 0)
-  const totalCashVariance= (reconsRes.data     ?? []).reduce((s, r) => s + (r.variance_ngn ?? 0), 0)
+  // Penalty rows are joined to users so demo staff (TEST*) can be
+  // filtered out alongside the visits/services filter above.
+  const totalExpenses    = (expensesRes.data ?? []).reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
+  const penaltyRowsAll   = attendanceRes.data ?? []
+  const penaltyRows      = showDemo ? penaltyRowsAll : penaltyRowsAll.filter(r => !isDemoStaffName(r.users?.name))
+  const totalPenalty     = penaltyRows.reduce((s, r) => s + (r.penalty_ngn ?? 0), 0)
+  const totalCashVariance= (reconsRes.data ?? []).reduce((s, r) => s + (r.variance_ngn ?? 0), 0)
 
   // Net Profit = what stays with the owner after every real cost.
   //   + service revenue (visits.total_ngn already includes product portion)
