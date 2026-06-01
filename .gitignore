@@ -41,6 +41,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code local settings — may contain ad-hoc tokens in
+# allowed-command snippets, never commit
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
