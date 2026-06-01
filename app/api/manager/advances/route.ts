@@ -17,10 +17,10 @@ interface AdvanceRow {
   users:              { name: string } | null
 }
 
-// GET /api/owner/advances
-//   ?staffId=<uuid>      filter to one staff member
-//   ?status=outstanding  filter by lifecycle status
-// Returns the raw list plus a per-staff outstanding rollup.
+// Manager-facing advances ledger. Operational concern — manager
+// gives the money from the till and tracks it; owner sees the list
+// read-only via /api/owner/advances.
+
 export async function GET(req: NextRequest) {
   const token   = req.cookies.get(SESSION_COOKIE.name)?.value
   const session = token ? await verifySessionToken(token) : null
@@ -44,7 +44,6 @@ export async function GET(req: NextRequest) {
 
   const rows = (data ?? []).filter(r => showDemo || !(r.users?.name ?? '').toUpperCase().startsWith(DEMO_STAFF_PREFIX))
 
-  // Outstanding per staff.
   const outstandingByStaff = new Map<string, { staffId: string; staffName: string; outstanding: number }>()
   for (const r of rows) {
     if (r.status !== 'outstanding') continue
@@ -61,5 +60,33 @@ export async function GET(req: NextRequest) {
   })
 }
 
-// Owner read-only — advance lifecycle (create, forgive) belongs to
-// the manager via /api/manager/advances.
+// POST — manager grants a new advance to a staff member.
+export async function POST(req: NextRequest) {
+  const token   = req.cookies.get(SESSION_COOKIE.name)?.value
+  const session = token ? await verifySessionToken(token) : null
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const body      = await req.json()
+  const staffId   = typeof body.staffId   === 'string' ? body.staffId.trim() : ''
+  const amountNgn = Number(body.amountNgn)
+  const reason    = typeof body.reason === 'string' ? body.reason.trim() || null : null
+
+  if (!staffId || !Number.isFinite(amountNgn) || amountNgn <= 0) {
+    return NextResponse.json({ error: 'Staff and a positive amount are required.' }, { status: 400 })
+  }
+
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('staff_advances')
+    .insert({
+      staff_id:   staffId,
+      amount_ngn: Math.round(amountNgn),
+      reason,
+      given_by:   session.id,
+    })
+    .select('id, staff_id, amount_ngn, reason, given_at, status')
+    .single() as { data: { id: string; staff_id: string; amount_ngn: number; reason: string | null; given_at: string; status: string } | null; error: { message: string } | null }
+
+  if (error || !data) return NextResponse.json({ error: 'Failed to record advance.' }, { status: 500 })
+  return NextResponse.json({ advance: data }, { status: 201 })
+}

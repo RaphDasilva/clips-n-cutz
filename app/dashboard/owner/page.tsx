@@ -92,15 +92,18 @@ export default function OwnerHome() {
   const [unackDeletions, setUnackDeletions] = useState<DeletionEntry[]>([])
   const [acking, setAcking]             = useState<string | null>(null)
   const [lapsedCount, setLapsedCount]   = useState(0)
+  const [advanceTotal, setAdvanceTotal] = useState(0)
+  const [advanceStaff, setAdvanceStaff] = useState(0)
 
   const load = useCallback(async () => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setName(s.name.split(' ')[0])
-    const [summaryRes, delRes, lapsedRes] = await Promise.all([
+    const [summaryRes, delRes, lapsedRes, advRes] = await Promise.all([
       fetch('/api/owner/summary'),
       fetch('/api/owner/deletions?unack=true&limit=10'),
       fetch('/api/owner/lapsed-clients'),
+      fetch('/api/owner/advances?status=outstanding'),
     ])
     if (summaryRes.ok) setData(await summaryRes.json())
     if (delRes.ok) {
@@ -110,6 +113,12 @@ export default function OwnerHome() {
     if (lapsedRes.ok) {
       const j = await lapsedRes.json() as { lapsed: { id: string }[] }
       setLapsedCount(j.lapsed?.length ?? 0)
+    }
+    if (advRes.ok) {
+      const j = await advRes.json() as { outstanding: { outstanding: number }[] }
+      const list = j.outstanding ?? []
+      setAdvanceTotal(list.reduce((s, r) => s + r.outstanding, 0))
+      setAdvanceStaff(list.length)
     }
     setLoading(false)
   }, [router])
@@ -149,6 +158,33 @@ export default function OwnerHome() {
         </h1>
         <p className="text-[var(--text-dim)] text-sm mt-1">Financial overview — read only</p>
       </div>
+
+      {/* Outstanding staff advances quick stat */}
+      {advanceTotal > 0 && (
+        <Link href="/dashboard/owner/advances"
+          className="block mb-6 bg-[var(--card)] border border-amber-500/30 rounded-2xl px-5 py-4 hover:bg-[var(--elevated)] transition-all group">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[var(--text)] font-semibold">
+                  ₦{advanceTotal.toLocaleString('en-NG')} owed by {advanceStaff} staff member{advanceStaff === 1 ? '' : 's'}
+                </p>
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                  Advances given by the manager. Will be deducted from this Sunday&rsquo;s payout. Tap to view.
+                </p>
+              </div>
+            </div>
+            <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </Link>
+      )}
 
       {/* Lapsed clients quick stat */}
       {lapsedCount > 0 && (

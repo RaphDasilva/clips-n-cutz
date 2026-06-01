@@ -16,6 +16,7 @@ interface Advance {
   users:              { name: string } | null
 }
 interface ListResp { advances: Advance[]; outstanding: OutstandingRow[] }
+interface Staff    { id: string; name: string; is_active: boolean }
 
 function fmtNaira(n: number) { return `₦${n.toLocaleString('en-NG')}` }
 function fmtDate(iso: string) {
@@ -28,24 +29,70 @@ const STATUS_PILL: Record<string, string> = {
   forgiven:    'bg-[var(--border)] text-[var(--text-muted)] border-[var(--border-strong)]',
 }
 
-// Owner is read-only on advances. The manager is the one with the
-// till, so they handle granting and forgiving — see
-// /dashboard/manager/advances. This page exists so the owner can
-// audit every kobo and reconcile against the payouts the system
-// auto-deducts.
-export default function OwnerAdvancesPage() {
+export default function ManagerAdvancesPage() {
   const mask = useClientMask()
   const [data, setData]       = useState<ListResp | null>(null)
+  const [staff, setStaff]     = useState<Staff[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Grant form
+  const [grantStaffId, setGrantStaffId] = useState('')
+  const [grantAmount, setGrantAmount]   = useState('')
+  const [grantReason, setGrantReason]   = useState('')
+  const [granting, setGranting]         = useState(false)
+  const [grantError, setGrantError]     = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
-    const res = await fetch('/api/owner/advances')
-    if (res.ok) setData(await res.json())
+    const [adRes, stRes] = await Promise.all([
+      fetch('/api/manager/advances'),
+      fetch('/api/manager/staff'),
+    ])
+    if (adRes.ok) setData(await adRes.json())
+    if (stRes.ok) {
+      const j = await stRes.json()
+      setStaff((j.staff ?? []).filter((s: Staff) => s.is_active))
+    }
     setLoading(false)
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  async function handleGrant(e: React.FormEvent) {
+    e.preventDefault()
+    setGrantError('')
+    const amt = parseInt(grantAmount, 10) || 0
+    if (!grantStaffId || amt <= 0) {
+      setGrantError('Pick a staff and enter an amount above ₦0.')
+      return
+    }
+    setGranting(true)
+    try {
+      const res = await fetch('/api/manager/advances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ staffId: grantStaffId, amountNgn: amt, reason: grantReason || null }),
+      })
+      const j = await res.json()
+      if (!res.ok) { setGrantError(j.error ?? 'Failed to record advance.'); return }
+      setGrantStaffId(''); setGrantAmount(''); setGrantReason('')
+      load()
+    } catch {
+      setGrantError('Connection error. Try again.')
+    } finally {
+      setGranting(false)
+    }
+  }
+
+  async function forgive(id: string) {
+    if (!confirm('Forgive this advance? It will no longer be deducted from any future payout.')) return
+    const res = await fetch(`/api/manager/advances/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'forgive' }),
+    })
+    if (res.ok) load()
+  }
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
@@ -53,8 +100,50 @@ export default function OwnerAdvancesPage() {
       <div className="mb-6">
         <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Staff Advances</h1>
         <p className="text-[var(--text-dim)] text-sm mt-0.5">
-          Read-only view. The manager records and forgives advances; the system deducts outstanding amounts from each weekly payout.
+          Money given to staff mid-week. Outstanding amounts are deducted from the next weekly payout automatically.
         </p>
+      </div>
+
+      {/* Grant form */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 mb-6">
+        <h2 className="text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider mb-4">Give an Advance</h2>
+        <form onSubmit={handleGrant} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+          <div className="sm:col-span-1">
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Staff</label>
+            <select value={grantStaffId} onChange={e => setGrantStaffId(e.target.value)}
+              required className="input">
+              <option value="">Pick staff…</option>
+              {staff.map(s => <option key={s.id} value={s.id}>{mask.name(s.name)}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Amount (₦)</label>
+            <input type="text" inputMode="numeric"
+              value={grantAmount}
+              onChange={e => setGrantAmount(e.target.value.replace(/\D/g, ''))}
+              placeholder="5000" required className="input tabular-nums" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+              Reason <span className="text-[var(--text-faint)] font-normal">— optional</span>
+            </label>
+            <input type="text"
+              value={grantReason}
+              onChange={e => setGrantReason(e.target.value)}
+              placeholder="e.g. Emergency, school fees"
+              maxLength={120}
+              className="input" />
+          </div>
+          <div className="sm:col-span-4 flex items-center justify-between gap-3">
+            {grantError ? (
+              <p className="text-red-400 text-xs">{grantError}</p>
+            ) : <span />}
+            <button type="submit" disabled={granting}
+              className="bg-[var(--text)] text-[var(--bg)] font-semibold px-5 py-2.5 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
+              {granting ? 'Saving…' : 'Record Advance'}
+            </button>
+          </div>
+        </form>
       </div>
 
       {/* Outstanding rollup */}
@@ -107,6 +196,12 @@ export default function OwnerAdvancesPage() {
                 <p className="text-[var(--text)] text-sm font-semibold tabular-nums flex-shrink-0">
                   {fmtNaira(a.amount_ngn)}
                 </p>
+                {a.status === 'outstanding' && (
+                  <button onClick={() => forgive(a.id)}
+                    className="text-[var(--text-muted)] hover:text-red-400 text-xs flex-shrink-0">
+                    Forgive
+                  </button>
+                )}
               </div>
             ))}
           </div>
