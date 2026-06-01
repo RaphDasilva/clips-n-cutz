@@ -18,11 +18,53 @@ export default function StaffSettings() {
   const [success, setSuccess]       = useState(false)
   const [loading, setLoading]       = useState(false)
 
+  // Bank details form
+  const [bankName, setBankName]           = useState('')
+  const [accountNumber, setAccountNumber] = useState('')
+  const [accountName, setAccountName]     = useState('')
+  const [bankError, setBankError]         = useState('')
+  const [bankSuccess, setBankSuccess]     = useState(false)
+  const [bankSaving, setBankSaving]       = useState(false)
+
   useEffect(() => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setUser({ id: s.id, name: s.name, phone: s.phone })
+    fetch('/api/staff/bank')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d) return
+        setBankName(d.bankName ?? '')
+        setAccountNumber(d.accountNumber ?? '')
+        setAccountName(d.accountName ?? '')
+      })
+      .catch(() => {})
   }, [router])
+
+  async function handleSaveBank(e: React.FormEvent) {
+    e.preventDefault()
+    setBankError(''); setBankSuccess(false)
+    if (accountNumber && accountNumber.length !== 10) {
+      setBankError('Account number must be exactly 10 digits.')
+      return
+    }
+    setBankSaving(true)
+    try {
+      const res = await fetch('/api/staff/bank', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bankName, accountNumber, accountName }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setBankError(data.error ?? 'Failed to save.'); return }
+      setBankSuccess(true)
+      setTimeout(() => setBankSuccess(false), 3000)
+    } catch {
+      setBankError('Connection error. Try again.')
+    } finally {
+      setBankSaving(false)
+    }
+  }
 
   async function handleChangePIN(e: React.FormEvent) {
     e.preventDefault()
@@ -143,6 +185,63 @@ export default function StaffSettings() {
             </button>
           </form>
         )}
+      </div>
+
+      {/* Bank Account — owner sends weekly payouts here */}
+      <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 mb-6">
+        <h2 className="text-[var(--text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">Bank Account</h2>
+        <p className="text-[var(--text-dim)] text-xs mb-5">Where your weekly payout is sent. The salon owner sees this on the payouts screen.</p>
+
+        <form onSubmit={handleSaveBank} className="space-y-4">
+          <div>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Bank Name</label>
+            <input type="text"
+              value={bankName}
+              onChange={e => setBankName(e.target.value)}
+              placeholder="e.g. GTBank, UBA, Access"
+              maxLength={60}
+              className="input" />
+          </div>
+          <div>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Account Number</label>
+            <input type="text"
+              inputMode="numeric"
+              value={accountNumber}
+              onChange={e => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+              placeholder="10-digit number"
+              maxLength={10}
+              className="input tabular-nums" />
+            <p className="text-[var(--text-faint)] text-[10px] mt-1">Nigerian bank account numbers are 10 digits.</p>
+          </div>
+          <div>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+              Account Name <span className="text-[var(--text-faint)] font-normal">— optional</span>
+            </label>
+            <input type="text"
+              value={accountName}
+              onChange={e => setAccountName(e.target.value)}
+              placeholder="As it appears at the bank"
+              maxLength={80}
+              className="input" />
+            <p className="text-[var(--text-faint)] text-[10px] mt-1">Leave blank if it matches your name above.</p>
+          </div>
+
+          {bankError && (
+            <div className="bg-red-500/5 border border-red-500/20 rounded-xl px-4 py-3">
+              <p className="text-red-400 text-sm">{bankError}</p>
+            </div>
+          )}
+          {bankSuccess && (
+            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+              <p className="text-emerald-400 text-sm">Bank details saved.</p>
+            </div>
+          )}
+
+          <button type="submit" disabled={bankSaving}
+            className="bg-[var(--text)] text-[var(--bg)] font-semibold px-6 py-2.5 rounded-xl text-sm disabled:opacity-40 hover:bg-[var(--text-muted)] active:scale-[0.98] transition-all">
+            {bankSaving ? 'Saving…' : 'Save Bank Details'}
+          </button>
+        </form>
       </div>
 
       {/* Appearance */}

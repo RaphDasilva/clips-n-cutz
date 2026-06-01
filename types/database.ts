@@ -44,6 +44,9 @@ export interface User {
   must_change_pin: boolean
   sunday_grace: boolean
   off_days: number[]
+  bank_name: string | null
+  bank_account_number: string | null
+  bank_account_name: string | null
   created_at: string
 }
 

@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useClientMask } from '@/lib/demo-mode'
 
+interface BankInfo {
+  bankName:      string | null
+  accountNumber: string | null
+  accountName:   string | null
+}
+
 interface PayoutRow {
   staffId:         string
   staffName:       string
+  bank:            BankInfo
   commission_ngn:  number
   tips_ngn:        number
   penalty_ngn:     number
@@ -195,8 +202,15 @@ export default function PayoutsPage() {
                 <div className="w-9 h-9 rounded-full bg-[var(--elevated)] border border-[var(--border-strong)] flex items-center justify-center">
                   <span className="text-[var(--text)] text-sm font-semibold">{mask.name(row.staffName).charAt(0).toUpperCase()}</span>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-[var(--text)] font-medium leading-tight">{mask.name(row.staffName)}</p>
+                  {row.bank.accountNumber ? (
+                    <p className="text-[var(--text-dim)] text-[10px] mt-0.5 truncate">
+                      {row.bank.bankName ?? 'Bank'} · <span className="tabular-nums">{row.bank.accountNumber}</span>
+                    </p>
+                  ) : (
+                    <p className="text-amber-500/80 text-[10px] mt-0.5">No bank details on file</p>
+                  )}
                   {row.status === 'paid' && (
                     <p className="text-emerald-500 text-[10px] font-medium mt-0.5">
                       Paid {row.paid_at ? new Date(row.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : ''}
@@ -254,6 +268,19 @@ export default function PayoutsPage() {
               </button>
             </div>
             <div className="p-5 space-y-4">
+              {/* Bank details for the transfer */}
+              {payTarget.bank.accountNumber ? (
+                <div className="bg-[var(--accent)]/5 border border-[var(--accent)]/30 rounded-lg p-3 space-y-1.5">
+                  <p className="text-[var(--accent)] text-[10px] font-semibold uppercase tracking-wider">Send to</p>
+                  <div className="flex justify-between gap-3"><span className="text-[var(--text-muted)] text-xs">Bank</span><span className="text-[var(--text)] text-sm font-medium">{payTarget.bank.bankName ?? '—'}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-[var(--text-muted)] text-xs">Account #</span><span className="text-[var(--text)] text-sm font-semibold tabular-nums">{payTarget.bank.accountNumber}</span></div>
+                  <div className="flex justify-between gap-3"><span className="text-[var(--text-muted)] text-xs">Name</span><span className="text-[var(--text)] text-sm">{payTarget.bank.accountName ?? mask.name(payTarget.staffName)}</span></div>
+                </div>
+              ) : (
+                <div className="bg-amber-500/5 border border-amber-500/30 rounded-lg px-3 py-2">
+                  <p className="text-amber-500 text-xs">No bank details on file for this staff member yet.</p>
+                </div>
+              )}
               <div className="bg-[var(--elevated)] border border-[var(--border)] rounded-lg p-3 space-y-1.5 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Commission</span><span className="text-[var(--text)] tabular-nums">{fmtNaira(payTarget.commission_ngn)}</span></div>
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Tips</span><span className="text-emerald-500 tabular-nums">{fmtNaira(payTarget.tips_ngn)}</span></div>

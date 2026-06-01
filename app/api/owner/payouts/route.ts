@@ -7,7 +7,7 @@ import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
 interface VisitServiceRow    { staff_id: string; commission_ngn: number; visits: { visit_date: string } | null }
 interface VisitServiceTipRow { staff_id: string; tip_ngn: number; visits: { visit_date: string } | null }
 interface AttendanceRow   { staff_id: string; penalty_ngn: number; date: string }
-interface StaffRow        { id: string; name: string; is_active: boolean }
+interface StaffRow        { id: string; name: string; is_active: boolean; bank_name: string | null; bank_account_number: string | null; bank_account_name: string | null }
 interface PayoutRow {
   id: string
   staff_id: string
@@ -53,7 +53,7 @@ export async function GET(req: NextRequest) {
 
   let staffQuery = supabase
     .from('users')
-    .select('id, name, is_active')
+    .select('id, name, is_active, bank_name, bank_account_number, bank_account_name')
     .eq('role', 'staff')
     .eq('is_active', true)
   if (!showDemo) staffQuery = staffQuery.not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`)
@@ -106,11 +106,17 @@ export async function GET(req: NextRequest) {
   }
 
   const rows = staff.map(s => {
+    const bank = {
+      bankName:      s.bank_name,
+      accountNumber: s.bank_account_number,
+      accountName:   s.bank_account_name,
+    }
     const paid = paidMap.get(s.id)
     if (paid) {
       return {
         staffId:        s.id,
         staffName:      s.name,
+        bank,
         commission_ngn: paid.commission_ngn,
         tips_ngn:       paid.tips_ngn,
         penalty_ngn:    paid.penalty_ngn,
@@ -129,6 +135,7 @@ export async function GET(req: NextRequest) {
     return {
       staffId:        s.id,
       staffName:      s.name,
+      bank,
       commission_ngn: commission,
       tips_ngn:       tips,
       penalty_ngn:    penalty,
