@@ -9,6 +9,10 @@ interface Summary {
   totalTips: number
   totalPayout: number
   totalProductSales: number
+  totalExpenses: number
+  totalPenalty: number
+  totalCashVariance: number
+  netProfit: number
   totalVisits: number
   totalServices: number
   ownerProfit: number
@@ -139,6 +143,28 @@ export default function ReportsPage() {
       {/* Results */}
       {!loading && ran && data && (
         <>
+          {/* Net Profit — the single answer card */}
+          <section className="mb-6">
+            <div className="bg-[var(--card)] border border-[var(--accent)]/30 rounded-2xl p-5 lg:p-6">
+              <p className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider">Net Profit · {fmtDate(from)} – {fmtDate(to)}</p>
+              <p className={`text-3xl lg:text-4xl font-bold tracking-tight tabular-nums mt-1 ${data.summary.netProfit >= 0 ? 'text-[var(--accent)]' : 'text-red-400'}`}>
+                {fmtNaira(data.summary.netProfit)}
+              </p>
+              <p className="text-[var(--text-dim)] text-xs mt-3 leading-relaxed">
+                {fmtNaira(data.summary.totalRevenue)} revenue
+                <span className="text-red-400/80"> − {fmtNaira(data.summary.totalCommission)} commission</span>
+                <span className="text-red-400/80"> − {fmtNaira(data.summary.totalExpenses)} expenses</span>
+                {data.summary.totalPenalty > 0 && <span className="text-emerald-400/80"> + {fmtNaira(data.summary.totalPenalty)} penalties</span>}
+                {data.summary.totalCashVariance !== 0 && (
+                  <span className={data.summary.totalCashVariance > 0 ? 'text-emerald-400/80' : 'text-red-400/80'}>
+                    {' '}{data.summary.totalCashVariance > 0 ? '+' : '−'} {fmtNaira(Math.abs(data.summary.totalCashVariance))} cash {data.summary.totalCashVariance > 0 ? 'over' : 'short'}
+                  </span>
+                )}
+              </p>
+              <p className="text-[var(--text-faint)] text-[10px] mt-1">Tips pass through to staff and are excluded.</p>
+            </div>
+          </section>
+
           {/* Summary cards */}
           <section className="mb-8">
             <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">
@@ -152,6 +178,7 @@ export default function ReportsPage() {
               {data.summary.totalProductSales > 0 && (
                 <SummaryCard label="Product Sales (yours)" value={fmtNaira(data.summary.totalProductSales)} accent="gold" />
               )}
+              <SummaryCard label="Expenses"         value={fmtNaira(data.summary.totalExpenses)}   accent="amber" />
               <SummaryCard label="Total Staff Payout" value={fmtNaira(data.summary.totalPayout)}   accent="gold" />
               <SummaryCard label={`Visits · ${data.summary.totalServices} services`} value={String(data.summary.totalVisits)} />
             </div>

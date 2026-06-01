@@ -20,6 +20,7 @@ function lagosMonthStart(): string {
 }
 
 interface VisitRow { total_ngn: number; tip_ngn: number; payment_method: string }
+interface DatedAmount { date: string; amount: number }
 
 function totals(rows: VisitRow[]) {
   const byPayment = { cash: 0, transfer: 0, pos: 0 }
@@ -36,6 +37,10 @@ function totals(rows: VisitRow[]) {
   }
 }
 
+function sumInRange(rows: DatedAmount[], fromDate: string, toDate: string): number {
+  return rows.reduce((s, r) => (r.date >= fromDate && r.date <= toDate ? s + r.amount : s), 0)
+}
+
 export async function GET() {
   const supabase = createClient()
 
@@ -44,11 +49,20 @@ export async function GET() {
   const weekStart  = lagosWeekStart()
   const monthStart = lagosMonthStart()
 
-  const [todayRes, yesterdayRes, weekRes, monthRes] = await Promise.all([
+  const [todayRes, yesterdayRes, weekRes, monthRes, commissionRes, expensesRes, attendanceRes, reconsRes] = await Promise.all([
     supabase.from('visits').select('total_ngn, tip_ngn, payment_method').eq('visit_date', today),
     supabase.from('visits').select('total_ngn, tip_ngn, payment_method').eq('visit_date', yesterday),
     supabase.from('visits').select('total_ngn, tip_ngn, payment_method').gte('visit_date', weekStart).lte('visit_date', today),
     supabase.from('visits').select('total_ngn, tip_ngn, payment_method').gte('visit_date', monthStart).lte('visit_date', today),
+
+    // Commission joined to visits so we can filter by visit_date (the
+    // canonical day a service was rendered) instead of created_at.
+    supabase.from('visit_services').select('commission_ngn, visits!inner(visit_date)')
+      .gte('visits.visit_date', monthStart).lte('visits.visit_date', today),
+
+    supabase.from('expenses').select('date, amount_ngn').gte('date', monthStart).lte('date', today),
+    supabase.from('attendance').select('date, penalty_ngn').gte('date', monthStart).lte('date', today),
+    supabase.from('cash_reconciliations').select('date, variance_ngn').gte('date', monthStart).lte('date', today),
   ])
 
   const todayData     = (todayRes.data     ?? []) as VisitRow[]
@@ -56,10 +70,34 @@ export async function GET() {
   const weekData      = (weekRes.data      ?? []) as VisitRow[]
   const monthData     = (monthRes.data     ?? []) as VisitRow[]
 
+  const rawCommissionRows = (commissionRes.data ?? []) as unknown as Array<{ commission_ngn: number; visits: { visit_date: string } | null }>
+  const commissionRows = rawCommissionRows.map(r => ({
+    date:   r.visits?.visit_date ?? '',
+    amount: r.commission_ngn ?? 0,
+  })).filter(r => r.date)
+  const expenseRows   = (expensesRes.data   ?? []).map((r: { date: string; amount_ngn: number })   => ({ date: r.date, amount: r.amount_ngn   ?? 0 }))
+  const penaltyRows   = (attendanceRes.data ?? []).map((r: { date: string; penalty_ngn: number }) => ({ date: r.date, amount: r.penalty_ngn  ?? 0 }))
+  const varianceRows  = (reconsRes.data     ?? []).map((r: { date: string; variance_ngn: number }) => ({ date: r.date, amount: r.variance_ngn ?? 0 }))
+
+  function netProfitFor(periodRevenue: number, fromDate: string, toDate: string): number {
+    const commission = sumInRange(commissionRows, fromDate, toDate)
+    const expenses   = sumInRange(expenseRows,    fromDate, toDate)
+    const penalty    = sumInRange(penaltyRows,    fromDate, toDate)
+    const variance   = sumInRange(varianceRows,   fromDate, toDate)
+    return periodRevenue - commission - expenses + penalty + variance
+  }
+
+  const todayT = totals(todayData), weekT = totals(weekData), monthT = totals(monthData)
+
   return NextResponse.json({
-    today:     totals(todayData),
+    today:     todayT,
     yesterday: totals(yesterdayData),
-    week:      totals(weekData),
-    month:     totals(monthData),
+    week:      weekT,
+    month:     monthT,
+    netProfit: {
+      today: netProfitFor(todayT.revenue, today,      today),
+      week:  netProfitFor(weekT.revenue,  weekStart,  today),
+      month: netProfitFor(monthT.revenue, monthStart, today),
+    },
   })
 }

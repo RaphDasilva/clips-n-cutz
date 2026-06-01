@@ -88,9 +88,12 @@ interface PayoutPending {
   commission_ngn: number
   tips_ngn:       number
   penalty_ngn:    number
+  advance_ngn:    number
   total_ngn:      number
   alreadyPaid:    { paid_at: string; paid_amount_ngn: number | null } | null
 }
+
+interface AdvanceLine { id: string; amount_ngn: number; reason: string | null; given_at: string }
 
 interface PayoutHistoryRow {
   week_start: string
@@ -104,6 +107,7 @@ interface NextPayoutResp {
   weekStart: string
   weekEnd:   string
   pending:   PayoutPending
+  advances:  AdvanceLine[]
   history:   PayoutHistoryRow[]
 }
 
@@ -408,7 +412,7 @@ export default function StaffHome() {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3 text-xs pt-3 border-t border-[var(--border)]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs pt-3 border-t border-[var(--border)]">
               <div>
                 <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Commission</p>
                 <p className="text-[var(--text)] font-semibold tabular-nums">{fmtNaira(payout.pending.commission_ngn)}</p>
@@ -425,7 +429,29 @@ export default function StaffHome() {
                   {payout.pending.penalty_ngn > 0 ? `-${fmtNaira(payout.pending.penalty_ngn)}` : '—'}
                 </p>
               </div>
+              <div>
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Advance</p>
+                <p className={`font-semibold tabular-nums ${payout.pending.advance_ngn > 0 ? 'text-amber-400' : 'text-[var(--text-faint)]'}`}>
+                  {payout.pending.advance_ngn > 0 ? `-${fmtNaira(payout.pending.advance_ngn)}` : '—'}
+                </p>
+              </div>
             </div>
+            {payout.advances && payout.advances.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider mb-1.5">Outstanding Advances</p>
+                <div className="space-y-1">
+                  {payout.advances.map(a => (
+                    <div key={a.id} className="flex items-center justify-between text-xs">
+                      <span className="text-[var(--text-muted)] truncate">
+                        {new Date(a.given_at + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                        {a.reason ? ` · ${a.reason}` : ''}
+                      </span>
+                      <span className="text-amber-400 font-medium tabular-nums">{fmtNaira(a.amount_ngn)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {payout.history.length > 0 && (

@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     visitsQuery = visitsQuery.eq('payment_method', payment)
   }
 
-  const [visitsRes, servicesRes] = await Promise.all([
+  const [visitsRes, servicesRes, expensesRes, attendanceRes, reconsRes] = await Promise.all([
     visitsQuery as unknown as Promise<{ data: VisitRow[] | null; error: unknown }>,
 
     supabase
@@ -54,6 +54,24 @@ export async function GET(req: NextRequest) {
       .select('price_ngn, commission_ngn, tip_ngn, material_cost_ngn, services(name), users!staff_id(name)')
       .gte('created_at', `${from}T00:00:00`)
       .lte('created_at', `${to}T23:59:59`) as unknown as Promise<{ data: ServiceRow[] | null; error: unknown }>,
+
+    supabase
+      .from('expenses')
+      .select('amount_ngn')
+      .gte('date', from)
+      .lte('date', to) as unknown as Promise<{ data: { amount_ngn: number }[] | null; error: unknown }>,
+
+    supabase
+      .from('attendance')
+      .select('penalty_ngn')
+      .gte('date', from)
+      .lte('date', to) as unknown as Promise<{ data: { penalty_ngn: number }[] | null; error: unknown }>,
+
+    supabase
+      .from('cash_reconciliations')
+      .select('variance_ngn')
+      .gte('date', from)
+      .lte('date', to) as unknown as Promise<{ data: { variance_ngn: number }[] | null; error: unknown }>,
   ])
 
   const allVisits = visitsRes.data   ?? []
@@ -69,6 +87,21 @@ export async function GET(req: NextRequest) {
   // Product sales = owner-only product portions (e.g. piercing
   // earrings). Fully the owner's — no commission was taken on these.
   const totalProductSales = vsRows.reduce((s, r) => s + (r.material_cost_ngn ?? 0), 0)
+
+  // Other money flows that hit owner's pocket in the period.
+  const totalExpenses    = (expensesRes.data   ?? []).reduce((s, r) => s + (r.amount_ngn   ?? 0), 0)
+  const totalPenalty     = (attendanceRes.data ?? []).reduce((s, r) => s + (r.penalty_ngn ?? 0), 0)
+  const totalCashVariance= (reconsRes.data     ?? []).reduce((s, r) => s + (r.variance_ngn ?? 0), 0)
+
+  // Net Profit = what stays with the owner after every real cost.
+  //   + service revenue (visits.total_ngn already includes product portion)
+  //   − commission paid out to staff
+  //   − operating expenses (rent, supplies, etc.)
+  //   + penalties retained (came out of staff payouts)
+  //   ± cash drawer variance (negative when cash is short)
+  // Tips pass straight through (collected then paid out), so they
+  // cancel and are intentionally not part of the formula.
+  const netProfit = totalRevenue - totalCommission - totalExpenses + totalPenalty + totalCashVariance
 
   // Payment method breakdown
   const byPayment = { cash: 0, transfer: 0, pos: 0 }
@@ -114,6 +147,10 @@ export async function GET(req: NextRequest) {
       totalTips,
       totalPayout,
       totalProductSales,
+      totalExpenses,
+      totalPenalty,
+      totalCashVariance,
+      netProfit,
       totalVisits:   visits.length,
       totalServices: vsRows.length,
       ownerProfit:   totalRevenue - totalCommission,

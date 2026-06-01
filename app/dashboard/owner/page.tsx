@@ -9,11 +9,13 @@ import { useClientMask } from '@/lib/demo-mode'
 
 interface PaymentBreakdown { cash: number; transfer: number; pos: number }
 interface PeriodStats { revenue: number; tips: number; visits: number; byPayment: PaymentBreakdown }
+interface NetProfit { today: number; week: number; month: number }
 interface Summary {
   today: PeriodStats
   yesterday: PeriodStats
   week: PeriodStats
   month: PeriodStats
+  netProfit?: NetProfit
 }
 
 function fmtNaira(n: number) {
@@ -231,6 +233,21 @@ export default function OwnerHome() {
         </section>
       )}
 
+      {/* Net Profit — the headline number across periods */}
+      {!loading && data?.netProfit && (
+        <section className="mb-8">
+          <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Net Profit</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <NetProfitCard label="Today"      value={data.netProfit.today} />
+            <NetProfitCard label="This Week"  value={data.netProfit.week}  emphasised />
+            <NetProfitCard label="This Month" value={data.netProfit.month} />
+          </div>
+          <p className="text-[var(--text-faint)] text-[11px] mt-2 leading-relaxed">
+            Revenue − commission − expenses + penalties retained ± cash variance. Tips pass through to staff.
+          </p>
+        </section>
+      )}
+
       {/* Today vs Yesterday */}
       <section className="mb-8">
         <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider mb-4">Today</h2>
@@ -339,6 +356,19 @@ export default function OwnerHome() {
           </svg>
         </Link>
       </div>
+    </div>
+  )
+}
+
+function NetProfitCard({ label, value, emphasised }: { label: string; value: number; emphasised?: boolean }) {
+  const negative = value < 0
+  const tone = negative ? 'text-red-400' : 'text-[var(--accent)]'
+  return (
+    <div className={`bg-[var(--card)] border rounded-xl p-5 h-full ${emphasised ? 'border-[var(--accent)]/40' : 'border-[var(--border)]'}`}>
+      <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider">{label}</p>
+      <p className={`text-3xl font-bold tracking-tight tabular-nums mt-3 ${tone}`}>
+        {negative ? '-' : ''}₦{Math.abs(value).toLocaleString('en-NG')}
+      </p>
     </div>
   )
 }
