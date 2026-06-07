@@ -88,7 +88,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     return NextResponse.json({ success: true, categories })
   }
 
-  // action: "toggle-sunday-grace" — flip the Sunday 1pm grace for a staff member
+  // action: "toggle-sunday-grace" — flip the Sunday 1:30pm grace for a staff member
   if (action === 'toggle-sunday-grace') {
     const { data: user } = await supabase
       .from('users')

@@ -7,7 +7,7 @@ import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
 // Mon-Sat: opens 9am, grace until 9:30am
 //   9:31am–11:59am = ₦1,000 | 12pm+ = ₦2,000 | absent = ₦5,000
 // Sunday: opens 12pm, NO grace
-//   after 12pm = ₦1,000 | sunday_grace staff: allowed until 1pm | absent = ₦5,000
+//   after 12pm = ₦1,000 | sunday_grace staff: allowed until 1:30pm | absent = ₦5,000
 function calcPenalty(checkedInAt: string | null, dateStr: string, sundayGrace: boolean): number {
   if (!checkedInAt) return 5000
 
@@ -16,7 +16,7 @@ function calcPenalty(checkedInAt: string | null, dateStr: string, sundayGrace: b
   const mins     = h * 60 + m
 
   if (isSunday) {
-    const deadline = sundayGrace ? 13 * 60 : 12 * 60
+    const deadline = sundayGrace ? 13 * 60 + 30 : 12 * 60
     return mins <= deadline ? 0 : 1000
   }
 
