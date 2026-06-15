@@ -33,7 +33,12 @@ interface TodayData {
   todayAttStatus: string | null
   todayCheckedInAt: string | null
   checkinStatus: 'pending' | 'confirmed' | 'dismissed' | null
+  bankMissing: boolean
 }
+
+// What's-new banner currently in rotation. Bump the key when a new
+// feature is announced — each staff dismisses the new one once.
+const ANNOUNCEMENT_KEY = 'cnc_seen_announcement_v1_book'
 
 // Mon-Sat: 6:30am – 1:00pm  |  Sunday: 10:00am – 2:00pm
 function getCheckinWindow(): { open: boolean; reason: string } {
@@ -120,6 +125,18 @@ export default function StaffHome() {
   const [loading, setLoading]       = useState(true)
   const [checkingIn, setCheckingIn] = useState(false)
   const [window_, setWindow_]       = useState(getCheckinWindow)
+  const [showBookAnnouncement, setShowBookAnnouncement] = useState(false)
+
+  useEffect(() => {
+    try {
+      setShowBookAnnouncement(localStorage.getItem(ANNOUNCEMENT_KEY) !== '1')
+    } catch { /* private mode, just hide */ }
+  }, [])
+
+  function dismissBookAnnouncement() {
+    try { localStorage.setItem(ANNOUNCEMENT_KEY, '1') } catch { /* ignore */ }
+    setShowBookAnnouncement(false)
+  }
 
   const load = useCallback(async () => {
     const session = getSession()
@@ -181,6 +198,53 @@ export default function StaffHome() {
           Good {greeting()}, {mask.name(firstName).split(' ')[0]}
         </h1>
       </div>
+
+      {/* Bank-missing reminder — auto-disappears when bank info is added */}
+      {!loading && data?.bankMissing && (
+        <Link href="/dashboard/staff/settings"
+          className="block mb-4 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3.5 hover:bg-amber-500/15 transition-colors">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-amber-400 text-sm font-semibold">Add your bank account</p>
+                <p className="text-amber-400/80 text-xs mt-0.5">So this Sunday&rsquo;s payout can reach you. Tap to open Settings.</p>
+              </div>
+            </div>
+            <svg className="w-4 h-4 text-amber-400/60 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </Link>
+      )}
+
+      {/* What's new — dismissible per staff */}
+      {!loading && showBookAnnouncement && (
+        <div className="mb-4 bg-[var(--accent)]/5 border border-[var(--accent)]/30 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3">
+          <Link href="/dashboard/staff/book" className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-9 h-9 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/30 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-[var(--accent)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-[var(--accent)] text-sm font-semibold">New: book clients yourself</p>
+              <p className="text-[var(--text-dim)] text-xs mt-0.5">Tap <span className="text-[var(--text)]">Book</span> in the sidebar to schedule an appointment — it&rsquo;s pinned to you.</p>
+            </div>
+          </Link>
+          <button onClick={dismissBookAnnouncement}
+            aria-label="Dismiss"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text)] hover:bg-[var(--elevated)] transition-colors flex-shrink-0">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Penalty notice */}
       {!loading && (data?.todayPenalty ?? 0) > 0 && (

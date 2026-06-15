@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const supabase = createClient()
   const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
 
-  const [servicesRes, apptsRes, attRes, checkinRes] = await Promise.all([
+  const [servicesRes, apptsRes, attRes, checkinRes, userRes] = await Promise.all([
     supabase
       .from('visit_services')
       .select('visit_id, commission_ngn, price_ngn, material_cost_ngn, tip_ngn, created_at, services(name), visits(visit_date, clients(name))')
@@ -59,6 +59,12 @@ export async function GET(req: NextRequest) {
       .eq('staff_id', staffId)
       .eq('date', today)
       .maybeSingle() as unknown as Promise<{ data: { status: string } | null; error: unknown }>,
+
+    supabase
+      .from('users')
+      .select('bank_account_number')
+      .eq('id', staffId)
+      .maybeSingle() as unknown as Promise<{ data: { bank_account_number: string | null } | null; error: unknown }>,
   ])
 
   const services     = servicesRes.data  ?? []
@@ -69,6 +75,8 @@ export async function GET(req: NextRequest) {
   const todayCommission = services.reduce((s, r) => s + r.commission_ngn, 0)
   const todayServices   = services.length
   const todayTips       = services.reduce((s, r) => s + (r.tip_ngn ?? 0), 0)
+
+  const bankMissing = !(userRes.data?.bank_account_number)
 
   return NextResponse.json({
     todayEarnings: todayCommission + todayTips,
@@ -81,5 +89,6 @@ export async function GET(req: NextRequest) {
     todayAttStatus:   attendance?.status         ?? null,
     todayCheckedInAt: attendance?.checked_in_at  ?? null,
     checkinStatus:    checkin?.status            ?? null,
+    bankMissing,
   })
 }
