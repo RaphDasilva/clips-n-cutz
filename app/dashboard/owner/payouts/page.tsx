@@ -10,19 +10,20 @@ interface BankInfo {
 }
 
 interface PayoutRow {
-  staffId:         string
-  staffName:       string
-  bank:            BankInfo
-  commission_ngn:  number
-  tips_ngn:        number
-  penalty_ngn:     number
-  advance_ngn:     number
-  total_ngn:       number
-  status:          'pending' | 'paid'
-  paid_at:         string | null
-  paid_amount_ngn: number | null
-  notes:           string | null
-  payoutId:        string | null
+  staffId:             string
+  staffName:           string
+  bank:                BankInfo
+  commission_ngn:      number
+  tips_ngn:            number
+  penalty_ngn:         number
+  manual_penalty_ngn:  number
+  advance_ngn:         number
+  total_ngn:           number
+  status:              'pending' | 'paid'
+  paid_at:             string | null
+  paid_amount_ngn:     number | null
+  notes:               string | null
+  payoutId:            string | null
 }
 
 interface PayoutResp {
@@ -223,7 +224,7 @@ export default function PayoutsPage() {
               <div className="grid grid-cols-4 gap-3 flex-1 text-xs">
                 <Stat label="Commission" value={fmtNaira(row.commission_ngn)} />
                 <Stat label="Tips"       value={row.tips_ngn > 0 ? fmtNaira(row.tips_ngn) : '—'} tone={row.tips_ngn > 0 ? 'emerald' : 'mute'} />
-                <Stat label="Penalty"    value={row.penalty_ngn > 0 ? `-${fmtNaira(row.penalty_ngn)}` : '—'} tone={row.penalty_ngn > 0 ? 'red' : 'mute'} />
+                <Stat label="Penalty"    value={(row.penalty_ngn + row.manual_penalty_ngn) > 0 ? `-${fmtNaira(row.penalty_ngn + row.manual_penalty_ngn)}` : '—'} tone={(row.penalty_ngn + row.manual_penalty_ngn) > 0 ? 'red' : 'mute'} />
                 <Stat label="Advance"    value={row.advance_ngn > 0 ? `-${fmtNaira(row.advance_ngn)}` : '—'} tone={row.advance_ngn > 0 ? 'amber' : 'mute'} />
               </div>
 
@@ -287,7 +288,10 @@ export default function PayoutsPage() {
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Commission</span><span className="text-[var(--text)] tabular-nums">{fmtNaira(payTarget.commission_ngn)}</span></div>
                 <div className="flex justify-between"><span className="text-[var(--text-muted)]">Tips</span><span className="text-emerald-500 tabular-nums">{fmtNaira(payTarget.tips_ngn)}</span></div>
                 {payTarget.penalty_ngn > 0 && (
-                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">Penalty</span><span className="text-red-400 tabular-nums">-{fmtNaira(payTarget.penalty_ngn)}</span></div>
+                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">Attendance penalty</span><span className="text-red-400 tabular-nums">-{fmtNaira(payTarget.penalty_ngn)}</span></div>
+                )}
+                {payTarget.manual_penalty_ngn > 0 && (
+                  <div className="flex justify-between"><span className="text-[var(--text-muted)]">Manual penalty</span><span className="text-red-400 tabular-nums">-{fmtNaira(payTarget.manual_penalty_ngn)}</span></div>
                 )}
                 {payTarget.advance_ngn > 0 && (
                   <div className="flex justify-between"><span className="text-[var(--text-muted)]">Advance deducted</span><span className="text-amber-400 tabular-nums">-{fmtNaira(payTarget.advance_ngn)}</span></div>

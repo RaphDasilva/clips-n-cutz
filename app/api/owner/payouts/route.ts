@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
   if (!showDemo) staffQuery = staffQuery.not('name', 'ilike', `${DEMO_STAFF_PREFIX}%`)
   staffQuery = staffQuery.order('name')
 
-  const [staffRes, vsRes, tipsRes, attRes, paidRes, advanceRes] = await Promise.all([
+  const [staffRes, vsRes, tipsRes, attRes, paidRes, advanceRes, manualPenRes] = await Promise.all([
     staffQuery as unknown as Promise<{ data: StaffRow[] | null; error: unknown }>,
     supabase
       .from('visit_services')
@@ -84,9 +84,15 @@ export async function GET(req: NextRequest) {
       .from('staff_advances')
       .select('staff_id, amount_ngn')
       .eq('status', 'outstanding') as unknown as Promise<{ data: { staff_id: string; amount_ngn: number }[] | null; error: unknown }>,
+    supabase
+      .from('manual_penalties')
+      .select('staff_id, amount_ngn')
+      .eq('status', 'active')
+      .gte('given_at', start)
+      .lte('given_at', end) as unknown as Promise<{ data: { staff_id: string; amount_ngn: number }[] | null; error: unknown }>,
   ])
 
-  if (staffRes.error || vsRes.error || tipsRes.error || attRes.error || paidRes.error || advanceRes.error) {
+  if (staffRes.error || vsRes.error || tipsRes.error || attRes.error || paidRes.error || advanceRes.error || manualPenRes.error) {
     return NextResponse.json({ error: 'Failed to load payout data.' }, { status: 500 })
   }
 
@@ -114,6 +120,12 @@ export async function GET(req: NextRequest) {
     advanceMap.set(r.staff_id, (advanceMap.get(r.staff_id) ?? 0) + (r.amount_ngn ?? 0))
   }
 
+  // Manual penalties active in this week, per staff.
+  const manualPenaltyMap = new Map<string, number>()
+  for (const r of manualPenRes.data ?? []) {
+    manualPenaltyMap.set(r.staff_id, (manualPenaltyMap.get(r.staff_id) ?? 0) + (r.amount_ngn ?? 0))
+  }
+
   const rows = staff.map(s => {
     const bank = {
       bankName:      s.bank_name,
@@ -123,40 +135,43 @@ export async function GET(req: NextRequest) {
     const paid = paidMap.get(s.id)
     if (paid) {
       return {
-        staffId:        s.id,
-        staffName:      s.name,
+        staffId:             s.id,
+        staffName:           s.name,
         bank,
-        commission_ngn: paid.commission_ngn,
-        tips_ngn:       paid.tips_ngn,
-        penalty_ngn:    paid.penalty_ngn,
-        advance_ngn:    0,
-        total_ngn:      paid.total_ngn,
-        status:         'paid' as const,
-        paid_at:        paid.paid_at,
-        paid_amount_ngn: paid.paid_amount_ngn,
-        notes:          paid.notes,
-        payoutId:       paid.id,
+        commission_ngn:      paid.commission_ngn,
+        tips_ngn:            paid.tips_ngn,
+        penalty_ngn:         paid.penalty_ngn,
+        manual_penalty_ngn:  0,
+        advance_ngn:         0,
+        total_ngn:           paid.total_ngn,
+        status:              'paid' as const,
+        paid_at:             paid.paid_at,
+        paid_amount_ngn:     paid.paid_amount_ngn,
+        notes:               paid.notes,
+        payoutId:            paid.id,
       }
     }
-    const commission = commissionMap.get(s.id) ?? 0
-    const tips       = tipsMap.get(s.id) ?? 0
-    const penalty    = penaltyMap.get(s.id) ?? 0
-    const advance    = advanceMap.get(s.id) ?? 0
-    const total      = Math.max(0, commission + tips - penalty - advance)
+    const commission    = commissionMap.get(s.id) ?? 0
+    const tips          = tipsMap.get(s.id) ?? 0
+    const penalty       = penaltyMap.get(s.id) ?? 0
+    const manualPenalty = manualPenaltyMap.get(s.id) ?? 0
+    const advance       = advanceMap.get(s.id) ?? 0
+    const total         = Math.max(0, commission + tips - penalty - manualPenalty - advance)
     return {
-      staffId:        s.id,
-      staffName:      s.name,
+      staffId:             s.id,
+      staffName:           s.name,
       bank,
-      commission_ngn: commission,
-      tips_ngn:       tips,
-      penalty_ngn:    penalty,
-      advance_ngn:    advance,
-      total_ngn:      total,
-      status:         'pending' as const,
-      paid_at:        null,
-      paid_amount_ngn: null,
-      notes:          null,
-      payoutId:       null,
+      commission_ngn:      commission,
+      tips_ngn:            tips,
+      penalty_ngn:         penalty,
+      manual_penalty_ngn:  manualPenalty,
+      advance_ngn:         advance,
+      total_ngn:           total,
+      status:              'pending' as const,
+      paid_at:             null,
+      paid_amount_ngn:     null,
+      notes:               null,
+      payoutId:            null,
     }
   })
 
@@ -196,7 +211,7 @@ export async function POST(req: NextRequest) {
   const supabase = createClient()
 
   // Recompute totals server-side — never trust client numbers
-  const [vsRes, tipsRes, attRes, advancesRes] = await Promise.all([
+  const [vsRes, tipsRes, attRes, advancesRes, manualPenRes] = await Promise.all([
     supabase
       .from('visit_services')
       .select('commission_ngn, visits!inner(visit_date)')
@@ -220,9 +235,16 @@ export async function POST(req: NextRequest) {
       .select('id, amount_ngn')
       .eq('staff_id', staffId)
       .eq('status', 'outstanding') as unknown as Promise<{ data: { id: string; amount_ngn: number }[] | null; error: unknown }>,
+    supabase
+      .from('manual_penalties')
+      .select('amount_ngn, reason')
+      .eq('staff_id', staffId)
+      .eq('status', 'active')
+      .gte('given_at', weekStart)
+      .lte('given_at', weekEnd) as unknown as Promise<{ data: { amount_ngn: number; reason: string }[] | null; error: unknown }>,
   ])
 
-  if (vsRes.error || tipsRes.error || attRes.error || advancesRes.error) {
+  if (vsRes.error || tipsRes.error || attRes.error || advancesRes.error || manualPenRes.error) {
     return NextResponse.json({ error: 'Failed to compute payout.' }, { status: 500 })
   }
 
@@ -231,13 +253,19 @@ export async function POST(req: NextRequest) {
   const penalty          = (attRes.data      ?? []).reduce((s, r) => s + (r.penalty_ngn    ?? 0), 0)
   const advances         = advancesRes.data  ?? []
   const advanceTotal     = advances.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
-  const total            = Math.max(0, commission + tips - penalty - advanceTotal)
+  const manualPenalties  = manualPenRes.data ?? []
+  const manualPenaltyTotal = manualPenalties.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
+  // Sum attendance + manual penalties into the single penalty_ngn column —
+  // staff_payouts has no separate slot for manual penalties.
+  const totalPenalty     = penalty + manualPenaltyTotal
+  const total            = Math.max(0, commission + tips - totalPenalty - advanceTotal)
 
-  // Stash any deduction in the notes so the staff WhatsApp + the payout
-  // detail page show it. We can't add a column without a schema migration
-  // to staff_payouts; this is the lightest-touch way to keep an audit trail.
-  const advanceNote = advanceTotal > 0 ? `Advance deducted: ₦${advanceTotal.toLocaleString('en-NG')}` : ''
-  const combinedNotes = [notes, advanceNote].filter(Boolean).join(' · ') || null
+  // Stash deductions in the notes so the staff WhatsApp + the payout
+  // detail page show them. We can't add a column without a schema migration
+  // to staff_payouts; this is the lightest-touch audit trail.
+  const advanceNote      = advanceTotal      > 0 ? `Advance deducted: ₦${advanceTotal.toLocaleString('en-NG')}` : ''
+  const manualPenaltyNote = manualPenaltyTotal > 0 ? `Manual penalties: ₦${manualPenaltyTotal.toLocaleString('en-NG')}` : ''
+  const combinedNotes = [notes, manualPenaltyNote, advanceNote].filter(Boolean).join(' · ') || null
 
   const { data, error } = await supabase
     .from('staff_payouts')
@@ -247,7 +275,7 @@ export async function POST(req: NextRequest) {
       week_end:        weekEnd,
       commission_ngn:  commission,
       tips_ngn:        tips,
-      penalty_ngn:     penalty,
+      penalty_ngn:     totalPenalty,
       total_ngn:       total,
       paid_by:         paidBy,
       paid_amount_ngn: paidAmount ?? total,
@@ -280,9 +308,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Fire-and-forget WhatsApp / SMS to the staff member with their breakdown
-  notifyStaffPaid(supabase, staffId, data, notes, advanceTotal).catch(err => console.error('Payout notify failed:', err))
+  notifyStaffPaid(supabase, staffId, data, notes, advanceTotal, manualPenaltyTotal).catch(err => console.error('Payout notify failed:', err))
 
-  return NextResponse.json({ payout: data, advanceDeducted: advanceTotal }, { status: 201 })
+  return NextResponse.json({ payout: data, advanceDeducted: advanceTotal, manualPenaltyDeducted: manualPenaltyTotal }, { status: 201 })
 }
 
 async function notifyStaffPaid(
@@ -291,6 +319,7 @@ async function notifyStaffPaid(
   payout: PayoutRow,
   notes: string | null,
   advanceDeducted: number,
+  manualPenaltyDeducted: number,
 ) {
   const { data: staff } = await supabase
     .from('users').select('name, phone').eq('id', staffId).single() as { data: { name: string; phone: string | null } | null; error: unknown }
@@ -311,8 +340,13 @@ async function notifyStaffPaid(
     `✂️ Commission: ${fmt(payout.commission_ngn)}`,
     `💵 Tips:       ${fmt(payout.tips_ngn)}`,
   ]
-  if (payout.penalty_ngn > 0) lines.push(`⚠️ Penalty:    -${fmt(payout.penalty_ngn)}`)
-  if (advanceDeducted > 0)    lines.push(`💳 Advance:    -${fmt(advanceDeducted)}`)
+  // payout.penalty_ngn now includes BOTH attendance + manual penalties.
+  // Show one combined line, then a second line specifically for the
+  // manual portion if any (so the staff sees the non-attendance hit
+  // separately and isn't confused).
+  if (payout.penalty_ngn > 0)        lines.push(`⚠️ Penalty:    -${fmt(payout.penalty_ngn)}`)
+  if (manualPenaltyDeducted > 0)     lines.push(`   incl. manual penalty: ${fmt(manualPenaltyDeducted)}`)
+  if (advanceDeducted > 0)           lines.push(`💳 Advance:    -${fmt(advanceDeducted)}`)
   lines.push(``)
   lines.push(`*Total paid: ${fmt(payout.paid_amount_ngn ?? payout.total_ngn)}*`)
   if (notes) lines.push(``, `Note: ${notes}`)

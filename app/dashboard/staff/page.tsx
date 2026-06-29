@@ -90,15 +90,17 @@ function greeting() {
 }
 
 interface PayoutPending {
-  commission_ngn: number
-  tips_ngn:       number
-  penalty_ngn:    number
-  advance_ngn:    number
-  total_ngn:      number
-  alreadyPaid:    { paid_at: string; paid_amount_ngn: number | null } | null
+  commission_ngn:     number
+  tips_ngn:           number
+  penalty_ngn:        number
+  manual_penalty_ngn: number
+  advance_ngn:        number
+  total_ngn:          number
+  alreadyPaid:        { paid_at: string; paid_amount_ngn: number | null } | null
 }
 
-interface AdvanceLine { id: string; amount_ngn: number; reason: string | null; given_at: string }
+interface AdvanceLine        { id: string; amount_ngn: number; reason: string | null; given_at: string }
+interface ManualPenaltyLine  { id: string; amount_ngn: number; reason: string;        given_at: string }
 
 interface PayoutHistoryRow {
   week_start: string
@@ -109,11 +111,12 @@ interface PayoutHistoryRow {
 }
 
 interface NextPayoutResp {
-  weekStart: string
-  weekEnd:   string
-  pending:   PayoutPending
-  advances:  AdvanceLine[]
-  history:   PayoutHistoryRow[]
+  weekStart:       string
+  weekEnd:         string
+  pending:         PayoutPending
+  advances:        AdvanceLine[]
+  manualPenalties: ManualPenaltyLine[]
+  history:         PayoutHistoryRow[]
 }
 
 export default function StaffHome() {
@@ -489,9 +492,14 @@ export default function StaffHome() {
               </div>
               <div>
                 <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Penalty</p>
-                <p className={`font-semibold tabular-nums ${payout.pending.penalty_ngn > 0 ? 'text-red-400' : 'text-[var(--text-faint)]'}`}>
-                  {payout.pending.penalty_ngn > 0 ? `-${fmtNaira(payout.pending.penalty_ngn)}` : '—'}
-                </p>
+                {(() => {
+                  const total = payout.pending.penalty_ngn + payout.pending.manual_penalty_ngn
+                  return (
+                    <p className={`font-semibold tabular-nums ${total > 0 ? 'text-red-400' : 'text-[var(--text-faint)]'}`}>
+                      {total > 0 ? `-${fmtNaira(total)}` : '—'}
+                    </p>
+                  )
+                })()}
               </div>
               <div>
                 <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider">Advance</p>
@@ -500,6 +508,21 @@ export default function StaffHome() {
                 </p>
               </div>
             </div>
+            {payout.manualPenalties && payout.manualPenalties.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-[var(--border)]">
+                <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider mb-1.5">Manual Penalties This Week</p>
+                <div className="space-y-1">
+                  {payout.manualPenalties.map(p => (
+                    <div key={p.id} className="flex items-center justify-between text-xs">
+                      <span className="text-[var(--text-muted)] truncate">
+                        {new Date(p.given_at + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })} · {p.reason}
+                      </span>
+                      <span className="text-red-400 font-medium tabular-nums">-{fmtNaira(p.amount_ngn)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {payout.advances && payout.advances.length > 0 && (
               <div className="mt-3 pt-3 border-t border-[var(--border)]">
                 <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider mb-1.5">Outstanding Advances</p>
