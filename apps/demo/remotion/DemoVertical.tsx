@@ -1,21 +1,29 @@
 import {
   AbsoluteFill,
+  OffthreadVideo,
   Series,
   interpolate,
   spring,
+  staticFile,
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
 import { WhatsAppChat } from "./mockups/WhatsAppChat";
-import { PaperNotebook } from "./problem-brolls/PaperNotebook";
-import { WhatsAppOverflow } from "./problem-brolls/WhatsAppOverflow";
+import { CHATS, cutawaySeconds } from "./mockups/chats";
+import type { Manifest, Scene } from "../lib/scene-manifest";
+import { FPS } from "./timeline";
 
-type VerticalScene =
+// Vertical reel — the five beats the brief asks for:
+// walk-in, WhatsApp booking conversation, WhatsApp enquiry,
+// owner financial suite, 7-day follow-up.
+
+type Beat =
   | { kind: "intro"; seconds: number; title: string; subtitle: string }
-  | { kind: "beat"; seconds: number; headline: string; subhead: string; body: React.FC }
+  | { kind: "chat"; id: string; headline: string; subhead: string }
+  | { kind: "video"; slug: string; seconds: number; headline: string; subhead: string }
   | { kind: "outro"; seconds: number; title: string; cta: string };
 
-const VERTICAL_SCENES: VerticalScene[] = [
+const BEATS: Beat[] = [
   {
     kind: "intro",
     seconds: 3,
@@ -23,84 +31,36 @@ const VERTICAL_SCENES: VerticalScene[] = [
     subtitle: "A Lagos salon that never forgets a client.",
   },
   {
-    kind: "beat",
-    seconds: 9,
-    headline: "Before: the paper notebook",
-    subhead: "Follow-ups forgotten. Clients drift away.",
-    body: () => <PaperNotebook />,
+    kind: "video",
+    slug: "02-walkin",
+    seconds: 12,
+    headline: "Walk-ins logged in 30 seconds",
+    subhead: "Client, visit and commission — captured on the spot.",
   },
   {
-    kind: "beat",
-    seconds: 9,
-    headline: "Bookings buried in one WhatsApp inbox",
-    subhead: "Braids requests mixed into everything else.",
-    body: () => <WhatsAppOverflow />,
+    kind: "chat",
+    id: "wa-book-convo",
+    headline: "Clients book right inside WhatsApp",
+    subhead: "Ask, pick a slot, confirmed — all in the chat.",
   },
   {
-    kind: "beat",
-    seconds: 11,
-    headline: "Now: clients book online",
-    subhead: "WhatsApp confirmation lands in seconds.",
-    body: () => (
-      <WhatsAppChat
-        scale={1.35}
-        contactName="Clips N'Cutz"
-        contactSubtitle="online"
-        revealDelayMs={1400}
-        messages={[
-          {
-            from: "them",
-            body: "Hi Chidera! Your appointment is confirmed 🎉\n\n📅 Thursday, 2:00 PM\n💇 Medium Braids — ₦40,000\n\n— Clips N'Cutz",
-            time: "14:03",
-          },
-          { from: "me", body: "Thank you! See you Thursday 🙌", time: "14:05" },
-        ]}
-      />
-    ),
+    kind: "chat",
+    id: "wa-enquiry",
+    headline: "Questions answered instantly",
+    subhead: "Prices, opening hours — no call needed.",
   },
   {
-    kind: "beat",
-    seconds: 11,
+    kind: "video",
+    slug: "16-owner-reports",
+    seconds: 12,
+    headline: "The owner sees every naira",
+    subhead: "Net profit, payouts and reports — computed automatically.",
+  },
+  {
+    kind: "chat",
+    id: "wa-followup",
     headline: "7 days later — the follow-up sends itself",
     subhead: "Every visit becomes the next booking.",
-    body: () => (
-      <WhatsAppChat
-        scale={1.35}
-        contactName="Clips N'Cutz"
-        contactSubtitle="online"
-        revealDelayMs={1400}
-        messages={[
-          {
-            from: "them",
-            body: "Hi Adaeze, hope you loved your fresh cut ✂️✨\n\nReady for your next appointment? Book here 👇\nclipncutz.com/book",
-            time: "10:00",
-          },
-          { from: "me", body: "Booking for Saturday now 😍", time: "10:14" },
-        ]}
-      />
-    ),
-  },
-  {
-    kind: "beat",
-    seconds: 10,
-    headline: "Reminders go out automatically",
-    subhead: "No-shows drop. The chair stays busy.",
-    body: () => (
-      <WhatsAppChat
-        scale={1.35}
-        contactName="Clips N'Cutz"
-        contactSubtitle="online"
-        revealDelayMs={1400}
-        messages={[
-          {
-            from: "them",
-            body: "Hi Chidera — reminder: your appointment is tomorrow at 2:00 PM for Medium Braids. Reply here to change it. — Clips N'Cutz",
-            time: "09:00",
-          },
-          { from: "me", body: "Perfect, I'll be there 👍", time: "09:12" },
-        ]}
-      />
-    ),
   },
   {
     kind: "outro",
@@ -110,27 +70,41 @@ const VERTICAL_SCENES: VerticalScene[] = [
   },
 ];
 
-export const VERTICAL_TOTAL_SECONDS = VERTICAL_SCENES.reduce((s, sc) => s + sc.seconds, 0);
+function beatSeconds(beat: Beat): number {
+  if (beat.kind === "chat") return cutawaySeconds(beat.id);
+  return beat.seconds;
+}
+
+export function verticalTotalSeconds(_manifest: Manifest): number {
+  return BEATS.reduce((s, b) => s + beatSeconds(b), 0);
+}
 
 type Props = {
-  voiceover: Record<string, { path: string; durationSeconds: number }>;
+  manifest: Manifest;
 };
 
-export const DemoVertical: React.FC<Props> = ({ voiceover: _voiceover }) => {
+export const DemoVertical: React.FC<Props> = ({ manifest }) => {
+  const sceneBySlug = new Map(manifest.scenes.map((s) => [s.slug, s]));
   return (
     <AbsoluteFill style={{ background: "#090909" }}>
       <Series>
-        {VERTICAL_SCENES.map((scene, i) => {
-          const frames = Math.round(scene.seconds * 30);
+        {BEATS.map((beat, i) => {
+          const frames = Math.round(beatSeconds(beat) * FPS);
           return (
             <Series.Sequence key={i} durationInFrames={frames}>
               <AbsoluteFill>
-                {scene.kind === "intro" ? (
-                  <VerticalIntro title={scene.title} subtitle={scene.subtitle} />
-                ) : scene.kind === "outro" ? (
-                  <VerticalOutro title={scene.title} cta={scene.cta} />
+                {beat.kind === "intro" ? (
+                  <VerticalIntro title={beat.title} subtitle={beat.subtitle} />
+                ) : beat.kind === "outro" ? (
+                  <VerticalOutro title={beat.title} cta={beat.cta} />
+                ) : beat.kind === "chat" ? (
+                  <VerticalBeat headline={beat.headline} subhead={beat.subhead}>
+                    <ChatBody id={beat.id} />
+                  </VerticalBeat>
                 ) : (
-                  <VerticalBeat headline={scene.headline} subhead={scene.subhead} Body={scene.body} />
+                  <VerticalBeat headline={beat.headline} subhead={beat.subhead} dark>
+                    <VideoBody scene={sceneBySlug.get(beat.slug)} />
+                  </VerticalBeat>
                 )}
               </AbsoluteFill>
             </Series.Sequence>
@@ -138,6 +112,49 @@ export const DemoVertical: React.FC<Props> = ({ voiceover: _voiceover }) => {
         })}
       </Series>
     </AbsoluteFill>
+  );
+};
+
+const ChatBody: React.FC<{ id: string }> = ({ id }) => {
+  const def = CHATS[id];
+  if (!def) return null;
+  return (
+    <WhatsAppChat
+      scale={1.35}
+      contactName={def.contactName}
+      contactSubtitle={def.contactSubtitle}
+      revealDelayMs={def.revealDelayMs}
+      messages={def.messages}
+    />
+  );
+};
+
+const VideoBody: React.FC<{ scene: Scene | undefined }> = ({ scene }) => {
+  const frame = useCurrentFrame();
+  const { durationInFrames } = useVideoConfig();
+  if (!scene) return null;
+  const zoom = interpolate(frame, [0, durationInFrames], [1.0, 1.06], {
+    extrapolateRight: "clamp",
+  });
+  return (
+    <div
+      style={{
+        width: 990,
+        height: 557,
+        borderRadius: 24,
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.14)",
+        boxShadow: "0 30px 80px rgba(0,0,0,0.55)",
+        transform: `scale(${zoom})`,
+      }}
+    >
+      <OffthreadVideo
+        src={staticFile(scene.videoPath)}
+        muted
+        startFrom={Math.round(1.5 * FPS)}
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    </div>
   );
 };
 
@@ -250,14 +267,21 @@ const VerticalOutro: React.FC<{ title: string; cta: string }> = ({ title, cta })
 const VerticalBeat: React.FC<{
   headline: string;
   subhead: string;
-  Body: React.FC;
-}> = ({ headline, subhead, Body }) => {
+  dark?: boolean;
+  children: React.ReactNode;
+}> = ({ headline, subhead, dark = false, children }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const enter = spring({ frame, fps, config: { damping: 20, stiffness: 80 } });
   const headlineFade = interpolate(frame, [4, 20], [0, 1], { extrapolateRight: "clamp" });
   return (
-    <AbsoluteFill style={{ background: "linear-gradient(180deg, #f7f4ec 0%, #e6ddc8 100%)" }}>
+    <AbsoluteFill
+      style={{
+        background: dark
+          ? "linear-gradient(180deg, #090909 0%, #1b160c 100%)"
+          : "linear-gradient(180deg, #f7f4ec 0%, #e6ddc8 100%)",
+      }}
+    >
       <AbsoluteFill
         style={{
           padding: "80px 60px 60px",
@@ -274,7 +298,7 @@ const VerticalBeat: React.FC<{
               fontWeight: 800,
               letterSpacing: "-0.02em",
               lineHeight: 1.08,
-              color: "#111111",
+              color: dark ? "#ffffff" : "#111111",
               fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
               opacity: headlineFade,
             }}
@@ -285,7 +309,7 @@ const VerticalBeat: React.FC<{
             style={{
               margin: "18px 0 0",
               fontSize: 30,
-              color: "#6b6045",
+              color: dark ? "#a39272" : "#6b6045",
               fontWeight: 500,
               opacity: interpolate(frame, [24, 40], [0, 1], { extrapolateRight: "clamp" }),
               fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -305,7 +329,7 @@ const VerticalBeat: React.FC<{
             transform: `translateY(${(1 - enter) * 20}px)`,
           }}
         >
-          <Body />
+          {children}
         </div>
       </AbsoluteFill>
     </AbsoluteFill>

@@ -45,6 +45,10 @@ export const SCENE_SCRIPTS: SceneVo[] = [
     text: "Clients book themselves from a simple page — services, date, time. The moment they book, a WhatsApp confirmation lands on their phone. And the day before, a reminder goes out on its own — so the chair never waits for a no-show.",
   },
   {
+    slug: "04-whatsapp",
+    text: "But most clients never open a website — they just message the salon on WhatsApp. Watch: a client asks about Saturday braids, picks a slot, and walks away with a confirmed booking without leaving the chat. Price questions get answered the same way, in seconds.",
+  },
+  {
     slug: "04-appointments",
     text: "Every booking lands in one list. When the client arrives, one tap checks them in — the booking becomes a paid visit, and the staff member's commission is recorded on the spot.",
   },
@@ -53,16 +57,56 @@ export const SCENE_SCRIPTS: SceneVo[] = [
     text: "Every client the salon has ever served — searchable in seconds, with phone numbers, notes and visit dates. The paper notebook is retired for good.",
   },
   {
+    slug: "10-services",
+    text: "The full price list lives in the app, grouped by category. Ka-jeh-tan adds a new service — name, category, price — and it's bookable everywhere, instantly.",
+  },
+  {
+    slug: "11-attendance",
+    text: "Attendance runs itself. Staff tap 'I'm in' from their own phones and the manager confirms with one tap. Arrive after eleven, and a two thousand naira lateness penalty applies automatically. No arguments — it's all on record.",
+  },
+  {
+    slug: "12-discipline",
+    text: "Mid-week cash advances and penalties are logged in seconds. And here's the clever part — they deduct themselves from that person's Sunday payout. Nobody has to remember. The system does.",
+  },
+  {
     slug: "06-team",
     text: "Staff management without the drama. Ka-jeh-tan adds a new team member with a starting pin, resets a forgotten pin in seconds, and switches accounts on or off — while every naira of history stays intact.",
+  },
+  {
+    slug: "13-settings",
+    text: "Security stays simple. Anyone can change their own pin from settings — current pin first, then the new one twice. Forgotten completely? The manager resets it from the Team page.",
   },
   {
     slug: "07-owner",
     text: "The owner's view is pure money. Net profit, revenue trends, and the seventy thirty commission split — computed automatically, and strictly read only.",
   },
   {
+    slug: "14-owner-money",
+    text: "Now the owner's money tools. Every expense is logged and categorised — products, light bills, supplies. And each evening the cash drawer count is checked against what the system expected. A short day shows up in red. Quiet leaks stop being quiet.",
+  },
+  {
+    slug: "15-owner-payroll",
+    text: "Sunday payday used to take a calculator and an argument. Now every staff payout is already computed — commission plus tips, minus penalties and advances — with bank details right there. One tap marks it paid. And the commission page shows the same thirty percent math for any period.",
+  },
+  {
+    slug: "16-owner-reports",
+    text: "For the full picture, one tap builds the report. Net profit with the working shown, revenue by service, revenue by staff, and every visit in the period. Any date range. Any payment method.",
+  },
+  {
+    slug: "17-owner-lapsed",
+    text: "Retention runs on autopilot. Anyone who hasn't visited in thirty days appears on this list — and gets a friendly WhatsApp that morning inviting them back. The owner just watches the list shrink.",
+  },
+  {
+    slug: "18-owner-oversight",
+    text: "Trust, with receipts. If the manager ever deletes a visit, it lands in the owner's audit trail with the reason attached. Nothing disappears quietly.",
+  },
+  {
     slug: "08-staff",
     text: "And each staff member sees only their own day. Their services, their commission on every job, and the Sunday payout building up through the week. Full transparency, zero arguments.",
+  },
+  {
+    slug: "19-staff-book",
+    text: "Staff can book their own regulars directly — the client is automatically assigned to them. And their earnings page shows every service with the exact commission earned on each. Fair, visible, and argument free.",
   },
   {
     slug: OUTRO_VO_SLUG,

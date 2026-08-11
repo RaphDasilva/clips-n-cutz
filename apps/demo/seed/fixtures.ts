@@ -307,13 +307,14 @@ export function ownerChart(days: number) {
   return { points };
 }
 
-export function ownerLapsed() {
+export function ownerLapsed(days = 30) {
+  const count = days >= 90 ? 2 : days >= 60 ? 4 : 7;
   return {
-    lapsed: CLIENTS.slice(20, 27).map((c) => ({
+    lapsed: CLIENTS.slice(20, 20 + count).map((c, i) => ({
       id: c.id,
       name: c.name,
       phone: c.phone,
-      last_visit: daysFrom(lagosToday(), -41),
+      last_visit: daysFrom(lagosToday(), -(days + 11 + i * 6)),
     })),
   };
 }
@@ -390,6 +391,486 @@ export function staffNextPayout() {
       { week_start: daysFrom(monday, -14), week_end: daysFrom(monday, -8), total_ngn: 51750, paid_at: `${daysFrom(monday, -8)}T19:10:00+01:00`, paid_amount_ngn: 51750 },
       { week_start: daysFrom(monday, -21), week_end: daysFrom(monday, -15), total_ngn: 39900, paid_at: `${daysFrom(monday, -15)}T19:45:00+01:00`, paid_amount_ngn: 39900 },
     ],
+  };
+}
+
+// ── Manager: Attendance ──────────────────────────────────────
+export function managerAttendance(date: string) {
+  // Weekday-robust: whoever is actually working on the recording day
+  // gets the records, so the scene always shows a pending check-in,
+  // several on-time staff and exactly one late arrival with a penalty.
+  const isToday = date === lagosToday();
+  const dow = new Date(date + "T12:00:00").getDay();
+  const active = STAFF.filter((s) => s.is_active);
+  const working = active.filter((s) => !s.off_days.includes(dow));
+  const pendingStaff = isToday && working.length > 1 ? working[working.length - 1] : undefined;
+  const lateStaff = working.find((s) => s !== pendingStaff);
+  const onTimeTimes = ["08:36", "08:41", "08:55", "09:02", "08:47"];
+  let t = 0;
+  const staff = active.map((s) => {
+    let record: { checked_in_at: string; status: string; penalty_ngn: number } | null = null;
+    if (!s.off_days.includes(dow) && s !== pendingStaff) {
+      record =
+        s === lateStaff
+          ? { checked_in_at: "11:22", status: "late", penalty_ngn: 2000 }
+          : { checked_in_at: onTimeTimes[t++ % onTimeTimes.length], status: "on_time", penalty_ngn: 0 };
+    }
+    return {
+      id: s.id,
+      name: s.name,
+      sunday_grace: s.sunday_grace,
+      off_days: s.off_days,
+      record,
+    };
+  });
+  const pending = pendingStaff
+    ? [
+        {
+          staff_id: pendingStaff.id,
+          name: pendingStaff.name,
+          sunday_grace: pendingStaff.sunday_grace,
+          off_days: pendingStaff.off_days,
+          requested_at: todayAt("08:58"),
+        },
+      ]
+    : [];
+  return { staff, pending };
+}
+
+// ── Manager: Advances + Penalties ────────────────────────────
+export type AdvanceFx = {
+  id: string;
+  staff_id: string;
+  amount_ngn: number;
+  reason: string | null;
+  given_at: string;
+  status: "outstanding" | "deducted" | "forgiven";
+  deducted_at: string | null;
+  deducted_payout_id: string | null;
+  users: { name: string };
+};
+
+export function seedAdvances(): AdvanceFx[] {
+  const today = lagosToday();
+  return [
+    {
+      id: uuid(1300),
+      staff_id: STAFF[2].id,
+      amount_ngn: 5000,
+      reason: "School fees",
+      given_at: daysFrom(today, -2),
+      status: "outstanding",
+      deducted_at: null,
+      deducted_payout_id: null,
+      users: { name: STAFF[2].name },
+    },
+    {
+      id: uuid(1301),
+      staff_id: STAFF[0].id,
+      amount_ngn: 8000,
+      reason: "Emergency",
+      given_at: daysFrom(today, -9),
+      status: "deducted",
+      deducted_at: daysFrom(today, -8),
+      deducted_payout_id: uuid(1401),
+      users: { name: STAFF[0].name },
+    },
+    {
+      id: uuid(1302),
+      staff_id: STAFF[5].id,
+      amount_ngn: 3000,
+      reason: null,
+      given_at: daysFrom(today, -16),
+      status: "deducted",
+      deducted_at: daysFrom(today, -15),
+      deducted_payout_id: uuid(1402),
+      users: { name: STAFF[5].name },
+    },
+  ];
+}
+
+export type PenaltyFx = {
+  id: string;
+  staff_id: string;
+  amount_ngn: number;
+  reason: string;
+  given_at: string;
+  status: "active" | "reversed";
+  reversed_at: string | null;
+  users: { name: string };
+};
+
+export function seedPenalties(): PenaltyFx[] {
+  const today = lagosToday();
+  return [
+    {
+      id: uuid(1350),
+      staff_id: STAFF[3].id,
+      amount_ngn: 1000,
+      reason: "Phone use during work",
+      given_at: daysFrom(today, -1),
+      status: "active",
+      reversed_at: null,
+      users: { name: STAFF[3].name },
+    },
+    {
+      id: uuid(1351),
+      staff_id: STAFF[5].id,
+      amount_ngn: 2000,
+      reason: "Late opening",
+      given_at: daysFrom(today, -10),
+      status: "reversed",
+      reversed_at: daysFrom(today, -9),
+      users: { name: STAFF[5].name },
+    },
+  ];
+}
+
+// ── Owner: Expenses ──────────────────────────────────────────
+export type ExpenseFx = {
+  id: string;
+  date: string;
+  category: string;
+  amount_ngn: number;
+  vendor: string | null;
+  notes: string | null;
+  created_at: string;
+  users: { name: string };
+};
+
+export function seedExpenses(): ExpenseFx[] {
+  const today = lagosToday();
+  const mk = (
+    n: number,
+    daysAgo: number,
+    category: string,
+    amount: number,
+    vendor: string | null,
+    notes: string | null,
+  ): ExpenseFx => ({
+    id: uuid(1500 + n),
+    date: daysFrom(today, -daysAgo),
+    category,
+    amount_ngn: amount,
+    vendor,
+    notes,
+    created_at: `${daysFrom(today, -daysAgo)}T18:30:00+01:00`,
+    users: { name: MANAGER.name },
+  });
+  return [
+    mk(1, 0, "Products", 24500, "Lagos Beauty Supplies", "Relaxers and dye restock"),
+    mk(2, 1, "Electricity", 15000, "Ikeja Electric", null),
+    mk(3, 3, "Water", 4000, null, null),
+    mk(4, 5, "Products", 18000, "Lagos Beauty Supplies", "Braiding hair bundles"),
+    mk(5, 6, "Maintenance", 7500, null, "Clipper servicing"),
+    mk(6, 8, "Transport", 3000, null, null),
+    mk(7, 9, "Marketing", 10000, "Instagram Ads", null),
+  ];
+}
+
+export function expensesResponse(items: ExpenseFx[]) {
+  const byCat = new Map<string, number>();
+  let total = 0;
+  for (const e of items) {
+    total += e.amount_ngn;
+    byCat.set(e.category, (byCat.get(e.category) ?? 0) + e.amount_ngn);
+  }
+  const byCategory = [...byCat.entries()]
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount);
+  return { items: [...items].sort((a, b) => (a.date < b.date ? 1 : -1)), byCategory, total };
+}
+
+// ── Owner: Payouts ───────────────────────────────────────────
+export function currentWeek(): { start: string; end: string } {
+  const d = new Date(lagosToday() + "T12:00:00Z");
+  const dow = d.getUTCDay();
+  d.setUTCDate(d.getUTCDate() - ((dow + 6) % 7));
+  const start = d.toISOString().slice(0, 10);
+  return { start, end: daysFrom(start, 6) };
+}
+
+const BANKS = ["GTBank", "Access Bank", "Zenith Bank", "UBA", "First Bank", "Kuda"];
+
+export function payoutRows() {
+  const base = [
+    // [commission, tips, attendance penalty, manual penalty, advance]
+    [46350, 6500, 0, 0, 0], // Tunde
+    [58200, 4000, 0, 0, 0], // Ngozi
+    [39900, 2500, 0, 0, 5000], // Kemi — advance deducted
+    [31050, 0, 0, 1000, 0], // Segun — manual penalty
+    [27300, 1500, 0, 0, 0], // Halima
+    [33450, 2000, 2000, 0, 0], // Chinedu — late penalty
+  ];
+  return STAFF.filter((s) => s.is_active).map((s, i) => {
+    const [commission, tips, penalty, manual, advance] = base[i] ?? base[0];
+    const total = commission + tips - penalty - manual - advance;
+    return {
+      staffId: s.id,
+      staffName: s.name,
+      bank: {
+        bankName: BANKS[i % BANKS.length],
+        accountNumber: String(112233440 + i * 1111),
+        accountName: s.name,
+      },
+      commission_ngn: commission,
+      tips_ngn: tips,
+      penalty_ngn: penalty,
+      manual_penalty_ngn: manual,
+      advance_ngn: advance,
+      total_ngn: total,
+      status: "pending" as "pending" | "paid",
+      paid_at: null as string | null,
+      paid_amount_ngn: null as number | null,
+      notes: null as string | null,
+      payoutId: null as string | null,
+    };
+  });
+}
+
+export function payoutsResponse(rows: ReturnType<typeof payoutRows>) {
+  const week = currentWeek();
+  const totalCommission = rows.reduce((s, r) => s + r.commission_ngn, 0);
+  const totalTips = rows.reduce((s, r) => s + r.tips_ngn, 0);
+  const totalPenalty = rows.reduce((s, r) => s + r.penalty_ngn + r.manual_penalty_ngn, 0);
+  const totalPayout = rows.reduce((s, r) => s + r.total_ngn, 0);
+  return {
+    weekStart: week.start,
+    weekEnd: week.end,
+    rows,
+    summary: {
+      totalCommission,
+      totalTips,
+      totalPenalty,
+      totalPayout,
+      pendingCount: rows.filter((r) => r.status === "pending").length,
+      paidCount: rows.filter((r) => r.status === "paid").length,
+    },
+  };
+}
+
+// ── Owner: Reports + Commission ──────────────────────────────
+export function ownerReport() {
+  const staffRows = [
+    ["Ngozi Okonkwo", 41, 662000, 198600, 21500],
+    ["Kemi Adeyemi", 38, 541000, 162300, 14000],
+    ["Tunde Bello", 52, 448000, 134400, 12500],
+    ["Chinedu Eze", 29, 391000, 117300, 11000],
+    ["Segun Olatunji", 33, 236000, 70800, 9000],
+    ["Halima Ibrahim", 21, 140000, 42000, 6000],
+  ] as const;
+  const byStaff = staffRows.map(([name, services, revenue, commission, tips]) => ({
+    name,
+    services,
+    revenue,
+    commission,
+    tips,
+    totalPayout: commission + tips,
+  }));
+  const byService = [
+    { name: "Medium Braids", count: 14, revenue: 560000 },
+    { name: "Medium Ghana Weave", count: 12, revenue: 360000 },
+    { name: "Relocking Short Hair", count: 13, revenue: 325000 },
+    { name: "Installation Straight Hair", count: 15, revenue: 300000 },
+    { name: "Twist with Extension", count: 9, revenue: 225000 },
+    { name: "Barbing", count: 58, revenue: 203000 },
+    { name: "Pedicure", count: 12, revenue: 180000 },
+    { name: "Stitch Braids", count: 11, revenue: 165000 },
+    { name: "Barb & Dye", count: 16, revenue: 96000 },
+    { name: "Washing", count: 6, revenue: 24000 },
+  ];
+  const totalRevenue = 2418000;
+  const totalCommission = 725400;
+  const totalTips = 74000;
+  const totalExpenses = 82000;
+  const totalPenalty = 5000;
+  const visits = managerToday().visits.map((v, i) => ({
+    id: v.id,
+    visit_date: daysFrom(lagosToday(), -(i % 4)),
+    total_ngn: v.total_ngn,
+    tip_ngn: v.tip_ngn,
+    payment_method: v.payment_method,
+    clients: { name: v.clients.name, phone: `0802${String(1456790 + i * 3121)}` },
+    users: { name: v.users.name },
+  }));
+  return {
+    summary: {
+      totalRevenue,
+      totalCommission,
+      totalTips,
+      totalPayout: totalCommission + totalTips - totalPenalty,
+      totalProductSales: 0,
+      totalExpenses,
+      totalPenalty,
+      totalCashVariance: -3500,
+      netProfit: totalRevenue - totalCommission - totalExpenses + totalPenalty - 3500,
+      totalVisits: 149,
+      totalServices: 214,
+      ownerProfit: totalRevenue - totalCommission,
+    },
+    byPayment: { cash: 980000, transfer: 921000, pos: 517000 },
+    byService,
+    byStaff,
+    visits,
+  };
+}
+
+export function ownerCommission() {
+  const r = ownerReport();
+  return {
+    breakdown: r.byStaff.map((s, i) => ({
+      staffId: STAFF[i]?.id ?? uuid(1600 + i),
+      staffName: s.name,
+      servicesCount: s.services,
+      totalValue: s.revenue,
+      totalCommission: s.commission,
+      tips: s.tips,
+      totalPayout: s.totalPayout,
+    })),
+    totalRevenue: r.summary.totalRevenue,
+    totalCommission: r.summary.totalCommission,
+    totalTips: r.summary.totalTips,
+    totalPayout: r.summary.totalCommission + r.summary.totalTips,
+    totalServices: r.summary.totalServices,
+  };
+}
+
+// ── Owner: Reconciliations ───────────────────────────────────
+export function ownerReconciliations() {
+  const today = lagosToday();
+  const mk = (
+    n: number,
+    daysAgo: number,
+    expected: number,
+    actual: number,
+    notes: string | null,
+  ) => ({
+    id: uuid(1700 + n),
+    date: daysFrom(today, -daysAgo),
+    expected_ngn: expected,
+    actual_ngn: actual,
+    variance_ngn: actual - expected,
+    notes,
+    recorded_at: `${daysFrom(today, -daysAgo)}T19:45:00+01:00`,
+    users: { name: MANAGER.name },
+  });
+  const items = [
+    mk(1, 1, 41000, 41000, null),
+    mk(2, 2, 34500, 33000, "₦1,500 short — checking with staff"),
+    mk(3, 3, 52000, 52000, null),
+    mk(4, 4, 28000, 28500, "Client overpaid, returning change tomorrow"),
+    mk(5, 5, 61000, 61000, null),
+    mk(6, 6, 45500, 43500, "POS settlement delay"),
+    mk(7, 7, 38000, 38000, null),
+    mk(8, 8, 47000, 47000, null),
+    mk(9, 9, 29500, 29500, null),
+    mk(10, 10, 55000, 55000, null),
+  ];
+  const totalVariance = items.reduce((s, r) => s + r.variance_ngn, 0);
+  const shortDays = items.filter((r) => r.variance_ngn < 0).length;
+  return { items, totalVariance, shortDays };
+}
+
+// ── Owner: Deletions audit ───────────────────────────────────
+export function seedDeletions() {
+  const today = lagosToday();
+  return [
+    {
+      id: uuid(1800),
+      original_visit_id: uuid(1900),
+      client_name: "Femi Adesanya",
+      client_phone: "08021998877",
+      staff_name: "Tunde Bello",
+      visit_date: daysFrom(today, -1),
+      total_ngn: 3500,
+      tip_ngn: 0,
+      payment_method: "cash",
+      service_names: ["Barbing"],
+      reason: "duplicate",
+      reason_note: "Logged twice by mistake — same client, same cut.",
+      deleted_at: `${daysFrom(today, -1)}T18:05:00+01:00`,
+      acknowledged_at: null as string | null,
+      users: { name: MANAGER.name },
+    },
+    {
+      id: uuid(1801),
+      original_visit_id: uuid(1901),
+      client_name: "Sade Balogun",
+      client_phone: "08021443322",
+      staff_name: "Kemi Adeyemi",
+      visit_date: daysFrom(today, -6),
+      total_ngn: 21000,
+      tip_ngn: 0,
+      payment_method: "transfer",
+      service_names: ["Pedicure", "Colored Gel Polish"],
+      reason: "wrong_amount",
+      reason_note: null,
+      deleted_at: `${daysFrom(today, -6)}T19:20:00+01:00`,
+      acknowledged_at: `${daysFrom(today, -5)}T09:00:00+01:00`,
+      users: { name: MANAGER.name },
+    },
+  ];
+}
+
+// ── Staff: history ───────────────────────────────────────────
+export function staffHistory() {
+  const today = lagosToday();
+  const mk = (serviceName: string, clientName: string, price: number) => ({
+    serviceName,
+    clientName,
+    earnings: Math.round(price * 0.3),
+    price,
+    materialCost: 0,
+  });
+  const grouped = [
+    {
+      date: today,
+      entries: [
+        mk("Stitch Braids", "Femi Adesanya", 15000),
+        mk("Barbing", "Bayo Adekunle", 3500),
+        mk("Washing", "Olumide Coker", 4000),
+      ],
+      tip: 1500,
+      dayEarnings: Math.round((15000 + 3500 + 4000) * 0.3) + 1500,
+    },
+    {
+      date: daysFrom(today, -1),
+      entries: [
+        mk("Barbing", "Emeka Obi", 3500),
+        mk("Barb & Dye", "Lekan Balogun", 6000),
+        mk("Twist with Extension", "Tochi Madu", 25000),
+      ],
+      tip: 2000,
+      dayEarnings: Math.round((3500 + 6000 + 25000) * 0.3) + 2000,
+    },
+    {
+      date: daysFrom(today, -2),
+      entries: [mk("Barbing", "Dapo Ogunleye", 3500), mk("Stitch Braids", "Uche Madu", 15000)],
+      tip: 1000,
+      dayEarnings: Math.round((3500 + 15000) * 0.3) + 1000,
+    },
+    {
+      date: daysFrom(today, -3),
+      entries: [
+        mk("Barbing", "Chinedu Eze", 3500),
+        mk("Barbing", "Bayo Adekunle", 3500),
+        mk("Washing", "Zainab Yusuf", 4000),
+      ],
+      tip: 2000,
+      dayEarnings: Math.round((3500 + 3500 + 4000) * 0.3) + 2000,
+    },
+  ];
+  const totalCommission = grouped.reduce(
+    (s, g) => s + g.entries.reduce((x, e) => x + e.earnings, 0),
+    0,
+  );
+  const totalTips = grouped.reduce((s, g) => s + g.tip, 0);
+  return {
+    totalEarnings: totalCommission + totalTips,
+    totalCommission,
+    totalTips,
+    totalServices: grouped.reduce((s, g) => s + g.entries.length, 0),
+    grouped,
   };
 }
 

@@ -1,7 +1,6 @@
 import { AbsoluteFill, interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 import { WhatsAppChat } from "./mockups/WhatsAppChat";
-
-type CutawayId = "wa-booking-confirmation" | "wa-reminder" | "wa-followup";
+import { CHATS } from "./mockups/chats";
 
 const captionBaseStyle = {
   color: "#111111",
@@ -77,74 +76,25 @@ const CutawayFrame: React.FC<{
 };
 
 export const Cutaway: React.FC<{ id: string }> = ({ id }) => {
-  switch (id as CutawayId) {
-    case "wa-booking-confirmation":
-      return (
-        <CutawayFrame caption="The client's WhatsApp — seconds after booking">
-          <WhatsAppChat
-            scale={1.12}
-            contactName="Clips N'Cutz"
-            contactSubtitle="online"
-            revealDelayMs={1600}
-            messages={[
-              {
-                from: "them",
-                body: "Hi Chidera! Your appointment at Clips N'Cutz is confirmed 🎉\n\n📅 Thursday, 2:00 PM\n💇 Medium Braids — ₦40,000\n\nSee you soon!\n— Clips N'Cutz Unisex Salon, Lagos",
-                time: "14:03",
-              },
-              { from: "me", body: "Thank you! See you Thursday 🙌", time: "14:05" },
-            ]}
-          />
-        </CutawayFrame>
-      );
-
-    case "wa-reminder":
-      return (
-        <CutawayFrame caption="…and a reminder the day before, automatically">
-          <WhatsAppChat
-            scale={1.12}
-            contactName="Clips N'Cutz"
-            contactSubtitle="online"
-            revealDelayMs={1600}
-            messages={[
-              {
-                from: "them",
-                body: "Hi Chidera — friendly reminder: your appointment is tomorrow at 2:00 PM for Medium Braids.\n\nNeed to change it? Just reply here.\n— Clips N'Cutz",
-                time: "09:00",
-              },
-              { from: "me", body: "Perfect, I'll be there 👍", time: "09:12" },
-            ]}
-          />
-        </CutawayFrame>
-      );
-
-    case "wa-followup":
-      return (
-        <CutawayFrame caption="7 days after the visit — the follow-up sends itself">
-          <WhatsAppChat
-            scale={1.12}
-            contactName="Clips N'Cutz"
-            contactSubtitle="online"
-            revealDelayMs={1600}
-            messages={[
-              {
-                from: "them",
-                body: "Hi Adaeze, hope you loved your fresh cut ✂️✨\n\nReady for your next appointment? Book here 👇\nclipncutz.com/book\n\n— Clips N'Cutz Unisex Salon",
-                time: "10:00",
-              },
-              { from: "me", body: "Booking for Saturday now 😍", time: "10:14" },
-            ]}
-          />
-        </CutawayFrame>
-      );
-
-    default:
-      return (
-        <AbsoluteFill
-          style={{ background: "#f7f4ec", justifyContent: "center", alignItems: "center" }}
-        >
-          <div style={{ color: "#9aa5ad" }}>[cutaway not found: {id}]</div>
-        </AbsoluteFill>
-      );
+  const def = CHATS[id];
+  if (!def) {
+    return (
+      <AbsoluteFill
+        style={{ background: "#f7f4ec", justifyContent: "center", alignItems: "center" }}
+      >
+        <div style={{ color: "#9aa5ad" }}>[cutaway not found: {id}]</div>
+      </AbsoluteFill>
+    );
   }
+  return (
+    <CutawayFrame caption={def.caption}>
+      <WhatsAppChat
+        scale={1.12}
+        contactName={def.contactName}
+        contactSubtitle={def.contactSubtitle}
+        revealDelayMs={def.revealDelayMs}
+        messages={def.messages}
+      />
+    </CutawayFrame>
+  );
 };
