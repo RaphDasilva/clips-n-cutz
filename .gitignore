@@ -48,3 +48,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# demo recorder workspace
+apps/demo/node_modules/
+apps/demo/output/
+apps/demo/test-results/

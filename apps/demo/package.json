@@ -1,0 +1,31 @@
+{
+  "name": "@cnc/demo",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "vo": "tsx lib/voiceover.ts",
+    "render": "remotion render remotion/index.tsx demo output/demo.mp4 --public-dir=output",
+    "render:vertical": "remotion render remotion/index.tsx demo-vertical output/demo-vertical.mp4 --public-dir=output --muted",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.48.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/cli": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "dotenv": "^16.5.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "remotion": "^4.0.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.7.2"
+  }
+}

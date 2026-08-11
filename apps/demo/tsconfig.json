@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noImplicitAny": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "jsx": "react-jsx",
+    "types": ["node"],
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["seed", "stubs", "scenes", "fixtures", "lib", "playwright.config.ts"],
+  "exclude": ["node_modules", "output", "remotion"]
+}
