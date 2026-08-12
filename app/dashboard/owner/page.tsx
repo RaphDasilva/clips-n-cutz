@@ -94,16 +94,19 @@ export default function OwnerHome() {
   const [lapsedCount, setLapsedCount]   = useState(0)
   const [advanceTotal, setAdvanceTotal] = useState(0)
   const [advanceStaff, setAdvanceStaff] = useState(0)
+  const [noExpensesToday, setNoExpensesToday] = useState(false)
 
   const load = useCallback(async () => {
     const s = getSession()
     if (!s) { router.replace('/login'); return }
     setName(s.name.split(' ')[0])
-    const [summaryRes, delRes, lapsedRes, advRes] = await Promise.all([
+    const todayLagos = new Date().toLocaleDateString('en-CA', { timeZone: 'Africa/Lagos' })
+    const [summaryRes, delRes, lapsedRes, advRes, expRes] = await Promise.all([
       fetch('/api/owner/summary'),
       fetch('/api/owner/deletions?unack=true&limit=10'),
       fetch('/api/owner/lapsed-clients'),
       fetch('/api/owner/advances?status=outstanding'),
+      fetch(`/api/owner/expenses?from=${todayLagos}&to=${todayLagos}&limit=1`),
     ])
     if (summaryRes.ok) setData(await summaryRes.json())
     if (delRes.ok) {
@@ -119,6 +122,10 @@ export default function OwnerHome() {
       const list = j.outstanding ?? []
       setAdvanceTotal(list.reduce((s, r) => s + r.outstanding, 0))
       setAdvanceStaff(list.length)
+    }
+    if (expRes.ok) {
+      const j = await expRes.json() as { items: { id: string }[] }
+      setNoExpensesToday((j.items ?? []).length === 0)
     }
     setLoading(false)
   }, [router])
@@ -158,6 +165,33 @@ export default function OwnerHome() {
         </h1>
         <p className="text-[var(--text-dim)] text-sm mt-1">Financial overview — read only</p>
       </div>
+
+      {/* Expenses reminder — shows until at least one expense is logged today */}
+      {!loading && noExpensesToday && (
+        <Link href="/dashboard/owner/expenses"
+          className="block mb-6 bg-[var(--card)] border border-sky-500/30 rounded-2xl px-5 py-4 hover:bg-[var(--elevated)] transition-all group">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[var(--text)] font-semibold">
+                  No expenses recorded today
+                </p>
+                <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                  Add today&rsquo;s expenses so your net profit stays accurate. Tap to add.
+                </p>
+              </div>
+            </div>
+            <svg className="w-4 h-4 text-[var(--text-faint)] group-hover:text-[var(--text-muted)] transition-colors flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+            </svg>
+          </div>
+        </Link>
+      )}
 
       {/* Outstanding staff advances quick stat */}
       {advanceTotal > 0 && (
