@@ -10,11 +10,20 @@ import { useClientMask } from '@/lib/demo-mode'
 interface PaymentBreakdown { cash: number; transfer: number; pos: number }
 interface PeriodStats { revenue: number; tips: number; visits: number; byPayment: PaymentBreakdown }
 interface NetProfit { today: number; week: number; month: number }
+interface AllTime {
+  revenue: number
+  tips: number
+  visits: number
+  byPayment: PaymentBreakdown
+  netProfit: number
+  since: string | null
+}
 interface Summary {
   today: PeriodStats
   yesterday: PeriodStats
   week: PeriodStats
   month: PeriodStats
+  allTime?: AllTime
   netProfit?: NetProfit
 }
 
@@ -370,6 +379,43 @@ export default function OwnerHome() {
           </div>
         )}
       </section>
+
+      {/* All time */}
+      {!loading && data?.allTime && (
+        <section className="mb-8">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider">All Time</h2>
+            {data.allTime.since && (
+              <p className="text-[var(--text-faint)] text-[11px]">
+                Since {new Date(data.allTime.since + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              label="Total revenue"
+              value={fmtNaira(data.allTime.revenue)}
+              sub={fmtNairaFull(data.allTime.revenue)}
+            />
+            <StatCard
+              label="Total visits"
+              value={data.allTime.visits.toLocaleString('en-NG')}
+            />
+            <StatCard
+              label="Total tips"
+              value={fmtNaira(data.allTime.tips)}
+              sub="Passed through to staff"
+            />
+            <div className={`bg-[var(--card)] border rounded-xl p-5 h-full ${data.allTime.netProfit < 0 ? 'border-red-500/30' : 'border-[var(--accent)]/30'}`}>
+              <p className="text-[var(--text-muted)] text-xs font-medium uppercase tracking-wider mb-4">Net profit</p>
+              <p className={`text-3xl font-bold tracking-tight tabular-nums ${data.allTime.netProfit < 0 ? 'text-red-400' : 'text-[var(--accent)]'}`}>
+                {data.allTime.netProfit < 0 ? '-' : ''}{fmtNaira(Math.abs(data.allTime.netProfit))}
+              </p>
+              <p className="text-[var(--text-dim)] text-xs mt-1.5">After commission &amp; expenses</p>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Month profit split */}
       <section className="mb-8">

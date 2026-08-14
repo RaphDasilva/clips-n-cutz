@@ -53,7 +53,7 @@ export async function GET() {
 
   const visitCols = 'total_ngn, tip_ngn, payment_method, users!staff_id(name)'
 
-  const [todayRes, yesterdayRes, weekRes, monthRes, commissionRes, expensesRes, attendanceRes, reconsRes] = await Promise.all([
+  const [todayRes, yesterdayRes, weekRes, monthRes, commissionRes, expensesRes, attendanceRes, reconsRes, allTimeRes] = await Promise.all([
     supabase.from('visits').select(visitCols).eq('visit_date', today),
     supabase.from('visits').select(visitCols).eq('visit_date', yesterday),
     supabase.from('visits').select(visitCols).gte('visit_date', weekStart).lte('visit_date', today),
@@ -67,6 +67,10 @@ export async function GET() {
     supabase.from('expenses').select('date, amount_ngn').gte('date', monthStart).lte('date', today),
     supabase.from('attendance').select('date, penalty_ngn, users!staff_id(name)').gte('date', monthStart).lte('date', today),
     supabase.from('cash_reconciliations').select('date, variance_ngn').gte('date', monthStart).lte('date', today),
+
+    // All-time totals summed inside Postgres (see migration 028) so we
+    // never hit the 1,000-row response cap as history grows.
+    supabase.rpc('owner_all_time_summary', { include_demo: showDemo }),
   ])
 
   const keepVisit = (v: VisitRow) => showDemo || !isDemoStaffName(v.users?.name)
@@ -97,11 +101,30 @@ export async function GET() {
 
   const todayT = totals(todayData), weekT = totals(weekData), monthT = totals(monthData)
 
+  // Missing until migration 028 has been run — the dashboard hides the
+  // All Time section when this is absent.
+  interface AllTimeRaw {
+    revenue: number; tips: number; visits: number
+    cash: number; transfer: number; pos: number
+    commission: number; expenses: number; penalties: number; variance: number
+    first_visit_date: string | null
+  }
+  const raw = (allTimeRes.error ? null : allTimeRes.data) as AllTimeRaw | null
+  const allTime = raw ? {
+    revenue:   raw.revenue,
+    tips:      raw.tips,
+    visits:    raw.visits,
+    byPayment: { cash: raw.cash, transfer: raw.transfer, pos: raw.pos },
+    netProfit: raw.revenue - raw.commission - raw.expenses + raw.penalties + raw.variance,
+    since:     raw.first_visit_date,
+  } : undefined
+
   return NextResponse.json({
     today:     todayT,
     yesterday: totals(yesterdayData),
     week:      weekT,
     month:     monthT,
+    allTime,
     netProfit: {
       today: netProfitFor(todayT.revenue, today,      today),
       week:  netProfitFor(weekT.revenue,  weekStart,  today),
