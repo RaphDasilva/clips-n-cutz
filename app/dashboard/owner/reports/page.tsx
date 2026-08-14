@@ -1,7 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useClientMask } from '@/lib/demo-mode'
+
+interface AllTime {
+  revenue: number
+  tips: number
+  visits: number
+  byPayment: { cash: number; transfer: number; pos: number }
+  netProfit: number
+  since: string | null
+}
 
 interface Summary {
   totalRevenue: number
@@ -60,6 +69,14 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(false)
   const [ran, setRan]   = useState(false)
   const [error, setError] = useState('')
+  const [allTime, setAllTime] = useState<AllTime | null>(null)
+
+  useEffect(() => {
+    fetch('/api/owner/summary')
+      .then(r => r.ok ? r.json() : null)
+      .then(j => { if (j?.allTime) setAllTime(j.allTime as AllTime) })
+      .catch(() => {})
+  }, [])
 
   async function run() {
     if (!from || !to) return
@@ -83,6 +100,26 @@ export default function ReportsPage() {
         <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Reports</h1>
         <p className="text-[var(--text-dim)] text-sm mt-0.5">Choose a date range to generate a full financial report</p>
       </div>
+
+      {/* All time — whole history, summed in the database */}
+      {allTime && (
+        <section className="mb-8">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[var(--text-dim)] text-xs font-semibold uppercase tracking-wider">All Time</h2>
+            {allTime.since && (
+              <p className="text-[var(--text-faint)] text-[11px]">
+                Since {new Date(allTime.since + 'T00:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            )}
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <SummaryCard label="Total Revenue" value={fmtNaira(allTime.revenue)} />
+            <SummaryCard label="Total Visits"  value={allTime.visits.toLocaleString('en-NG')} />
+            <SummaryCard label="Total Tips"    value={fmtNaira(allTime.tips)} accent="emerald" />
+            <SummaryCard label="Net Profit"    value={fmtNaira(allTime.netProfit)} accent="gold" />
+          </div>
+        </section>
+      )}
 
       {/* Filters */}
       <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 mb-8 space-y-4">
