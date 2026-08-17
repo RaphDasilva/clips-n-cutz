@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useClientMask } from '@/lib/demo-mode'
 
-interface OutstandingRow { staffId: string; staffName: string; outstanding: number }
+interface OutstandingRow { staffId: string; staffName: string; outstanding: number; nextDeduction: number }
 interface Advance {
   id:                 string
   staff_id:           string
   amount_ngn:         number
+  repaid_ngn:         number
+  weekly_cap_ngn:     number | null
   reason:             string | null
   given_at:           string
   status:             'outstanding' | 'deducted' | 'forgiven'
@@ -38,9 +40,17 @@ export default function ManagerAdvancesPage() {
   // Grant form
   const [grantStaffId, setGrantStaffId] = useState('')
   const [grantAmount, setGrantAmount]   = useState('')
+  const [grantWeekly, setGrantWeekly]   = useState('')
   const [grantReason, setGrantReason]   = useState('')
   const [granting, setGranting]         = useState(false)
   const [grantError, setGrantError]     = useState('')
+
+  // Inline editor for an existing advance
+  const [editingId, setEditingId]   = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editWeekly, setEditWeekly] = useState('')
+  const [editError, setEditError]   = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -68,19 +78,67 @@ export default function ManagerAdvancesPage() {
     }
     setGranting(true)
     try {
+      const weekly = parseInt(grantWeekly, 10) || 0
       const res = await fetch('/api/manager/advances', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ staffId: grantStaffId, amountNgn: amt, reason: grantReason || null }),
+        body: JSON.stringify({
+          staffId: grantStaffId,
+          amountNgn: amt,
+          weeklyCapNgn: weekly > 0 ? weekly : null,
+          reason: grantReason || null,
+        }),
       })
       const j = await res.json()
       if (!res.ok) { setGrantError(j.error ?? 'Failed to record advance.'); return }
-      setGrantStaffId(''); setGrantAmount(''); setGrantReason('')
+      setGrantStaffId(''); setGrantAmount(''); setGrantWeekly(''); setGrantReason('')
       load()
     } catch {
       setGrantError('Connection error. Try again.')
     } finally {
       setGranting(false)
+    }
+  }
+
+  function openEdit(a: Advance) {
+    setEditingId(a.id)
+    setEditAmount(String(a.amount_ngn))
+    setEditWeekly(a.weekly_cap_ngn ? String(a.weekly_cap_ngn) : '')
+    setEditError('')
+  }
+
+  async function saveEdit(a: Advance) {
+    setEditError('')
+    const amt    = parseInt(editAmount, 10) || 0
+    const weekly = parseInt(editWeekly, 10) || 0
+    if (amt <= 0) { setEditError('Enter an amount above ₦0.'); return }
+    setSavingEdit(true)
+    try {
+      if (amt !== a.amount_ngn) {
+        const res = await fetch(`/api/manager/advances/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'edit_amount', amountNgn: amt }),
+        })
+        const j = await res.json()
+        if (!res.ok) { setEditError(j.error ?? 'Failed to update amount.'); return }
+      }
+      const newWeekly = weekly > 0 ? weekly : null
+      if (newWeekly !== a.weekly_cap_ngn) {
+        const res = await fetch(`/api/manager/advances/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_plan', weeklyCapNgn: newWeekly }),
+        })
+        const j = await res.json()
+        if (!res.ok) { setEditError(j.error ?? 'Failed to update payment plan.'); return }
+      }
+      setEditingId(null)
+      load()
+    } catch {
+      setEditError('Connection error. Try again.')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -123,17 +181,30 @@ export default function ManagerAdvancesPage() {
               onChange={e => setGrantAmount(e.target.value.replace(/\D/g, ''))}
               placeholder="5000" required className="input tabular-nums" />
           </div>
-          <div className="sm:col-span-2">
+          <div>
+            <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+              Weekly deduction (₦) <span className="text-[var(--text-faint)] font-normal">— optional</span>
+            </label>
+            <input type="text" inputMode="numeric"
+              value={grantWeekly}
+              onChange={e => setGrantWeekly(e.target.value.replace(/\D/g, ''))}
+              placeholder="Empty = all at once"
+              className="input tabular-nums" />
+          </div>
+          <div className="sm:col-span-1">
             <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
               Reason <span className="text-[var(--text-faint)] font-normal">— optional</span>
             </label>
             <input type="text"
               value={grantReason}
               onChange={e => setGrantReason(e.target.value)}
-              placeholder="e.g. Emergency, school fees"
+              placeholder="e.g. School fees"
               maxLength={120}
               className="input" />
           </div>
+          <p className="sm:col-span-4 text-[var(--text-faint)] text-[11px] -mt-1">
+            Set a weekly deduction to collect the advance bit by bit — e.g. ₦2,000 per week from a ₦10,000 advance — so the staff member still takes money home each Sunday. Leave it empty to deduct everything from the next payout.
+          </p>
           <div className="sm:col-span-4 flex items-center justify-between gap-3">
             {grantError ? (
               <p className="text-red-400 text-xs">{grantError}</p>
@@ -162,7 +233,11 @@ export default function ManagerAdvancesPage() {
               <div key={o.staffId} className="bg-[var(--card)] border border-amber-500/20 rounded-xl px-4 py-3.5">
                 <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(o.staffName)}</p>
                 <p className="text-amber-400 text-xl font-bold tabular-nums mt-1">{fmtNaira(o.outstanding)}</p>
-                <p className="text-[var(--text-faint)] text-[10px] mt-0.5">Will be deducted next Sunday</p>
+                <p className="text-[var(--text-faint)] text-[10px] mt-0.5">
+                  {o.nextDeduction < o.outstanding
+                    ? `${fmtNaira(o.nextDeduction)} will be deducted next Sunday (payment plan)`
+                    : 'Will be deducted next Sunday'}
+                </p>
               </div>
             ))}
           </div>
@@ -181,26 +256,82 @@ export default function ManagerAdvancesPage() {
         ) : (
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
             {data!.advances.map(a => (
-              <div key={a.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(a.users?.name)}</p>
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${STATUS_PILL[a.status]}`}>
-                      {a.status}
-                    </span>
+              <div key={a.id} className="px-5 py-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(a.users?.name)}</p>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${STATUS_PILL[a.status]}`}>
+                        {a.status}
+                      </span>
+                      {a.weekly_cap_ngn && a.status === 'outstanding' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-sky-500/10 text-sky-400 border-sky-500/30">
+                          {fmtNaira(a.weekly_cap_ngn)}/week
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                      {fmtDate(a.given_at)}{a.reason ? ` · ${a.reason}` : ''}
+                      {a.status === 'outstanding' && a.repaid_ngn > 0 && (
+                        <span className="text-emerald-400"> · {fmtNaira(a.repaid_ngn)} repaid, {fmtNaira(Math.max(0, a.amount_ngn - a.repaid_ngn))} left</span>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                    {fmtDate(a.given_at)}{a.reason ? ` · ${a.reason}` : ''}
+                  <p className="text-[var(--text)] text-sm font-semibold tabular-nums flex-shrink-0">
+                    {fmtNaira(a.amount_ngn)}
                   </p>
+                  {a.status === 'outstanding' && editingId !== a.id && (
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button onClick={() => openEdit(a)}
+                        className="text-[var(--text-muted)] hover:text-[var(--text)] text-xs">
+                        Edit
+                      </button>
+                      <button onClick={() => forgive(a.id)}
+                        className="text-[var(--text-muted)] hover:text-red-400 text-xs">
+                        Forgive
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[var(--text)] text-sm font-semibold tabular-nums flex-shrink-0">
-                  {fmtNaira(a.amount_ngn)}
-                </p>
-                {a.status === 'outstanding' && (
-                  <button onClick={() => forgive(a.id)}
-                    className="text-[var(--text-muted)] hover:text-red-400 text-xs flex-shrink-0">
-                    Forgive
-                  </button>
+
+                {editingId === a.id && (
+                  <div className="mt-3 bg-[var(--elevated)] border border-[var(--border-strong)] rounded-xl p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Amount (₦)</label>
+                        <input type="text" inputMode="numeric"
+                          value={editAmount}
+                          onChange={e => setEditAmount(e.target.value.replace(/\D/g, ''))}
+                          className="input tabular-nums" />
+                        {a.repaid_ngn > 0 && (
+                          <p className="text-[var(--text-faint)] text-[10px] mt-1">Must stay above the {fmtNaira(a.repaid_ngn)} already repaid.</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                          Weekly deduction (₦) <span className="text-[var(--text-faint)] font-normal">— empty = all at once</span>
+                        </label>
+                        <input type="text" inputMode="numeric"
+                          value={editWeekly}
+                          onChange={e => setEditWeekly(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 2000"
+                          className="input tabular-nums" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-3">
+                      {editError ? <p className="text-red-400 text-xs">{editError}</p> : <span />}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditingId(null)} disabled={savingEdit}
+                          className="text-[var(--text-muted)] hover:text-[var(--text)] text-xs px-3 py-2">
+                          Cancel
+                        </button>
+                        <button onClick={() => saveEdit(a)} disabled={savingEdit}
+                          className="bg-[var(--text)] text-[var(--bg)] font-semibold px-4 py-2 rounded-lg text-xs disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
+                          {savingEdit ? 'Saving…' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
             ))}

@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth-server'
 import { sendMessage } from '@/lib/messaging'
 import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
+import { advanceWeeklyDeduction } from '@/lib/advances'
 
 interface VisitServiceRow    { staff_id: string; commission_ngn: number; visits: { visit_date: string } | null }
 interface VisitServiceTipRow { staff_id: string; tip_ngn: number; visits: { visit_date: string } | null }
@@ -82,8 +83,8 @@ export async function GET(req: NextRequest) {
       .eq('week_start', start) as unknown as Promise<{ data: PayoutRow[] | null; error: unknown }>,
     supabase
       .from('staff_advances')
-      .select('staff_id, amount_ngn')
-      .eq('status', 'outstanding') as unknown as Promise<{ data: { staff_id: string; amount_ngn: number }[] | null; error: unknown }>,
+      .select('staff_id, amount_ngn, repaid_ngn, weekly_cap_ngn')
+      .eq('status', 'outstanding') as unknown as Promise<{ data: { staff_id: string; amount_ngn: number; repaid_ngn: number; weekly_cap_ngn: number | null }[] | null; error: unknown }>,
     supabase
       .from('manual_penalties')
       .select('staff_id, amount_ngn')
@@ -115,9 +116,11 @@ export async function GET(req: NextRequest) {
     penaltyMap.set(r.staff_id, (penaltyMap.get(r.staff_id) ?? 0) + (r.penalty_ngn ?? 0))
   }
 
+  // Per-staff deduction for THIS week — payment plans cap how much of
+  // each advance is taken per payout.
   const advanceMap = new Map<string, number>()
   for (const r of advanceRes.data ?? []) {
-    advanceMap.set(r.staff_id, (advanceMap.get(r.staff_id) ?? 0) + (r.amount_ngn ?? 0))
+    advanceMap.set(r.staff_id, (advanceMap.get(r.staff_id) ?? 0) + advanceWeeklyDeduction(r))
   }
 
   // Manual penalties active in this week, per staff.
@@ -232,9 +235,9 @@ export async function POST(req: NextRequest) {
       .lte('date', weekEnd) as unknown as Promise<{ data: { penalty_ngn: number }[] | null; error: unknown }>,
     supabase
       .from('staff_advances')
-      .select('id, amount_ngn')
+      .select('id, amount_ngn, repaid_ngn, weekly_cap_ngn')
       .eq('staff_id', staffId)
-      .eq('status', 'outstanding') as unknown as Promise<{ data: { id: string; amount_ngn: number }[] | null; error: unknown }>,
+      .eq('status', 'outstanding') as unknown as Promise<{ data: { id: string; amount_ngn: number; repaid_ngn: number; weekly_cap_ngn: number | null }[] | null; error: unknown }>,
     supabase
       .from('manual_penalties')
       .select('amount_ngn, reason')
@@ -251,8 +254,10 @@ export async function POST(req: NextRequest) {
   const commission       = (vsRes.data       ?? []).reduce((s, r) => s + (r.commission_ngn ?? 0), 0)
   const tips             = (tipsRes.data     ?? []).reduce((s, r) => s + (r.tip_ngn        ?? 0), 0)
   const penalty          = (attRes.data      ?? []).reduce((s, r) => s + (r.penalty_ngn    ?? 0), 0)
-  const advances         = advancesRes.data  ?? []
-  const advanceTotal     = advances.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
+  // Deduct per payment plan: capped advances only give up their weekly
+  // slice; uncapped ones are recovered in full.
+  const advances         = (advancesRes.data ?? []).map(a => ({ ...a, deduct: advanceWeeklyDeduction(a) }))
+  const advanceTotal     = advances.reduce((s, r) => s + r.deduct, 0)
   const manualPenalties  = manualPenRes.data ?? []
   const manualPenaltyTotal = manualPenalties.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
   // Sum attendance + manual penalties into the single penalty_ngn column —
@@ -292,19 +297,28 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Mark all the outstanding advances we just deducted as deducted,
-  // linked back to this payout. If this step fails the payout itself
-  // still exists — we surface the error but don't roll back.
-  if (advances.length > 0) {
-    const ids = advances.map(a => a.id)
+  // Record what this payout recovered from each advance. Advances on a
+  // payment plan only advance their repaid_ngn; an advance flips to
+  // 'deducted' only once fully repaid. If this step fails the payout
+  // itself still exists — we surface the error but don't roll back.
+  for (const a of advances) {
+    if (a.deduct <= 0) continue
+    await supabase.from('advance_repayments').insert({
+      advance_id: a.id,
+      payout_id:  data.id,
+      amount_ngn: a.deduct,
+    })
+    const newRepaid  = (a.repaid_ngn ?? 0) + a.deduct
+    const fullyPaid  = newRepaid >= a.amount_ngn
     await supabase
       .from('staff_advances')
-      .update({
+      .update(fullyPaid ? {
+        repaid_ngn:         newRepaid,
         status:             'deducted',
         deducted_at:        new Date().toISOString(),
         deducted_payout_id: data.id,
-      })
-      .in('id', ids)
+      } : { repaid_ngn: newRepaid })
+      .eq('id', a.id)
   }
 
   // Fire-and-forget WhatsApp / SMS to the staff member with their breakdown

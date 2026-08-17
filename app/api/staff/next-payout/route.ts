@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth-server'
+import { advanceRemaining, advanceWeeklyDeduction } from '@/lib/advances'
 
 // Staff view — what they're due this Sunday and the last few
 // weeks of paid history.
@@ -57,10 +58,10 @@ export async function GET(req: NextRequest) {
       .maybeSingle() as unknown as Promise<{ data: { id: string; total_ngn: number; paid_amount_ngn: number | null; paid_at: string } | null; error: unknown }>,
     supabase
       .from('staff_advances')
-      .select('id, amount_ngn, reason, given_at')
+      .select('id, amount_ngn, repaid_ngn, weekly_cap_ngn, reason, given_at')
       .eq('staff_id', staffId)
       .eq('status', 'outstanding')
-      .order('given_at', { ascending: false }) as unknown as Promise<{ data: { id: string; amount_ngn: number; reason: string | null; given_at: string }[] | null; error: unknown }>,
+      .order('given_at', { ascending: false }) as unknown as Promise<{ data: { id: string; amount_ngn: number; repaid_ngn: number; weekly_cap_ngn: number | null; reason: string | null; given_at: string }[] | null; error: unknown }>,
     supabase
       .from('manual_penalties')
       .select('id, amount_ngn, reason, given_at')
@@ -74,8 +75,14 @@ export async function GET(req: NextRequest) {
   const commission         = (vsRes.data     ?? []).reduce((s, r) => s + (r.commission_ngn ?? 0), 0)
   const tips               = (visitsRes.data ?? []).reduce((s, r) => s + (r.tip_ngn        ?? 0), 0)
   const penalty            = (attRes.data    ?? []).reduce((s, r) => s + (r.penalty_ngn    ?? 0), 0)
-  const advances           = advancesRes.data ?? []
-  const advanceTotal       = advances.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
+  // This week's deduction respects payment plans; remaining_ngn tells the
+  // staff member what is still owed overall.
+  const advances = (advancesRes.data ?? []).map(a => ({
+    ...a,
+    remaining_ngn: advanceRemaining(a),
+    this_week_ngn: advanceWeeklyDeduction(a),
+  }))
+  const advanceTotal       = advances.reduce((s, r) => s + r.this_week_ngn, 0)
   const manualPenalties    = manualPenRes.data ?? []
   const manualPenaltyTotal = manualPenalties.reduce((s, r) => s + (r.amount_ngn ?? 0), 0)
   const total              = Math.max(0, commission + tips - penalty - manualPenaltyTotal - advanceTotal)

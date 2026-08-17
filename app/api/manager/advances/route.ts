@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { verifySessionToken, SESSION_COOKIE } from '@/lib/auth-server'
 import { isLocalRequest, DEMO_STAFF_PREFIX } from '@/lib/env'
+import { advanceRemaining, advanceWeeklyDeduction } from '@/lib/advances'
 
 interface AdvanceRow {
   id:                 string
   staff_id:           string
   amount_ngn:         number
+  repaid_ngn:         number
+  weekly_cap_ngn:     number | null
   reason:             string | null
   given_at:           string
   given_by:           string | null
@@ -34,7 +37,7 @@ export async function GET(req: NextRequest) {
 
   let q = supabase
     .from('staff_advances')
-    .select('id, staff_id, amount_ngn, reason, given_at, given_by, status, deducted_at, deducted_payout_id, created_at, users!staff_id(name)')
+    .select('id, staff_id, amount_ngn, repaid_ngn, weekly_cap_ngn, reason, given_at, given_by, status, deducted_at, deducted_payout_id, created_at, users!staff_id(name)')
     .order('given_at', { ascending: false })
   if (staffId) q = q.eq('staff_id', staffId)
   if (status)  q = q.eq('status',   status)
@@ -44,14 +47,16 @@ export async function GET(req: NextRequest) {
 
   const rows = (data ?? []).filter(r => showDemo || !(r.users?.name ?? '').toUpperCase().startsWith(DEMO_STAFF_PREFIX))
 
-  const outstandingByStaff = new Map<string, { staffId: string; staffName: string; outstanding: number }>()
+  const outstandingByStaff = new Map<string, { staffId: string; staffName: string; outstanding: number; nextDeduction: number }>()
   for (const r of rows) {
     if (r.status !== 'outstanding') continue
     const key = r.staff_id
     if (!outstandingByStaff.has(key)) {
-      outstandingByStaff.set(key, { staffId: key, staffName: r.users?.name ?? 'Unknown', outstanding: 0 })
+      outstandingByStaff.set(key, { staffId: key, staffName: r.users?.name ?? 'Unknown', outstanding: 0, nextDeduction: 0 })
     }
-    outstandingByStaff.get(key)!.outstanding += r.amount_ngn
+    const entry = outstandingByStaff.get(key)!
+    entry.outstanding   += advanceRemaining(r)
+    entry.nextDeduction += advanceWeeklyDeduction(r)
   }
 
   return NextResponse.json({
@@ -70,19 +75,25 @@ export async function POST(req: NextRequest) {
   const staffId   = typeof body.staffId   === 'string' ? body.staffId.trim() : ''
   const amountNgn = Number(body.amountNgn)
   const reason    = typeof body.reason === 'string' ? body.reason.trim() || null : null
+  const rawCap    = body.weeklyCapNgn
+  const weeklyCap = rawCap === null || rawCap === undefined || rawCap === '' ? null : Math.round(Number(rawCap) || 0)
 
   if (!staffId || !Number.isFinite(amountNgn) || amountNgn <= 0) {
     return NextResponse.json({ error: 'Staff and a positive amount are required.' }, { status: 400 })
+  }
+  if (weeklyCap !== null && weeklyCap <= 0) {
+    return NextResponse.json({ error: 'Weekly deduction must be above ₦0, or left empty.' }, { status: 400 })
   }
 
   const supabase = createClient()
   const { data, error } = await supabase
     .from('staff_advances')
     .insert({
-      staff_id:   staffId,
-      amount_ngn: Math.round(amountNgn),
+      staff_id:       staffId,
+      amount_ngn:     Math.round(amountNgn),
+      weekly_cap_ngn: weeklyCap,
       reason,
-      given_by:   session.id,
+      given_by:       session.id,
     })
     .select('id, staff_id, amount_ngn, reason, given_at, status')
     .single() as { data: { id: string; staff_id: string; amount_ngn: number; reason: string | null; given_at: string; status: string } | null; error: { message: string } | null }

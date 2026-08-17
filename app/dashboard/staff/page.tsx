@@ -99,7 +99,15 @@ interface PayoutPending {
   alreadyPaid:        { paid_at: string; paid_amount_ngn: number | null } | null
 }
 
-interface AdvanceLine        { id: string; amount_ngn: number; reason: string | null; given_at: string }
+interface AdvanceLine {
+  id: string
+  amount_ngn: number
+  remaining_ngn?: number
+  this_week_ngn?: number
+  weekly_cap_ngn?: number | null
+  reason: string | null
+  given_at: string
+}
 interface ManualPenaltyLine  { id: string; amount_ngn: number; reason: string;        given_at: string }
 
 interface PayoutHistoryRow {
@@ -527,15 +535,21 @@ export default function StaffHome() {
               <div className="mt-3 pt-3 border-t border-[var(--border)]">
                 <p className="text-[var(--text-dim)] text-[10px] uppercase tracking-wider mb-1.5">Outstanding Advances</p>
                 <div className="space-y-1">
-                  {payout.advances.map(a => (
-                    <div key={a.id} className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--text-muted)] truncate">
-                        {new Date(a.given_at + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
-                        {a.reason ? ` · ${a.reason}` : ''}
-                      </span>
-                      <span className="text-amber-400 font-medium tabular-nums">{fmtNaira(a.amount_ngn)}</span>
-                    </div>
-                  ))}
+                  {payout.advances.map(a => {
+                    const remaining = a.remaining_ngn ?? a.amount_ngn
+                    const thisWeek  = a.this_week_ngn ?? remaining
+                    const onPlan    = thisWeek < remaining
+                    return (
+                      <div key={a.id} className="flex items-center justify-between text-xs">
+                        <span className="text-[var(--text-muted)] truncate">
+                          {new Date(a.given_at + 'T12:00:00').toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                          {a.reason ? ` · ${a.reason}` : ''}
+                          {onPlan && <span className="text-[var(--text-faint)]"> · {fmtNaira(thisWeek)} this week</span>}
+                        </span>
+                        <span className="text-amber-400 font-medium tabular-nums">{fmtNaira(remaining)}</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
