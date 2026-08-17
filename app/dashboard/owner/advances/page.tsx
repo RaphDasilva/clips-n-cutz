@@ -31,10 +31,8 @@ const STATUS_PILL: Record<string, string> = {
   forgiven:    'bg-[var(--border)] text-[var(--text-muted)] border-[var(--border-strong)]',
 }
 
-// The owner can grant advances (it's their money) and audit every kobo
-// against the payouts the system auto-deducts. Editing and forgiving
-// stay with the manager, who runs the till day to day — see
-// /dashboard/manager/advances.
+// The owner has full control over advances, same as the manager:
+// grant, edit amount, set/change payment plans, and forgive.
 export default function OwnerAdvancesPage() {
   const mask = useClientMask()
   const [data, setData]       = useState<ListResp | null>(null)
@@ -47,6 +45,13 @@ export default function OwnerAdvancesPage() {
   const [grantReason, setGrantReason]   = useState('')
   const [granting, setGranting]         = useState(false)
   const [grantError, setGrantError]     = useState('')
+
+  // Inline editor for an existing advance
+  const [editingId, setEditingId]   = useState<string | null>(null)
+  const [editAmount, setEditAmount] = useState('')
+  const [editWeekly, setEditWeekly] = useState('')
+  const [editError, setEditError]   = useState('')
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -89,13 +94,65 @@ export default function OwnerAdvancesPage() {
     }
   }
 
+  function openEdit(a: Advance) {
+    setEditingId(a.id)
+    setEditAmount(String(a.amount_ngn))
+    setEditWeekly(a.weekly_cap_ngn ? String(a.weekly_cap_ngn) : '')
+    setEditError('')
+  }
+
+  async function saveEdit(a: Advance) {
+    setEditError('')
+    const amt    = parseInt(editAmount, 10) || 0
+    const weekly = parseInt(editWeekly, 10) || 0
+    if (amt <= 0) { setEditError('Enter an amount above ₦0.'); return }
+    setSavingEdit(true)
+    try {
+      if (amt !== a.amount_ngn) {
+        const res = await fetch(`/api/owner/advances/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'edit_amount', amountNgn: amt }),
+        })
+        const j = await res.json()
+        if (!res.ok) { setEditError(j.error ?? 'Failed to update amount.'); return }
+      }
+      const newWeekly = weekly > 0 ? weekly : null
+      if (newWeekly !== a.weekly_cap_ngn) {
+        const res = await fetch(`/api/owner/advances/${a.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'set_plan', weeklyCapNgn: newWeekly }),
+        })
+        const j = await res.json()
+        if (!res.ok) { setEditError(j.error ?? 'Failed to update payment plan.'); return }
+      }
+      setEditingId(null)
+      load()
+    } catch {
+      setEditError('Connection error. Try again.')
+    } finally {
+      setSavingEdit(false)
+    }
+  }
+
+  async function forgive(id: string) {
+    if (!confirm('Forgive this advance? It will no longer be deducted from any future payout.')) return
+    const res = await fetch(`/api/owner/advances/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'forgive' }),
+    })
+    if (res.ok) load()
+  }
+
   return (
     <div className="px-6 lg:px-10 py-8 max-w-5xl mx-auto">
 
       <div className="mb-6">
         <h1 className="text-[var(--text)] text-2xl font-bold tracking-tight">Staff Advances</h1>
         <p className="text-[var(--text-dim)] text-sm mt-0.5">
-          Money given to staff mid-week — the system deducts outstanding amounts from each weekly payout. Editing and forgiving are done from the manager dashboard.
+          Money given to staff mid-week — the system deducts outstanding amounts from each weekly payout.
         </p>
       </div>
 
@@ -193,29 +250,83 @@ export default function OwnerAdvancesPage() {
         ) : (
           <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl divide-y divide-[var(--border)]">
             {data!.advances.map(a => (
-              <div key={a.id} className="px-5 py-3.5 flex items-center justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(a.users?.name)}</p>
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${STATUS_PILL[a.status]}`}>
-                      {a.status}
-                    </span>
-                    {a.weekly_cap_ngn && a.status === 'outstanding' && (
-                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-sky-500/10 text-sky-400 border-sky-500/30">
-                        {fmtNaira(a.weekly_cap_ngn)}/week
+              <div key={a.id} className="px-5 py-3.5">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[var(--text)] text-sm font-medium truncate">{mask.name(a.users?.name)}</p>
+                      <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${STATUS_PILL[a.status]}`}>
+                        {a.status}
                       </span>
-                    )}
+                      {a.weekly_cap_ngn && a.status === 'outstanding' && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded border bg-sky-500/10 text-sky-400 border-sky-500/30">
+                          {fmtNaira(a.weekly_cap_ngn)}/week
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[var(--text-dim)] text-xs mt-0.5">
+                      {fmtDate(a.given_at)}{a.reason ? ` · ${a.reason}` : ''}
+                      {a.status === 'outstanding' && a.repaid_ngn > 0 && (
+                        <span className="text-emerald-400"> · {fmtNaira(a.repaid_ngn)} repaid, {fmtNaira(Math.max(0, a.amount_ngn - a.repaid_ngn))} left</span>
+                      )}
+                    </p>
                   </div>
-                  <p className="text-[var(--text-dim)] text-xs mt-0.5">
-                    {fmtDate(a.given_at)}{a.reason ? ` · ${a.reason}` : ''}
-                    {a.status === 'outstanding' && a.repaid_ngn > 0 && (
-                      <span className="text-emerald-400"> · {fmtNaira(a.repaid_ngn)} repaid, {fmtNaira(Math.max(0, a.amount_ngn - a.repaid_ngn))} left</span>
-                    )}
+                  <p className="text-[var(--text)] text-sm font-semibold tabular-nums flex-shrink-0">
+                    {fmtNaira(a.amount_ngn)}
                   </p>
+                  {a.status === 'outstanding' && editingId !== a.id && (
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <button onClick={() => openEdit(a)}
+                        className="text-[var(--text-muted)] hover:text-[var(--text)] text-xs">
+                        Edit
+                      </button>
+                      <button onClick={() => forgive(a.id)}
+                        className="text-[var(--text-muted)] hover:text-red-400 text-xs">
+                        Forgive
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-[var(--text)] text-sm font-semibold tabular-nums flex-shrink-0">
-                  {fmtNaira(a.amount_ngn)}
-                </p>
+
+                {editingId === a.id && (
+                  <div className="mt-3 bg-[var(--elevated)] border border-[var(--border-strong)] rounded-xl p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">Amount (₦)</label>
+                        <input type="text" inputMode="numeric"
+                          value={editAmount}
+                          onChange={e => setEditAmount(e.target.value.replace(/\D/g, ''))}
+                          className="input tabular-nums" />
+                        {a.repaid_ngn > 0 && (
+                          <p className="text-[var(--text-faint)] text-[10px] mt-1">Must stay above the {fmtNaira(a.repaid_ngn)} already repaid.</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-[var(--text-muted)] text-xs font-medium mb-1.5">
+                          Weekly deduction (₦) <span className="text-[var(--text-faint)] font-normal">— empty = all at once</span>
+                        </label>
+                        <input type="text" inputMode="numeric"
+                          value={editWeekly}
+                          onChange={e => setEditWeekly(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 2000"
+                          className="input tabular-nums" />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 mt-3">
+                      {editError ? <p className="text-red-400 text-xs">{editError}</p> : <span />}
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setEditingId(null)} disabled={savingEdit}
+                          className="text-[var(--text-muted)] hover:text-[var(--text)] text-xs px-3 py-2">
+                          Cancel
+                        </button>
+                        <button onClick={() => saveEdit(a)} disabled={savingEdit}
+                          className="bg-[var(--text)] text-[var(--bg)] font-semibold px-4 py-2 rounded-lg text-xs disabled:opacity-40 hover:bg-[var(--text-muted)] transition-all">
+                          {savingEdit ? 'Saving…' : 'Save Changes'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
